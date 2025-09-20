@@ -236,7 +236,9 @@ export interface MutualFundDateAvailability {
 
 export interface CurrentHoldingsRequestDto {
   mutualFundId: number;
-  date: string;
+  targetDate: string;
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
 }
 
 export interface CurrentHoldingDto {
@@ -260,4 +262,30 @@ export interface CurrentHoldingsResponseDto {
   totalValue: number;
   holdings: CurrentHoldingDto[];
   holdingsCount: number;
+}
+
+// V2 Upload Types
+export interface UploadV2RequestDto {
+  reportDate: string;
+  files: File[];
+}
+
+export interface MutualFundDetectionResult {
+  fileName: string;
+  detectedFundName: string;
+  mutualFundId?: number;
+  wasCreated: boolean;
+  matchConfidence: number;
+  matchedText: string;
+  rowFound: number;
+  columnFound: number;
+}
+
+export interface UploadV2ResponseDto {
+  success: boolean;
+  message: string;
+  detectionResults: MutualFundDetectionResult[];
+  processedFileIds: number[];
+  createdMutualFunds: number;
+  processedFiles: number;
 }

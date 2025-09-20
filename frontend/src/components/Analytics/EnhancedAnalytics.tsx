@@ -142,14 +142,18 @@ const EnhancedAnalytics: React.FC = () => {
         Promise.all(selectedFunds.map(fundId => 
           analyticsService.getCurrentHoldings({
             mutualFundId: fundId,
-            date: request.fromDate
+            targetDate: request.fromDate,
+            dateRangeStart: dateRange[0].subtract(30, 'day').format('YYYY-MM-DD'),
+            dateRangeEnd: dateRange[0].add(30, 'day').format('YYYY-MM-DD')
           })
         )),
         // Fetch current holdings for to date
         Promise.all(selectedFunds.map(fundId => 
           analyticsService.getCurrentHoldings({
             mutualFundId: fundId,
-            date: request.toDate
+            targetDate: request.toDate,
+            dateRangeStart: dateRange[1].subtract(30, 'day').format('YYYY-MM-DD'),
+            dateRangeEnd: dateRange[1].add(30, 'day').format('YYYY-MM-DD')
           })
         ))
       ]);

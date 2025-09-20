@@ -17,7 +17,9 @@ import {
   AnalyticsSummaryDto,
   HoldingChangeDto,
   CurrentHoldingsRequestDto,
-  CurrentHoldingsResponseDto
+  CurrentHoldingsResponseDto,
+  UploadV2RequestDto,
+  UploadV2ResponseDto
 } from '../types';
 
 const API_BASE_URL = 'https://localhost:7052/api'; // Backend API URL
@@ -201,7 +203,7 @@ export const analyticsService = {
     mutualFundIds: string, 
     fromDate: string, 
     toDate: string, 
-    topCount: number = 15
+    topCount: number = 50
   ): Promise<TopShareDto[]> => {
     const response = await api.get('/analytics/top-shares', {
       params: { mutualFundIds, fromDate, toDate, topCount }
@@ -231,8 +233,54 @@ export const analyticsService = {
     return response.data;
   },
 
-  validateDatesForFunds: async (
+    validateDatesForFunds: async (
     mutualFundIds: number[], 
+    fromDate: string, 
+    toDate: string
+  ): Promise<{ isValid: boolean }> => {
+    console.log('API validateDatesForFunds called with:', { mutualFundIds, fromDate, toDate });
+    
+    const params = { 
+      mutualFundIds: mutualFundIds.join(','), // Convert array to comma-separated string
+      fromDate, 
+      toDate 
+    };
+    
+    console.log('API request params:', params);
+    
+    const response = await api.get('/analytics/validate-dates', {
+      params
+    });
+    
+    console.log('API validateDatesForFunds response:', response.data);
+    return response.data;
+  },
+};
+
+export const uploadV2Service = {
+  uploadFiles: async (request: UploadV2RequestDto): Promise<UploadV2ResponseDto> => {
+    const formData = new FormData();
+    formData.append('reportDate', request.reportDate);
+    
+    request.files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const response = await api.post('/uploadv2/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  getDetectionPatterns: async () => {
+    const response = await api.get('/uploadv2/detection-patterns');
+    return response.data;
+  },
+
+  validateDatesForFunds: async (
+    mutualFundIds: string, 
     fromDate: string, 
     toDate: string
   ): Promise<{ isValid: boolean }> => {

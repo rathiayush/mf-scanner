@@ -173,9 +173,9 @@ public class AnalyticsController : ControllerBase
                 return BadRequest(new { Message = "Valid mutual fund ID is required" });
             }
 
-            if (request.Date == default)
+            if (request.TargetDate == default)
             {
-                return BadRequest(new { Message = "Valid date is required" });
+                return BadRequest(new { Message = "Valid target date is required" });
             }
 
             var result = await _analyticsService.GetCurrentHoldingsAsync(request);
@@ -184,7 +184,7 @@ public class AnalyticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current holdings for fund {FundId} on date {Date}", 
-                request.MutualFundId, request.Date);
+                request.MutualFundId, request.TargetDate);
             return StatusCode(500, new { Message = ex.Message });
         }
     }

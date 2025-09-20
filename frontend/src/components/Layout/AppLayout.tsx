@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Typography, Space, Button, Menu } from 'antd';
-import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, CloudUploadOutlined, UnorderedListOutlined, DollarOutlined, FundOutlined, TableOutlined, PieChartOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, CloudUploadOutlined, UnorderedListOutlined, DollarOutlined, FundOutlined, TableOutlined, PieChartOutlined, RobotOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -32,6 +32,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1', onMe
       key: '4',
       icon: <UnorderedListOutlined />,
       label: 'Mutual Fund List',
+    },
+    {
+      key: '6',
+      icon: <RobotOutlined />,
+      label: 'Smart Upload V2',
     },
     {
       key: '5',

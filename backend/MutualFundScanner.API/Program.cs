@@ -3,6 +3,7 @@ using MutualFundScanner.Infrastructure.Data;
 using MutualFundScanner.Application.Interfaces;
 using Serilog;
 using Serilog.Events;
+using MutualFundScanner.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,7 +32,10 @@ builder.Services.AddDbContext<MutualFundContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register Application Services
-builder.Services.AddScoped<IFileProcessingService, MutualFundScanner.Application.Services.FileProcessingService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IFileProcessingService, FileProcessingService>();
+builder.Services.AddScoped<IUploadV2Service, UploadV2Service>();
+builder.Services.AddScoped<MutualFundDetectionService>();
 builder.Services.AddScoped<IMutualFundService, MutualFundScanner.Application.Services.MutualFundService>();
 builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Services.AnalyticsService>();
 builder.Services.AddScoped<IFileUploadService, MutualFundScanner.Application.Services.FileUploadService>();

@@ -117,7 +117,9 @@ const CurrentHoldings: React.FC<CurrentHoldingsProps> = ({ className }) => {
       
       const response = await analyticsService.getCurrentHoldings({
         mutualFundId: selectedFund,
-        date: selectedDateStr
+        targetDate: selectedDateStr,
+        dateRangeStart: dayjs(selectedDateStr).format('YYYY-MM-DD'),
+        dateRangeEnd: dayjs(selectedDateStr).format('YYYY-MM-DD')
       });
 
       console.log('Holdings response:', response);
