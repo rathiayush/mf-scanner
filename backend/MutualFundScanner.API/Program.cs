@@ -36,6 +36,11 @@ builder.Services.AddScoped<IMutualFundService, MutualFundScanner.Application.Ser
 builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Services.AnalyticsService>();
 builder.Services.AddScoped<IFileUploadService, MutualFundScanner.Application.Services.FileUploadService>();
 
+// Register Helper Classes
+builder.Services.AddScoped<MutualFundScanner.Application.Helpers.SnapshotAggregationHelper>();
+builder.Services.AddScoped<MutualFundScanner.Application.Helpers.AnalyticsCalculationHelper>();
+builder.Services.AddScoped<MutualFundScanner.Application.Helpers.DataValidationHelper>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {

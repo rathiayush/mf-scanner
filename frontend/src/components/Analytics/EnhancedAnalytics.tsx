@@ -137,7 +137,7 @@ const EnhancedAnalytics: React.FC = () => {
       const [analytics, changes, shares, fromHoldings, toHoldings] = await Promise.all([
         analyticsService.getAnalytics(request),
         analyticsService.getHoldingChanges(request),
-        analyticsService.getTopShares(selectedFunds, request.fromDate, request.toDate),
+        analyticsService.getTopShares(selectedFunds.join(','), request.fromDate, request.toDate),
         // Fetch current holdings for from date
         Promise.all(selectedFunds.map(fundId => 
           analyticsService.getCurrentHoldings({
@@ -187,23 +187,26 @@ const EnhancedAnalytics: React.FC = () => {
 
   const handleStatusFilterChange = (value: string) => {
     setSelectedStatusFilter(value);
-    // Reload holding changes with the new filter
-    loadHoldingChanges(currentPage, pageSize);
+    // Reload holding changes with the new filter, passing the new value directly
+    loadHoldingChanges(currentPage, pageSize, value);
   };
 
-  const loadHoldingChanges = async (page: number, size: number) => {
+  const loadHoldingChanges = async (page: number, size: number, filterValue?: string) => {
     if (!dateRange || selectedFunds.length === 0) return;
 
     setLoading(true);
 
     try {
+      // Use the passed filterValue or fall back to current state
+      const currentFilter = filterValue !== undefined ? filterValue : selectedStatusFilter;
+      
       const request = {
         mutualFundIds: selectedFunds,
         fromDate: dateRange[0].format('YYYY-MM-DD'),
         toDate: dateRange[1].format('YYYY-MM-DD'),
         page,
         pageSize: size,
-        changeTypeFilter: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter
+        changeTypeFilter: currentFilter === 'all' ? undefined : currentFilter
       };
 
       const changes = await analyticsService.getHoldingChanges(request);

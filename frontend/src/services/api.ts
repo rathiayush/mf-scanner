@@ -198,7 +198,7 @@ export const analyticsService = {
   },
 
   getTopShares: async (
-    mutualFundIds: number[], 
+    mutualFundIds: string, 
     fromDate: string, 
     toDate: string, 
     topCount: number = 15
@@ -275,7 +275,7 @@ export const apiService = {
   },
 
   getTopStocks: async (fromDate: string, toDate: string, fundId?: string) => {
-    const fundIds = fundId ? [parseInt(fundId)] : [];
+    const fundIds = fundId ? fundId : '';
     return analyticsService.getTopShares(fundIds, fromDate, toDate);
   },
 
