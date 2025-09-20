@@ -44,7 +44,10 @@ const EnhancedAnalytics: React.FC = () => {
   const [availableDates, setAvailableDates] = useState<AvailableDatesResponseDto | null>(null);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsResponseDto | null>(null);
   const [holdingChanges, setHoldingChanges] = useState<PagedResult<HoldingChangeDto> | null>(null);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [topShares, setTopShares] = useState<TopShareDto[]>([]);
+  const [portfolioSnapshots, setPortfolioSnapshots] = useState<any[]>([]);
+  const [currentHoldings, setCurrentHoldings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -79,6 +82,9 @@ const EnhancedAnalytics: React.FC = () => {
   };
 
   const handleAnalyze = async () => {
+    // Reset status filter to 'all' when analyzing
+    setSelectedStatusFilter('all');
+    
     if (selectedFunds.length === 0) {
       message.warning('Please select at least one mutual fund');
       return;
@@ -86,6 +92,31 @@ const EnhancedAnalytics: React.FC = () => {
 
     if (!dateRange) {
       message.warning('Please select a date range');
+      return;
+    }
+
+    // Validate that selected dates have snapshot data for all selected funds using backend validation
+    try {
+      console.log('Validating dates for funds:', selectedFunds);
+      console.log('Date range:', dateRange);
+      
+      const validation = await analyticsService.validateDatesForFunds(
+        selectedFunds,
+        dateRange[0].format('YYYY-MM-DD'),
+        dateRange[1].format('YYYY-MM-DD')
+      );
+      
+      console.log('Validation response:', validation);
+
+      if (!validation.isValid) {
+        message.warning(
+          'No snapshot data available for selected funds on one or both selected dates. ' +
+          'Please select dates where all funds have portfolio data.'
+        );
+        return;
+      }
+    } catch (error: any) {
+      message.error('Failed to validate date availability. Please try again.');
       return;
     }
 
@@ -99,15 +130,48 @@ const EnhancedAnalytics: React.FC = () => {
         pageSize: pageSize
       };
 
-      const [analytics, changes, shares] = await Promise.all([
+      console.log('Analytics Request:', request);
+      console.log('Selected Funds:', selectedFunds);
+
+      // Fetch portfolio snapshots and holdings for the selected date range
+      const [analytics, changes, shares, fromHoldings, toHoldings] = await Promise.all([
         analyticsService.getAnalytics(request),
         analyticsService.getHoldingChanges(request),
-        analyticsService.getTopShares(selectedFunds, request.fromDate, request.toDate)
+        analyticsService.getTopShares(selectedFunds, request.fromDate, request.toDate),
+        // Fetch current holdings for from date
+        Promise.all(selectedFunds.map(fundId => 
+          analyticsService.getCurrentHoldings({
+            mutualFundId: fundId,
+            date: request.fromDate
+          })
+        )),
+        // Fetch current holdings for to date
+        Promise.all(selectedFunds.map(fundId => 
+          analyticsService.getCurrentHoldings({
+            mutualFundId: fundId,
+            date: request.toDate
+          })
+        ))
       ]);
 
       setAnalyticsData(analytics);
       setHoldingChanges(changes);
       setTopShares(shares);
+      
+      // Combine holdings data from both dates
+      const allHoldings = [...fromHoldings, ...toHoldings].filter(h => h.success);
+      setCurrentHoldings(allHoldings);
+      
+      // Create portfolio snapshots summary
+      const snapshots = allHoldings.map(holding => ({
+        fundId: holding.mutualFundId,
+        fundName: holding.mutualFundName,
+        date: holding.date,
+        totalValue: holding.totalValue,
+        holdingsCount: holding.holdingsCount,
+        holdings: holding.holdings
+      }));
+      setPortfolioSnapshots(snapshots);
     } catch (error: any) {
       message.error(error.message || 'Failed to analyze data');
     } finally {
@@ -115,11 +179,21 @@ const EnhancedAnalytics: React.FC = () => {
     }
   };
 
-  const handleTableChange = async (page: number, size: number) => {
+  const handleTableChange = (page: number, size?: number) => {
+    setCurrentPage(page);
+    if (size) setPageSize(size);
+    loadHoldingChanges(page, size || pageSize);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setSelectedStatusFilter(value);
+    // Reload holding changes with the new filter
+    loadHoldingChanges(currentPage, pageSize);
+  };
+
+  const loadHoldingChanges = async (page: number, size: number) => {
     if (!dateRange || selectedFunds.length === 0) return;
 
-    setCurrentPage(page);
-    setPageSize(size);
     setLoading(true);
 
     try {
@@ -128,7 +202,8 @@ const EnhancedAnalytics: React.FC = () => {
         fromDate: dateRange[0].format('YYYY-MM-DD'),
         toDate: dateRange[1].format('YYYY-MM-DD'),
         page,
-        pageSize: size
+        pageSize: size,
+        changeTypeFilter: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter
       };
 
       const changes = await analyticsService.getHoldingChanges(request);
@@ -272,25 +347,86 @@ const EnhancedAnalytics: React.FC = () => {
   ];
 
   const disabledDate = (current: Dayjs) => {
-    // If no available dates or invalid data, enable all dates
+    // If no funds selected, use global date range
+    if (selectedFunds.length === 0) {
+      if (!availableDates || !availableDates.minDate || !availableDates.maxDate) {
+        return false; // Enable all dates
+      }
+      
+      try {
+        const minDate = dayjs(availableDates.minDate);
+        const maxDate = dayjs(availableDates.maxDate);
+        
+        if (!minDate.isValid() || !maxDate.isValid()) {
+          return false; // Enable all dates
+        }
+        
+        return current.isBefore(minDate.startOf('month')) || current.isAfter(maxDate.endOf('month'));
+      } catch (error) {
+        return false; // Enable all dates
+      }
+    }
+    
+    // If funds are selected, validate against fund-specific availability
+    if (availableDates?.fundDateAvailabilities && availableDates.fundDateAvailabilities.length > 0) {
+      // Get the selected funds' availability data
+      const selectedFundAvailabilities = availableDates.fundDateAvailabilities.filter(
+        fund => selectedFunds.includes(fund.mutualFundId)
+      );
+      
+      if (selectedFundAvailabilities.length === 0) {
+        return false; // No availability data, enable all dates
+      }
+      
+      try {
+        // Find the intersection of available dates for all selected funds
+        const availableDateStrings = selectedFundAvailabilities.reduce((intersection, fund) => {
+          const fundDates = fund.availableDates.map(dateStr => dayjs(dateStr).format('YYYY-MM-DD'));
+          return intersection.length === 0 
+            ? fundDates 
+            : intersection.filter(date => fundDates.includes(date));
+        }, [] as string[]);
+        
+        if (availableDateStrings.length === 0) {
+          return true; // No common available dates, disable all dates
+        }
+        
+        // Check if current date is in the available dates
+        const currentDateStr = current.format('YYYY-MM-DD');
+        return !availableDateStrings.includes(currentDateStr);
+        
+      } catch (error) {
+        // Fallback to global range if there's an error
+        if (!availableDates.minDate || !availableDates.maxDate) {
+          return false;
+        }
+        
+        const minDate = dayjs(availableDates.minDate);
+        const maxDate = dayjs(availableDates.maxDate);
+        
+        if (!minDate.isValid() || !maxDate.isValid()) {
+          return false;
+        }
+        
+        return current.isBefore(minDate.startOf('month')) || current.isAfter(maxDate.endOf('month'));
+      }
+    }
+    
+    // Fallback to global date range if no fund-specific data
     if (!availableDates || !availableDates.minDate || !availableDates.maxDate) {
       return false; // Enable all dates
     }
     
     try {
-      // Parse min and max dates from the API response
       const minDate = dayjs(availableDates.minDate);
       const maxDate = dayjs(availableDates.maxDate);
       
-      // If dates are invalid, enable all dates
       if (!minDate.isValid() || !maxDate.isValid()) {
         return false; // Enable all dates
       }
       
-      // Enable all dates within the available range
       return current.isBefore(minDate.startOf('month')) || current.isAfter(maxDate.endOf('month'));
     } catch (error) {
-      // If there's any error in parsing, enable all dates
       return false; // Enable all dates
     }
   };
@@ -424,15 +560,36 @@ const EnhancedAnalytics: React.FC = () => {
                   key="changes"
                 >
                   {holdingChanges && (
-                    <Table
-                      dataSource={holdingChanges.data}
+                    <div>
+                      <div style={{ marginBottom: 16 }}>
+                        <Space>
+                          <Text strong>Filter by Status:</Text>
+                          <Select
+                            value={selectedStatusFilter}
+                            onChange={handleStatusFilterChange}
+                            style={{ width: 150 }}
+                          >
+                            <Option value="all">All Statuses</Option>
+                            <Option value="Added">Added</Option>
+                            <Option value="Removed">Removed</Option>
+                            <Option value="Increased">Increased</Option>
+                            <Option value="Decreased">Decreased</Option>
+                            <Option value="Mixed">Mixed</Option>
+                          </Select>
+                          <Text type="secondary">
+                            Showing {holdingChanges?.data.length || 0} of {holdingChanges?.totalCount || 0} holdings
+                          </Text>
+                        </Space>
+                      </div>
+                      <Table
+                        dataSource={holdingChanges?.data || []}
                       columns={holdingChangesColumns}
                       rowKey="isin"
                       loading={loading}
                       pagination={{
-                        current: holdingChanges.page,
-                        pageSize: holdingChanges.pageSize,
-                        total: holdingChanges.totalCount,
+                        current: holdingChanges?.page || 1,
+                        pageSize: holdingChanges?.pageSize || 20,
+                        total: holdingChanges?.totalCount || 0,
                         showSizeChanger: true,
                         showQuickJumper: true,
                         showTotal: (total, range) =>
@@ -442,6 +599,7 @@ const EnhancedAnalytics: React.FC = () => {
                       }}
                       scroll={{ x: 1000 }}
                     />
+                    </div>
                   )}
                 </TabPane>
 
@@ -461,6 +619,124 @@ const EnhancedAnalytics: React.FC = () => {
                     pagination={false}
                     scroll={{ x: 1000 }}
                   />
+                </TabPane>
+
+                <TabPane 
+                  tab={
+                    <span>
+                      <FundOutlined />
+                      Portfolio Snapshots ({portfolioSnapshots.length})
+                    </span>
+                  } 
+                  key="snapshots"
+                >
+                  {portfolioSnapshots.length > 0 ? (
+                    <Row gutter={[16, 16]}>
+                      {portfolioSnapshots.map((snapshot, index) => (
+                        <Col span={12} key={index}>
+                          <Card 
+                            title={`${snapshot.fundName} - ${snapshot.date}`}
+                            size="small"
+                          >
+                            <Row gutter={[8, 8]}>
+                              <Col span={12}>
+                                <Statistic
+                                  title="Total Value"
+                                  value={snapshot.totalValue}
+                                  prefix="₹"
+                                  precision={2}
+                                />
+                              </Col>
+                              <Col span={12}>
+                                <Statistic
+                                  title="Holdings Count"
+                                  value={snapshot.holdingsCount}
+                                />
+                              </Col>
+                            </Row>
+                            <div style={{ marginTop: 16 }}>
+                              <Text strong>Top 5 Holdings:</Text>
+                              {snapshot.holdings?.slice(0, 5).map((holding: any, idx: number) => (
+                                <div key={idx} style={{ marginTop: 4 }}>
+                                  <Text style={{ fontSize: '12px' }}>
+                                    {holding.companyName}: {holding.weight?.toFixed(2)}%
+                                  </Text>
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
+                  ) : (
+                    <Alert
+                      message="No Portfolio Snapshots"
+                      description="Run analysis to see portfolio snapshots for selected funds and dates."
+                      type="info"
+                      showIcon
+                    />
+                  )}
+                </TabPane>
+
+                <TabPane 
+                  tab={
+                    <span>
+                      <BarChartOutlined />
+                      Current Holdings ({currentHoldings.reduce((acc, h) => acc + (h.holdingsCount || 0), 0)})
+                    </span>
+                  } 
+                  key="holdings"
+                >
+                  {currentHoldings.length > 0 ? (
+                    <Row gutter={[16, 16]}>
+                      {currentHoldings.map((holding, index) => (
+                        <Col span={24} key={index}>
+                          <Card 
+                            title={`${holding.mutualFundName} - ${holding.date}`}
+                            size="small"
+                          >
+                            <Table
+                              dataSource={holding.holdings}
+                              columns={[
+                                {
+                                  title: 'Company Name',
+                                  dataIndex: 'companyName',
+                                  key: 'companyName',
+                                },
+                                {
+                                  title: 'Weight',
+                                  dataIndex: 'weight',
+                                  key: 'weight',
+                                  render: (weight: number) => `${weight?.toFixed(2)}%`,
+                                },
+                                {
+                                  title: 'Value',
+                                  dataIndex: 'value',
+                                  key: 'value',
+                                  render: (value: number) => `₹${value?.toLocaleString()}`,
+                                },
+                                {
+                                  title: 'Sector',
+                                  dataIndex: 'sector',
+                                  key: 'sector',
+                                },
+                              ]}
+                              rowKey="id"
+                              pagination={{ pageSize: 10 }}
+                              size="small"
+                            />
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
+                  ) : (
+                    <Alert
+                      message="No Holdings Data"
+                      description="Run analysis to see detailed holdings for selected funds and dates."
+                      type="info"
+                      showIcon
+                    />
+                  )}
                 </TabPane>
               </Tabs>
             </Card>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import AppLayout from './components/Layout';
 import { FileUploadPage, AnalysePage, UploadFilesTriggerPage, MutualFundListPage } from './pages';
 import CurrentHoldingsPage from './pages/CurrentHoldingsPage';
+import HoldingsComparison from './components/Holdings/HoldingsComparison';
+import PortfolioSummary from './components/Holdings/PortfolioSummary';
 
 const App: React.FC = () => {
   const [selectedMenuKey, setSelectedMenuKey] = useState('1');
@@ -21,7 +23,12 @@ const App: React.FC = () => {
       case '4':
         return <MutualFundListPage />;
       case '5':
+      case '5-1':
         return <CurrentHoldingsPage />;
+      case '5-2':
+        return <HoldingsComparison />;
+      case '5-3':
+        return <PortfolioSummary />;
       default:
         return <FileUploadPage />;
     }

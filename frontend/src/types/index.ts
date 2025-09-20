@@ -159,6 +159,7 @@ export interface AnalyticsRequestDto {
   toDate: string;
   page: number;
   pageSize: number;
+  changeTypeFilter?: string; // Added, Removed, Increased, Decreased, Mixed, or undefined for all
 }
 
 export interface AnalyticsResponseDto {
@@ -222,6 +223,15 @@ export interface AvailableDatesResponseDto {
   availableDates: DateRangeDto[];
   minDate?: string;
   maxDate?: string;
+  fundDateAvailabilities: MutualFundDateAvailability[];
+}
+
+export interface MutualFundDateAvailability {
+  mutualFundId: number;
+  mutualFundName: string;
+  minDate?: string;
+  maxDate?: string;
+  availableDates: string[];
 }
 
 export interface CurrentHoldingsRequestDto {

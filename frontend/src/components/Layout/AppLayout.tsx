@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Typography, Space, Button, Menu } from 'antd';
-import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, CloudUploadOutlined, UnorderedListOutlined, DollarOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, CloudUploadOutlined, UnorderedListOutlined, DollarOutlined, FundOutlined, TableOutlined, PieChartOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -37,6 +37,23 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1', onMe
       key: '5',
       icon: <DollarOutlined />,
       label: 'Current Holdings',
+      children: [
+        {
+          key: '5-1',
+          icon: <FundOutlined />,
+          label: 'Fund Holdings View',
+        },
+        {
+          key: '5-2',
+          icon: <TableOutlined />,
+          label: 'Holdings Comparison',
+        },
+        {
+          key: '5-3',
+          icon: <PieChartOutlined />,
+          label: 'Portfolio Summary',
+        },
+      ],
     },
   ];
 

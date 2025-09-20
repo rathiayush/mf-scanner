@@ -188,11 +188,13 @@ export const fileUploadService = {
 
 export const analyticsService = {
   getAnalytics: async (request: AnalyticsRequestDto): Promise<AnalyticsResponseDto> => {
-    return api.post('/Analytics/analyze', request).then(response => response.data);
+    const response = await api.post('/analytics/analyze', request);
+    return response.data;
   },
 
   getHoldingChanges: async (request: AnalyticsRequestDto): Promise<PagedResult<HoldingChangeDto>> => {
-    return api.post('/Analytics/holding-changes', request).then(response => response.data);
+    const response = await api.post('/analytics/holding-changes', request);
+    return response.data;
   },
 
   getTopShares: async (
@@ -201,22 +203,16 @@ export const analyticsService = {
     toDate: string, 
     topCount: number = 15
   ): Promise<TopShareDto[]> => {
-    return api.get('/Analytics/top-shares', {
-      params: {
-        mutualFundIds,
-        fromDate,
-        toDate,
-        topCount
-      }
-    }).then(response => response.data);
+    const response = await api.get('/analytics/top-shares', {
+      params: { mutualFundIds, fromDate, toDate, topCount }
+    });
+    return response.data;
   },
 
   getAvailableDates: async (mutualFundIds?: number[]): Promise<AvailableDatesResponseDto> => {
-    return api.get('/Analytics/available-dates', {
-      params: {
-        mutualFundIds
-      }
-    }).then(response => response.data);
+    const params = mutualFundIds ? { mutualFundIds } : {};
+    const response = await api.get('/analytics/available-dates', { params });
+    return response.data;
   },
 
   getAnalyticsSummary: async (
@@ -224,18 +220,38 @@ export const analyticsService = {
     fromDate: string, 
     toDate: string
   ): Promise<AnalyticsSummaryDto> => {
-    const params = new URLSearchParams({
-      fromDate,
-      toDate
+    const response = await api.get('/analytics/summary', {
+      params: { mutualFundIds, fromDate, toDate }
     });
-    mutualFundIds.forEach(id => params.append('mutualFundIds', id.toString()));
-
-    const response = await api.get(`/Analytics/summary?${params}`);
     return response.data;
   },
 
   getCurrentHoldings: async (request: CurrentHoldingsRequestDto): Promise<CurrentHoldingsResponseDto> => {
-    return api.post('/Analytics/current-holdings', request).then(response => response.data);
+    const response = await api.post('/analytics/current-holdings', request);
+    return response.data;
+  },
+
+  validateDatesForFunds: async (
+    mutualFundIds: number[], 
+    fromDate: string, 
+    toDate: string
+  ): Promise<{ isValid: boolean }> => {
+    console.log('API validateDatesForFunds called with:', { mutualFundIds, fromDate, toDate });
+    
+    const params = { 
+      mutualFundIds: mutualFundIds.join(','), // Convert array to comma-separated string
+      fromDate, 
+      toDate 
+    };
+    
+    console.log('API request params:', params);
+    
+    const response = await api.get('/analytics/validate-dates', {
+      params
+    });
+    
+    console.log('API validateDatesForFunds response:', response.data);
+    return response.data;
   },
 };
 

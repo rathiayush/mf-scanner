@@ -11,14 +11,17 @@ import {
   Space,
   Tag,
   Tooltip,
-  message
+  message,
+  Row,
+  Col
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import {
   MutualFundDto,
   CurrentHoldingDto,
-  CurrentHoldingsResponseDto
+  CurrentHoldingsResponseDto,
+  AvailableDatesResponseDto
 } from '../../types';
 import { mutualFundService, analyticsService } from '../../services/api';
 
@@ -37,10 +40,21 @@ const CurrentHoldings: React.FC<CurrentHoldingsProps> = ({ className }) => {
   const [loading, setLoading] = useState(false);
   const [fundLoading, setFundLoading] = useState(false);
   const [holdingsResponse, setHoldingsResponse] = useState<CurrentHoldingsResponseDto | null>(null);
+  const [availableDates, setAvailableDates] = useState<AvailableDatesResponseDto | null>(null);
+  const [datesLoading, setDatesLoading] = useState(false);
 
   useEffect(() => {
     loadMutualFunds();
   }, []);
+
+  useEffect(() => {
+    if (selectedFund) {
+      loadAvailableDates();
+    } else {
+      setAvailableDates(null);
+      setSelectedDate(null);
+    }
+  }, [selectedFund]);
 
   const loadMutualFunds = async () => {
     setFundLoading(true);
@@ -54,18 +68,59 @@ const CurrentHoldings: React.FC<CurrentHoldingsProps> = ({ className }) => {
     }
   };
 
+  const loadAvailableDates = async () => {
+    if (!selectedFund) return;
+    
+    setDatesLoading(true);
+    try {
+      const response = await analyticsService.getAvailableDates([selectedFund]);
+      setAvailableDates(response);
+      
+      // Auto-select the latest available date if none is selected
+      if (!selectedDate && response.availableDates.length > 0) {
+        const latestDate = response.availableDates
+          .filter(d => d.hasData)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        
+        if (latestDate) {
+          setSelectedDate(dayjs(latestDate.date));
+        }
+      }
+    } catch (error) {
+      message.error('Failed to load available dates');
+      setAvailableDates(null);
+    } finally {
+      setDatesLoading(false);
+    }
+  };
+
   const handleViewHoldings = async () => {
     if (!selectedFund || !selectedDate) {
       message.warning('Please select both a mutual fund and date');
       return;
     }
 
+    // Validate that the selected date has snapshot data
+    const selectedDateStr = selectedDate.format('YYYY-MM-DD');
+    const isDateValid = availableDates?.availableDates.some(d => 
+      d.date === selectedDateStr && d.hasData
+    );
+    
+    if (!isDateValid) {
+      message.error('No snapshot data available for the selected date. Please select a date with available data.');
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Fetching holdings for fund:', selectedFund, 'date:', selectedDateStr);
+      
       const response = await analyticsService.getCurrentHoldings({
         mutualFundId: selectedFund,
-        date: selectedDate.format('YYYY-MM-DD')
+        date: selectedDateStr
       });
+
+      console.log('Holdings response:', response);
 
       if (response.success) {
         setHoldingsResponse(response);
@@ -77,6 +132,7 @@ const CurrentHoldings: React.FC<CurrentHoldingsProps> = ({ className }) => {
         setHoldings([]);
       }
     } catch (error) {
+      console.error('Error loading holdings:', error);
       message.error('Failed to load holdings');
       setHoldingsResponse(null);
       setHoldings([]);
@@ -178,49 +234,80 @@ const CurrentHoldings: React.FC<CurrentHoldingsProps> = ({ className }) => {
         </Text>
 
         <div style={{ marginTop: 24, marginBottom: 24 }}>
-          <Space size="large" wrap>
-            <div>
-              <Text strong>Mutual Fund:</Text>
-              <Select
-                style={{ width: 300, marginTop: 8 }}
-                placeholder="Select a mutual fund"
-                loading={fundLoading}
-                value={selectedFund}
-                onChange={setSelectedFund}
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-                }
+          <Row gutter={[24, 16]} align="bottom">
+            <Col xs={24} sm={12} md={8} lg={8}>
+              <div>
+                <Text strong>Mutual Fund:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: 8 }}
+                  placeholder="Select a mutual fund"
+                  loading={fundLoading}
+                  value={selectedFund}
+                  onChange={setSelectedFund}
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {mutualFunds.map(fund => (
+                    <Option key={fund.id} value={fund.id}>
+                      {fund.fundName} ({fund.fundCode})
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </Col>
+
+            <Col xs={24} sm={12} md={8} lg={8}>
+              <div>
+                <Text strong>As of Date:</Text>
+                <DatePicker
+                  style={{ width: '100%', marginTop: 8 }}
+                  placeholder="Select date"
+                  value={selectedDate}
+                  onChange={setSelectedDate}
+                  disabled={!selectedFund || datesLoading}
+                  disabledDate={(current) => {
+                    // Disable future dates
+                    if (current && current > dayjs().endOf('day')) {
+                      return true;
+                    }
+                    
+                    // Disable dates without available snapshot data
+                    if (availableDates && selectedFund) {
+                      const dateStr = current.format('YYYY-MM-DD');
+                      const isDateAvailable = availableDates.availableDates.some(d => 
+                        d.date === dateStr && d.hasData
+                      );
+                      return !isDateAvailable;
+                    }
+                    
+                    return false;
+                  }}
+                />
+                {datesLoading && (
+                  <div style={{ marginTop: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Loading available dates...
+                    </Text>
+                  </div>
+                )}
+              </div>
+            </Col>
+
+            <Col xs={24} sm={24} md={8} lg={8}>
+              <Button
+                type="primary"
+                onClick={handleViewHoldings}
+                loading={loading}
+                disabled={!selectedFund || !selectedDate}
+                style={{ width: '100%', marginTop: 32 }}
+                size="large"
               >
-                {mutualFunds.map(fund => (
-                  <Option key={fund.id} value={fund.id}>
-                    {fund.fundName} ({fund.fundCode})
-                  </Option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Text strong>As of Date:</Text>
-              <DatePicker
-                style={{ width: 200, marginTop: 8 }}
-                placeholder="Select date"
-                value={selectedDate}
-                onChange={setSelectedDate}
-                disabledDate={(current) => current && current > dayjs().endOf('day')}
-              />
-            </div>
-
-            <Button
-              type="primary"
-              onClick={handleViewHoldings}
-              loading={loading}
-              disabled={!selectedFund || !selectedDate}
-              style={{ marginTop: 32 }}
-            >
-              View Holdings
-            </Button>
-          </Space>
+                View Holdings
+              </Button>
+            </Col>
+          </Row>
         </div>
 
         {holdingsResponse && (

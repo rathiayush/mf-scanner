@@ -24,7 +24,10 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            if (!request.MutualFundIds.Any())
+            _logger.LogInformation("GetAnalytics called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}", 
+                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate);
+
+            if (request.MutualFundIds == null || !request.MutualFundIds.Any())
             {
                 return BadRequest(new { Message = "At least one mutual fund must be selected" });
             }
@@ -49,7 +52,10 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            if (!request.MutualFundIds.Any())
+            _logger.LogInformation("GetHoldingChanges called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}", 
+                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate);
+
+            if (request.MutualFundIds == null || !request.MutualFundIds.Any())
             {
                 return BadRequest(new { Message = "At least one mutual fund must be selected" });
             }
@@ -66,29 +72,50 @@ public class AnalyticsController : ControllerBase
 
     [HttpGet("top-shares")]
     public async Task<IActionResult> GetTopShares(
-        [FromQuery] int[] mutualFundIds,
-        [FromQuery] DateTime fromDate,
-        [FromQuery] DateTime toDate,
+        [FromQuery] string? mutualFundIds = null,
+        [FromQuery] DateTime fromDate = default,
+        [FromQuery] DateTime toDate = default,
         [FromQuery] int topCount = 15)
     {
         try
         {
-            if (!mutualFundIds.Any())
+            _logger.LogInformation("GetTopShares called with mutualFundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}, topCount: {TopCount}", 
+                mutualFundIds, fromDate, toDate, topCount);
+            
+            List<int> fundIds = new List<int>();
+            if (!string.IsNullOrEmpty(mutualFundIds))
             {
+                var ids = mutualFundIds.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var id in ids)
+                {
+                    if (int.TryParse(id.Trim(), out int fundId))
+                    {
+                        fundIds.Add(fundId);
+                    }
+                }
+            }
+            
+            _logger.LogInformation("Parsed mutualFundIds: {FundIds}", string.Join(",", fundIds));
+            
+            if (!fundIds.Any())
+            {
+                _logger.LogWarning("GetTopShares: No mutual fund IDs provided");
                 return BadRequest(new { Message = "At least one mutual fund must be selected" });
             }
 
             if (fromDate >= toDate)
             {
+                _logger.LogWarning("GetTopShares: From date {FromDate} is not before to date {ToDate}", fromDate, toDate);
                 return BadRequest(new { Message = "From date must be before to date" });
             }
 
-            var result = await _analyticsService.GetTopSharesAsync(mutualFundIds.ToList(), fromDate, toDate, topCount);
+            var result = await _analyticsService.GetTopSharesAsync(fundIds, fromDate, toDate, topCount);
+            _logger.LogInformation("GetTopShares result: {Count} top shares for funds {FundIds}", result.Count, string.Join(",", fundIds));
             return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting top shares for funds {FundIds}", string.Join(",", mutualFundIds));
+            _logger.LogError(ex, "Error getting top shares for funds {FundIds}", mutualFundIds ?? "null");
             return StatusCode(500, new { Message = ex.Message });
         }
     }
@@ -158,6 +185,56 @@ public class AnalyticsController : ControllerBase
         {
             _logger.LogError(ex, "Error getting current holdings for fund {FundId} on date {Date}", 
                 request.MutualFundId, request.Date);
+            return StatusCode(500, new { Message = ex.Message });
+        }
+    }
+
+    [HttpGet("validate-dates")]
+    public async Task<IActionResult> ValidateDatesForFunds(
+        [FromQuery] string? mutualFundIds = null,
+        [FromQuery] DateTime fromDate = default,
+        [FromQuery] DateTime toDate = default)
+    {
+        try
+        {
+            _logger.LogInformation("ValidateDatesForFunds called with mutualFundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}", 
+                mutualFundIds, fromDate, toDate);
+            
+            // Parse mutualFundIds from comma-separated string
+            List<int> fundIds = new List<int>();
+            if (!string.IsNullOrEmpty(mutualFundIds))
+            {
+                var ids = mutualFundIds.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var id in ids)
+                {
+                    if (int.TryParse(id.Trim(), out int fundId))
+                    {
+                        fundIds.Add(fundId);
+                    }
+                }
+            }
+            
+            _logger.LogInformation("Parsed mutualFundIds: {FundIds}", string.Join(",", fundIds));
+            
+            if (!fundIds.Any())
+            {
+                _logger.LogWarning("ValidateDatesForFunds: No mutual fund IDs provided");
+                return BadRequest(new { Message = "At least one mutual fund must be selected" });
+            }
+
+            if (fromDate >= toDate)
+            {
+                _logger.LogWarning("ValidateDatesForFunds: From date {FromDate} is not before to date {ToDate}", fromDate, toDate);
+                return BadRequest(new { Message = "From date must be before to date" });
+            }
+
+            var isValid = await _analyticsService.ValidateDatesForFundsAsync(fundIds, fromDate, toDate);
+            _logger.LogInformation("ValidateDatesForFunds result: {IsValid} for funds {FundIds}", isValid, string.Join(",", fundIds));
+            return Ok(new { IsValid = isValid });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating dates for funds {FundIds}", mutualFundIds ?? "null");
             return StatusCode(500, new { Message = ex.Message });
         }
     }
