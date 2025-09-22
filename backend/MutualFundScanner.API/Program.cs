@@ -35,6 +35,7 @@ builder.Services.AddDbContext<MutualFundContext>(options =>
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IFileProcessingService, FileProcessingService>();
 builder.Services.AddScoped<IUploadV2Service, UploadV2Service>();
+builder.Services.AddScoped<IPdfProcessingService, PdfProcessingService>();
 builder.Services.AddScoped<MutualFundDetectionService>();
 builder.Services.AddScoped<IMutualFundService, MutualFundScanner.Application.Services.MutualFundService>();
 builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Services.AnalyticsService>();

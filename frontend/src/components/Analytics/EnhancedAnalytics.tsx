@@ -13,13 +13,17 @@ import {
   Statistic,
   Alert,
   message,
-  Tabs
+  Tabs,
+  Modal,
+  Progress,
+  Divider
 } from 'antd';
 import {
   BarChartOutlined,
   FundOutlined,
   SwapOutlined,
-  TrophyOutlined
+  TrophyOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import { mutualFundService, analyticsService } from '../../services/api';
 import {
@@ -40,6 +44,7 @@ const { TabPane } = Tabs;
 const EnhancedAnalytics: React.FC = () => {
   const [mutualFunds, setMutualFunds] = useState<MutualFundDto[]>([]);
   const [selectedFunds, setSelectedFunds] = useState<number[]>([]);
+  const [isAllFundsSelected, setIsAllFundsSelected] = useState(false);
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [availableDates, setAvailableDates] = useState<AvailableDatesResponseDto | null>(null);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsResponseDto | null>(null);
@@ -51,6 +56,10 @@ const EnhancedAnalytics: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [showFundsModal, setShowFundsModal] = useState(false);
+  const [selectedModalData, setSelectedModalData] = useState<any>(null);
+  const [showHoldingFundsModal, setShowHoldingFundsModal] = useState(false);
+  const [selectedHoldingModalData, setSelectedHoldingModalData] = useState<any>(null);
 
   useEffect(() => {
     loadMutualFunds();
@@ -58,10 +67,10 @@ const EnhancedAnalytics: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedFunds.length > 0) {
-      loadAvailableDates(selectedFunds);
+    if (selectedFunds.length > 0 || isAllFundsSelected) {
+      loadAvailableDates(isAllFundsSelected ? undefined : selectedFunds);
     }
-  }, [selectedFunds]);
+  }, [selectedFunds, isAllFundsSelected]);
 
   const loadMutualFunds = async () => {
     try {
@@ -85,8 +94,8 @@ const EnhancedAnalytics: React.FC = () => {
     // Reset status filter to 'all' when analyzing
     setSelectedStatusFilter('all');
     
-    if (selectedFunds.length === 0) {
-      message.warning('Please select at least one mutual fund');
+    if (selectedFunds.length === 0 && !isAllFundsSelected) {
+      message.warning('Please select at least one mutual fund or select "All Funds"');
       return;
     }
 
@@ -97,11 +106,12 @@ const EnhancedAnalytics: React.FC = () => {
 
     // Validate that selected dates have snapshot data for all selected funds using backend validation
     try {
-      console.log('Validating dates for funds:', selectedFunds);
+      const fundsToValidate = isAllFundsSelected ? [] : selectedFunds;
+      console.log('Validating dates for funds:', fundsToValidate, 'isAllFunds:', isAllFundsSelected);
       console.log('Date range:', dateRange);
       
       const validation = await analyticsService.validateDatesForFunds(
-        selectedFunds,
+        fundsToValidate,
         dateRange[0].format('YYYY-MM-DD'),
         dateRange[1].format('YYYY-MM-DD')
       );
@@ -110,8 +120,9 @@ const EnhancedAnalytics: React.FC = () => {
 
       if (!validation.isValid) {
         message.warning(
-          'No snapshot data available for selected funds on one or both selected dates. ' +
-          'Please select dates where all funds have portfolio data.'
+          isAllFundsSelected 
+            ? 'No snapshot data available for the selected date range. Please select dates where portfolio data exists.'
+            : 'No snapshot data available for selected funds on one or both selected dates. Please select dates where all funds have portfolio data.'
         );
         return;
       }
@@ -123,7 +134,7 @@ const EnhancedAnalytics: React.FC = () => {
     setLoading(true);
     try {
       const request = {
-        mutualFundIds: selectedFunds,
+        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
         fromDate: dateRange[0].format('YYYY-MM-DD'),
         toDate: dateRange[1].format('YYYY-MM-DD'),
         page: currentPage,
@@ -131,15 +142,20 @@ const EnhancedAnalytics: React.FC = () => {
       };
 
       console.log('Analytics Request:', request);
-      console.log('Selected Funds:', selectedFunds);
+      console.log('Selected Funds:', selectedFunds, 'isAllFunds:', isAllFundsSelected);
 
       // Fetch portfolio snapshots and holdings for the selected date range
+      const fundsForAnalysis = isAllFundsSelected ? mutualFunds.map(f => f.id) : selectedFunds;
       const [analytics, changes, shares, fromHoldings, toHoldings] = await Promise.all([
         analyticsService.getAnalytics(request),
         analyticsService.getHoldingChanges(request),
-        analyticsService.getTopShares(selectedFunds.join(','), request.fromDate, request.toDate),
+        analyticsService.getTopShares(
+          isAllFundsSelected ? '' : selectedFunds.join(','), 
+          request.fromDate, 
+          request.toDate
+        ),
         // Fetch current holdings for from date
-        Promise.all(selectedFunds.map(fundId => 
+        Promise.all(fundsForAnalysis.map(fundId => 
           analyticsService.getCurrentHoldings({
             mutualFundId: fundId,
             targetDate: request.fromDate,
@@ -148,7 +164,7 @@ const EnhancedAnalytics: React.FC = () => {
           })
         )),
         // Fetch current holdings for to date
-        Promise.all(selectedFunds.map(fundId => 
+        Promise.all(fundsForAnalysis.map(fundId => 
           analyticsService.getCurrentHoldings({
             mutualFundId: fundId,
             targetDate: request.toDate,
@@ -196,7 +212,7 @@ const EnhancedAnalytics: React.FC = () => {
   };
 
   const loadHoldingChanges = async (page: number, size: number, filterValue?: string) => {
-    if (!dateRange || selectedFunds.length === 0) return;
+    if (!dateRange || (selectedFunds.length === 0 && !isAllFundsSelected)) return;
 
     setLoading(true);
 
@@ -205,7 +221,7 @@ const EnhancedAnalytics: React.FC = () => {
       const currentFilter = filterValue !== undefined ? filterValue : selectedStatusFilter;
       
       const request = {
-        mutualFundIds: selectedFunds,
+        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
         fromDate: dateRange[0].format('YYYY-MM-DD'),
         toDate: dateRange[1].format('YYYY-MM-DD'),
         page,
@@ -283,14 +299,56 @@ const EnhancedAnalytics: React.FC = () => {
       ),
     },
     {
+      title: 'Total Funds',
+      dataIndex: 'mutualFundNames',
+      key: 'totalFunds',
+      width: 100,
+      align: 'center' as const,
+      render: (names: string[], record: HoldingChangeDto) => (
+        <Space direction="vertical" size="small" style={{ alignItems: 'center' }}>
+          <Tag color="blue" style={{ fontSize: '12px', fontWeight: 'bold' }}>
+            {names.length}
+          </Tag>
+          {names.length > 2 && (
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<EyeOutlined />}
+              onClick={() => {
+                setSelectedHoldingModalData({
+                  security: record.securityName,
+                  isin: record.isin,
+                  sector: record.sector,
+                  changeType: record.changeType,
+                  funds: names.map((name) => ({
+                    name,
+                    previousWeight: record.previousWeight,
+                    currentWeight: record.currentWeight,
+                    weightChange: record.weightChange
+                  }))
+                });
+                setShowHoldingFundsModal(true);
+              }}
+              style={{ padding: 0, fontSize: '10px' }}
+            >
+              Details
+            </Button>
+          )}
+        </Space>
+      ),
+    },
+    {
       title: 'Mutual Funds',
       dataIndex: 'mutualFundNames',
       key: 'mutualFundNames',
       render: (names: string[]) => (
         <Space direction="vertical" size="small">
-          {names.map(name => (
-            <Tag key={name}>{name}</Tag>
+          {names.slice(0, 2).map(name => (
+            <Tag key={name} style={{ fontSize: '11px' }}>{name}</Tag>
           ))}
+          {names.length > 2 && (
+            <Text type="secondary" style={{ fontSize: '11px' }}>+{names.length - 2} more</Text>
+          )}
         </Space>
       ),
     },
@@ -344,9 +402,18 @@ const EnhancedAnalytics: React.FC = () => {
             </div>
           ))}
           {holdings.length > 3 && (
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              +{holdings.length - 3} more
-            </Text>
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<EyeOutlined />}
+              onClick={() => {
+                setSelectedModalData(holdings);
+                setShowFundsModal(true);
+              }}
+              style={{ padding: 0, fontSize: '12px' }}
+            >
+              View all {holdings.length} funds
+            </Button>
           )}
         </Space>
       ),
@@ -354,8 +421,8 @@ const EnhancedAnalytics: React.FC = () => {
   ];
 
   const disabledDate = (current: Dayjs) => {
-    // If no funds selected, use global date range
-    if (selectedFunds.length === 0) {
+    // If no funds selected and not all funds selected, use global date range
+    if (selectedFunds.length === 0 && !isAllFundsSelected) {
       if (!availableDates || !availableDates.minDate || !availableDates.maxDate) {
         return false; // Enable all dates
       }
@@ -374,12 +441,14 @@ const EnhancedAnalytics: React.FC = () => {
       }
     }
     
-    // If funds are selected, validate against fund-specific availability
+    // If funds are selected or all funds selected, validate against fund-specific availability
     if (availableDates?.fundDateAvailabilities && availableDates.fundDateAvailabilities.length > 0) {
       // Get the selected funds' availability data
-      const selectedFundAvailabilities = availableDates.fundDateAvailabilities.filter(
-        fund => selectedFunds.includes(fund.mutualFundId)
-      );
+      const selectedFundAvailabilities = isAllFundsSelected 
+        ? availableDates.fundDateAvailabilities
+        : availableDates.fundDateAvailabilities.filter(
+            fund => selectedFunds.includes(fund.mutualFundId)
+          );
       
       if (selectedFundAvailabilities.length === 0) {
         return false; // No availability data, enable all dates
@@ -455,14 +524,28 @@ const EnhancedAnalytics: React.FC = () => {
                   <Select
                     mode="multiple"
                     style={{ width: '100%' }}
-                    placeholder="Select mutual funds to analyze"
+                    placeholder="Select mutual funds to analyze or choose 'All Funds'"
                     showSearch
                     filterOption={(input, option) =>
                       (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
                     }
-                    value={selectedFunds}
-                    onChange={setSelectedFunds}
+                    value={isAllFundsSelected ? ['all'] : selectedFunds}
+                    onChange={(value) => {
+                      if (value.includes('all')) {
+                        setIsAllFundsSelected(true);
+                        setSelectedFunds([]);
+                      } else {
+                        setIsAllFundsSelected(false);
+                        setSelectedFunds(value.filter(v => v !== 'all'));
+                      }
+                    }}
                   >
+                    <Option key="all" value="all">
+                      <Space>
+                        <Text strong style={{ color: '#1890ff' }}>All Funds</Text>
+                        <Text type="secondary">(Analyze all available funds)</Text>
+                      </Space>
+                    </Option>
                     {mutualFunds.map(fund => (
                       <Option key={fund.id} value={fund.id}>
                         <Space>
@@ -506,7 +589,7 @@ const EnhancedAnalytics: React.FC = () => {
                 icon={<BarChartOutlined />}
                 loading={loading}
                 onClick={handleAnalyze}
-                disabled={selectedFunds.length === 0 || !dateRange}
+                disabled={(selectedFunds.length === 0 && !isAllFundsSelected) || !dateRange}
               >
                 Analyze Portfolio
               </Button>
@@ -604,7 +687,7 @@ const EnhancedAnalytics: React.FC = () => {
                         onChange: handleTableChange,
                         onShowSizeChange: handleTableChange,
                       }}
-                      scroll={{ x: 1000 }}
+                      scroll={{ x: 1200 }}
                     />
                     </div>
                   )}
@@ -750,17 +833,271 @@ const EnhancedAnalytics: React.FC = () => {
           </Col>
         )}
 
-        {selectedFunds.length === 0 && (
+        {selectedFunds.length === 0 && !isAllFundsSelected && (
           <Col span={24}>
             <Alert
               message="Select Mutual Funds"
-              description="Please select one or more mutual funds to begin analysis."
+              description="Please select one or more mutual funds or choose 'All Funds' to begin analysis."
               type="info"
               showIcon
             />
           </Col>
         )}
       </Row>
+
+      {/* Mutual Funds Weight Modal */}
+      <Modal
+        title={
+          <Space>
+            <FundOutlined />
+            <Text strong>Mutual Fund Holdings Details</Text>
+          </Space>
+        }
+        open={showFundsModal}
+        onCancel={() => {
+          setShowFundsModal(false);
+          setSelectedModalData(null);
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setShowFundsModal(false);
+            setSelectedModalData(null);
+          }}>
+            Close
+          </Button>
+        ]}
+        width={800}
+        style={{ top: 20 }}
+      >
+        {selectedModalData && (
+          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+            <Alert
+              message="Fund Weight Distribution"
+              description={`Showing holdings across ${selectedModalData.length} mutual funds`}
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {selectedModalData
+                .sort((a: any, b: any) => b.weight - a.weight)
+                .map((holding: any, index: number) => (
+                  <Card 
+                    key={holding.mutualFundId} 
+                    size="small" 
+                    style={{ 
+                      border: '1px solid #f0f0f0',
+                      borderRadius: 8,
+                      backgroundColor: index % 2 === 0 ? '#fafafa' : '#ffffff'
+                    }}
+                  >
+                    <Row align="middle" gutter={[16, 8]}>
+                      <Col span={2}>
+                        <Tag color="blue" style={{ margin: 0 }}>
+                          #{index + 1}
+                        </Tag>
+                      </Col>
+                      <Col span={14}>
+                        <Space direction="vertical" size={2}>
+                          <Text strong style={{ fontSize: '14px' }}>
+                            {holding.mutualFundName}
+                          </Text>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            Fund ID: {holding.mutualFundId}
+                          </Text>
+                        </Space>
+                      </Col>
+                      <Col span={8}>
+                        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
+                              {holding.weight.toFixed(2)}%
+                            </Text>
+                          </div>
+                          <Progress 
+                            percent={holding.weight} 
+                            showInfo={false} 
+                            strokeColor={{
+                              '0%': '#108ee9',
+                              '100%': '#87d068',
+                            }}
+                            size="small"
+                          />
+                        </Space>
+                      </Col>
+                    </Row>
+                  </Card>
+                ))}
+            </Space>
+            
+            <Divider />
+            
+            <Row gutter={[16, 16]}>
+              <Col span={8}>
+                <Statistic
+                  title="Total Funds"
+                  value={selectedModalData.length}
+                  prefix={<FundOutlined />}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Average Weight"
+                  value={(selectedModalData.reduce((sum: number, h: any) => sum + h.weight, 0) / selectedModalData.length).toFixed(2)}
+                  suffix="%"
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Total Weight"
+                  value={selectedModalData.reduce((sum: number, h: any) => sum + h.weight, 0).toFixed(2)}
+                  suffix="%"
+                />
+              </Col>
+            </Row>
+          </div>
+        )}
+      </Modal>
+
+      {/* Holding Changes Funds Modal */}
+      <Modal
+        title={
+          <Space>
+            <SwapOutlined />
+            <Text strong>Holding Change Fund Details</Text>
+          </Space>
+        }
+        open={showHoldingFundsModal}
+        onCancel={() => {
+          setShowHoldingFundsModal(false);
+          setSelectedHoldingModalData(null);
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setShowHoldingFundsModal(false);
+            setSelectedHoldingModalData(null);
+          }}>
+            Close
+          </Button>
+        ]}
+        width={900}
+        style={{ top: 20 }}
+      >
+        {selectedHoldingModalData && (
+          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+            <Alert
+              message={`Holding Change: ${selectedHoldingModalData.security}`}
+              description={
+                <Space direction="vertical" size={2}>
+                  <Text>ISIN: {selectedHoldingModalData.isin}</Text>
+                  <Text>Sector: {selectedHoldingModalData.sector}</Text>
+                  <Tag color={
+                    selectedHoldingModalData.changeType === 'Added' ? 'green' :
+                    selectedHoldingModalData.changeType === 'Removed' ? 'red' :
+                    selectedHoldingModalData.changeType === 'Increased' ? 'blue' :
+                    selectedHoldingModalData.changeType === 'Decreased' ? 'orange' :
+                    'purple'
+                  }>
+                    {selectedHoldingModalData.changeType}
+                  </Tag>
+                </Space>
+              }
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {selectedHoldingModalData.funds.map((fund: any, index: number) => (
+                <Card 
+                  key={index} 
+                  size="small" 
+                  style={{ 
+                    border: '1px solid #f0f0f0',
+                    borderRadius: 8,
+                    backgroundColor: index % 2 === 0 ? '#fafafa' : '#ffffff'
+                  }}
+                >
+                  <Row align="middle" gutter={[16, 8]}>
+                    <Col span={2}>
+                      <Tag color="blue" style={{ margin: 0 }}>
+                        #{index + 1}
+                      </Tag>
+                    </Col>
+                    <Col span={10}>
+                      <Space direction="vertical" size={2}>
+                        <Text strong style={{ fontSize: '14px' }}>
+                          {fund.name}
+                        </Text>
+                      </Space>
+                    </Col>
+                    <Col span={4}>
+                      <Space direction="vertical" size={2} align="center">
+                        <Text type="secondary" style={{ fontSize: '12px' }}>Previous</Text>
+                        <Text style={{ fontSize: '14px' }}>
+                          {fund.previousWeight ? `${fund.previousWeight.toFixed(2)}%` : '-'}
+                        </Text>
+                      </Space>
+                    </Col>
+                    <Col span={4}>
+                      <Space direction="vertical" size={2} align="center">
+                        <Text type="secondary" style={{ fontSize: '12px' }}>Current</Text>
+                        <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
+                          {fund.currentWeight.toFixed(2)}%
+                        </Text>
+                      </Space>
+                    </Col>
+                    <Col span={4}>
+                      <Space direction="vertical" size={2} align="center">
+                        <Text type="secondary" style={{ fontSize: '12px' }}>Change</Text>
+                        <Text 
+                          strong 
+                          style={{ 
+                            fontSize: '14px', 
+                            color: fund.weightChange > 0 ? '#52c41a' : fund.weightChange < 0 ? '#ff4d4f' : '#666666'
+                          }}
+                        >
+                          {fund.weightChange > 0 ? '+' : ''}{fund.weightChange.toFixed(2)}%
+                        </Text>
+                      </Space>
+                    </Col>
+                  </Row>
+                </Card>
+              ))}
+            </Space>
+            
+            <Divider />
+            
+            <Row gutter={[16, 16]}>
+              <Col span={8}>
+                <Statistic
+                  title="Total Funds"
+                  value={selectedHoldingModalData.funds.length}
+                  prefix={<FundOutlined />}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Average Current Weight"
+                  value={(selectedHoldingModalData.funds.reduce((sum: number, f: any) => sum + f.currentWeight, 0) / selectedHoldingModalData.funds.length).toFixed(2)}
+                  suffix="%"
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Total Weight Change"
+                  value={selectedHoldingModalData.funds.reduce((sum: number, f: any) => sum + f.weightChange, 0).toFixed(2)}
+                  suffix="%"
+                  valueStyle={{ 
+                    color: selectedHoldingModalData.funds.reduce((sum: number, f: any) => sum + f.weightChange, 0) > 0 ? '#52c41a' : '#ff4d4f'
+                  }}
+                />
+              </Col>
+            </Row>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

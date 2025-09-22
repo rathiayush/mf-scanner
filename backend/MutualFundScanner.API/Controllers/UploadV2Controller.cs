@@ -9,11 +9,13 @@ namespace MutualFundScanner.API.Controllers;
 public class UploadV2Controller : ControllerBase
 {
     private readonly IUploadV2Service _uploadV2Service;
+    private readonly IPdfProcessingService _pdfProcessingService;
     private readonly ILogger<UploadV2Controller> _logger;
 
-    public UploadV2Controller(IUploadV2Service uploadV2Service, ILogger<UploadV2Controller> logger)
+    public UploadV2Controller(IUploadV2Service uploadV2Service, IPdfProcessingService pdfProcessingService, ILogger<UploadV2Controller> logger)
     {
         _uploadV2Service = uploadV2Service;
+        _pdfProcessingService = pdfProcessingService;
         _logger = logger;
     }
 
@@ -58,6 +60,41 @@ public class UploadV2Controller : ControllerBase
         {
             _logger.LogError(ex, "Error in V2 upload endpoint");
             return StatusCode(500, new { Message = "Internal server error occurred during upload" });
+        }
+    }
+
+    [HttpPost("process-pdf")]
+    public async Task<IActionResult> ProcessPdf([FromForm] PdfProcessingRequestDto request)
+    {
+        try
+        {
+            if (request.File == null)
+            {
+                return BadRequest(new { Message = "No PDF file provided" });
+            }
+
+            // Validate file type
+            var extension = Path.GetExtension(request.File.FileName).ToLowerInvariant();
+            if (extension != ".pdf")
+            {
+                return BadRequest(new { Message = $"File {request.File.FileName} has unsupported format. Only PDF files are allowed." });
+            }
+
+            var result = await _pdfProcessingService.ProcessPdfFileAsync(request);
+            
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in PDF processing endpoint");
+            return StatusCode(500, new { Message = "Internal server error occurred during PDF processing" });
         }
     }
 

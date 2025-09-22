@@ -27,10 +27,11 @@ public class AnalyticsController : ControllerBase
             _logger.LogInformation("GetAnalytics called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}", 
                 string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate);
 
-            if (request.MutualFundIds == null || !request.MutualFundIds.Any())
-            {
-                return BadRequest(new { Message = "At least one mutual fund must be selected" });
-            }
+            // Allow empty MutualFundIds for "All Funds" analysis
+            // if (request.MutualFundIds == null || !request.MutualFundIds.Any())
+            // {
+            //     return BadRequest(new { Message = "At least one mutual fund must be selected" });
+            // }
 
             if (request.FromDate >= request.ToDate)
             {
@@ -55,10 +56,11 @@ public class AnalyticsController : ControllerBase
             _logger.LogInformation("GetHoldingChanges called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}", 
                 string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate);
 
-            if (request.MutualFundIds == null || !request.MutualFundIds.Any())
-            {
-                return BadRequest(new { Message = "At least one mutual fund must be selected" });
-            }
+            // Allow empty MutualFundIds for "All Funds" analysis
+            // if (request.MutualFundIds == null || !request.MutualFundIds.Any())
+            // {
+            //     return BadRequest(new { Message = "At least one mutual fund must be selected" });
+            // }
 
             var result = await _analyticsService.GetHoldingChangesAsync(request);
             return Ok(result);
@@ -97,11 +99,12 @@ public class AnalyticsController : ControllerBase
             
             _logger.LogInformation("Parsed mutualFundIds: {FundIds}", string.Join(",", fundIds));
             
-            if (!fundIds.Any())
-            {
-                _logger.LogWarning("GetTopShares: No mutual fund IDs provided");
-                return BadRequest(new { Message = "At least one mutual fund must be selected" });
-            }
+            // Allow empty fundIds for "All Funds" analysis
+            // if (!fundIds.Any())
+            // {
+            //     _logger.LogWarning("GetTopShares: No mutual fund IDs provided");
+            //     return BadRequest(new { Message = "At least one mutual fund must be selected" });
+            // }
 
             if (fromDate >= toDate)
             {
@@ -143,10 +146,11 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            if (!mutualFundIds.Any())
-            {
-                return BadRequest(new { Message = "At least one mutual fund must be selected" });
-            }
+            // Allow empty mutualFundIds for "All Funds" analysis
+            // if (!mutualFundIds.Any())
+            // {
+            //     return BadRequest(new { Message = "At least one mutual fund must be selected" });
+            // }
 
             if (fromDate >= toDate)
             {
@@ -216,11 +220,12 @@ public class AnalyticsController : ControllerBase
             
             _logger.LogInformation("Parsed mutualFundIds: {FundIds}", string.Join(",", fundIds));
             
-            if (!fundIds.Any())
-            {
-                _logger.LogWarning("ValidateDatesForFunds: No mutual fund IDs provided");
-                return BadRequest(new { Message = "At least one mutual fund must be selected" });
-            }
+            // Allow empty fundIds for "All Funds" analysis
+            // if (!fundIds.Any())
+            // {
+            //     _logger.LogWarning("ValidateDatesForFunds: No mutual fund IDs provided");
+            //     return BadRequest(new { Message = "At least one mutual fund must be selected" });
+            // }
 
             if (fromDate >= toDate)
             {
