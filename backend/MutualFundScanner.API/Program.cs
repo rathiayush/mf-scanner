@@ -42,16 +42,30 @@ builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Serv
 builder.Services.AddScoped<IFileUploadService, MutualFundScanner.Application.Services.FileUploadService>();
 
 // Register Helper Classes
-builder.Services.AddScoped<MutualFundScanner.Application.Helpers.SnapshotAggregationHelper>();
 builder.Services.AddScoped<MutualFundScanner.Application.Helpers.AnalyticsCalculationHelper>();
 builder.Services.AddScoped<MutualFundScanner.Application.Helpers.DataValidationHelper>();
+builder.Services.AddScoped<MutualFundScanner.Application.Interfaces.ISnapshotFetchingHelper, MutualFundScanner.Application.Helpers.SnapshotFetchingHelper>();
 
 // Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+        policy.WithOrigins(
+                "http://localhost:3000", 
+                "http://localhost:5173",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173"
+            )
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+    
+    // Add a more permissive policy for network access
+    options.AddPolicy("AllowNetwork", policy =>
+    {
+        policy.SetIsOriginAllowed(origin => true)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -71,13 +85,13 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseCors("AllowReactApp");
+app.UseCors("AllowNetwork");
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Disabled for network access
 
 app.UseAuthorization();
 
 app.MapControllers();
 
 
-app.Run();
+app.Run("http://0.0.0.0:5247");

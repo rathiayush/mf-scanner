@@ -6,14 +6,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    host: '0.0.0.0', // Listen on all network interfaces
+    strictPort: true,
+    open: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:5247',
+        target: 'http://0.0.0.0:5247',
         changeOrigin: true,
         secure: false,
       },
       '/swagger': {
-        target: 'http://localhost:5247',
+        target: 'http://0.0.0.0:5247',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/swagger/, '/swagger'),

@@ -22,7 +22,7 @@ import {
   UploadV2ResponseDto
 } from '../types';
 
-const API_BASE_URL = 'https://localhost:7052/api'; // Backend API URL
+const API_BASE_URL = 'http://192.168.29.212:5247/api'; // Backend API URL - Using network IP
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -287,7 +287,7 @@ export const uploadV2Service = {
     console.log('API validateDatesForFunds called with:', { mutualFundIds, fromDate, toDate });
     
     const params = { 
-      mutualFundIds: mutualFundIds.join(','), // Convert array to comma-separated string
+      mutualFundIds: mutualFundIds, // Already a string (comma-separated)
       fromDate, 
       toDate 
     };
