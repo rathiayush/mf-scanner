@@ -181,8 +181,18 @@ export interface HoldingChangeDto {
   weightChange: number;
   changeType: string; // Added, Removed, Increased, Decreased
   mutualFundNames: string[];
+  fundChangeDetails: FundChangeDetailDto[];
   fromDate: string;
   toDate: string;
+}
+
+export interface FundChangeDetailDto {
+  mutualFundId: number;
+  mutualFundName: string;
+  previousWeight: number;
+  currentWeight: number;
+  weightChange: number;
+  changeType: string;
 }
 
 export interface TopShareDto {

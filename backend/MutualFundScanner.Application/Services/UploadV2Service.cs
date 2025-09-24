@@ -20,6 +20,7 @@ public class UploadV2Service : IUploadV2Service
     private readonly MutualFundDetectionService _detectionService;
     private readonly ILogger<UploadV2Service> _logger;
     private readonly IFileUploadService _fileUploadService;
+    private readonly IUnitOfWorkWrapper _unitOfWorkWrapper;
 
 
     public UploadV2Service(
@@ -27,13 +28,15 @@ public class UploadV2Service : IUploadV2Service
         IFileProcessingService fileProcessingService,
         MutualFundDetectionService detectionService,
         IFileUploadService fileUploadService,
-        ILogger<UploadV2Service> logger)
+        ILogger<UploadV2Service> logger,
+        IUnitOfWorkWrapper unitOfWorkWrapper)
     {
         _context = context;
         _fileProcessingService = fileProcessingService;
         _detectionService = detectionService;
         _fileUploadService = fileUploadService;
         _logger = logger;
+        _unitOfWorkWrapper = unitOfWorkWrapper;
     }
 
 
@@ -151,27 +154,34 @@ public class UploadV2Service : IUploadV2Service
                         {
                             if (detection.MutualFundId.HasValue)
                             {
-                                int? fileId = null;
-                                
-                                // Check if this is a sheet-based detection
-                                if (IsSheetBasedDetection(detection.FileName))
+                                int? fileId = await _unitOfWorkWrapper.ExecuteAsync(async () =>
                                 {
-                                    var sheetIndex = ExtractSheetIndex(detection.FileName);
-                                    if (sheetIndex.HasValue)
+                                    // Check if this is a sheet-based detection
+                                    if (IsSheetBasedDetection(detection.FileName))
                                     {
-                                        fileId = await ProcessSingleSheet(file, sheetIndex.Value, detection.MutualFundId.Value, request.ReportDate);
-                                        processedSheetsCount++;
+                                        var sheetIndex = ExtractSheetIndex(detection.FileName);
+                                        if (sheetIndex.HasValue)
+                                        {
+                                            processedSheetsCount++;
+                                            return await ProcessSingleSheet(file, sheetIndex.Value, detection.MutualFundId.Value, request.ReportDate);
+                                        }
                                     }
-                                }
-                                else
-                                {
-                                    // Regular single-file processing
-                                    fileId = await ProcessSingleFile(file, detection.MutualFundId.Value, request.ReportDate);
-                                }
+                                    else
+                                    {
+                                        // Regular single-file processing
+                                        return await ProcessSingleFile(file, detection.MutualFundId.Value, request.ReportDate);
+                                    }
+                                    return null;
+                                });
 
                                 if (fileId.HasValue)
                                 {
                                     processedFileIds.Add(fileId.Value);
+                                    _logger.LogInformation("Successfully processed {FileName} with file ID {FileId}", detection.FileName, fileId.Value);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Processing {FileName} returned null file ID", detection.FileName);
                                 }
 
                                 if (detection.WasCreated)
@@ -304,6 +314,7 @@ public class UploadV2Service : IUploadV2Service
             return null;
         }
     }
+
 
     private int GetSheetCount(IFormFile file)
     {

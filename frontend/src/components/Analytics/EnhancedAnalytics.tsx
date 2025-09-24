@@ -60,6 +60,7 @@ const EnhancedAnalytics: React.FC = () => {
   const [selectedModalData, setSelectedModalData] = useState<any>(null);
   const [showHoldingFundsModal, setShowHoldingFundsModal] = useState(false);
   const [selectedHoldingModalData, setSelectedHoldingModalData] = useState<any>(null);
+  const [modalFilterType, setModalFilterType] = useState<string>('all');
 
   useEffect(() => {
     loadMutualFunds();
@@ -315,18 +316,30 @@ const EnhancedAnalytics: React.FC = () => {
               size="small" 
               icon={<EyeOutlined />}
               onClick={() => {
+                // Determine if this is a Mixed scenario
+                const fundDetails = record.fundChangeDetails || [];
+                const hasIncreased = fundDetails.some((f: any) => f.changeType === 'Increased');
+                const hasDecreased = fundDetails.some((f: any) => f.changeType === 'Decreased');
+                const hasAdded = fundDetails.some((f: any) => f.changeType === 'Added');
+                const hasRemoved = fundDetails.some((f: any) => f.changeType === 'Removed');
+                
+                let finalChangeType = record.changeType;
+                if ((hasIncreased && hasDecreased) || (hasAdded && hasRemoved) || 
+                    (hasIncreased && hasRemoved) || (hasDecreased && hasAdded)) {
+                  finalChangeType = 'Mixed';
+                }
+                
                 setSelectedHoldingModalData({
-                  security: record.securityName,
+                  securityName: record.securityName,
                   isin: record.isin,
                   sector: record.sector,
-                  changeType: record.changeType,
-                  funds: names.map((name) => ({
-                    name,
-                    previousWeight: record.previousWeight,
-                    currentWeight: record.currentWeight,
-                    weightChange: record.weightChange
-                  }))
+                  changeType: finalChangeType,
+                  previousWeight: record.previousWeight,
+                  currentWeight: record.currentWeight,
+                  weightChange: record.weightChange,
+                  fundChangeDetails: fundDetails
                 });
+                setModalFilterType('all');
                 setShowHoldingFundsModal(true);
               }}
               style={{ padding: 0, fontSize: '10px' }}
@@ -987,7 +1000,7 @@ const EnhancedAnalytics: React.FC = () => {
         {selectedHoldingModalData && (
           <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             <Alert
-              message={`Holding Change: ${selectedHoldingModalData.security}`}
+              message={`Holding Change: ${selectedHoldingModalData.securityName}`}
               description={
                 <Space direction="vertical" size={2}>
                   <Text>ISIN: {selectedHoldingModalData.isin}</Text>
@@ -997,7 +1010,8 @@ const EnhancedAnalytics: React.FC = () => {
                     selectedHoldingModalData.changeType === 'Removed' ? 'red' :
                     selectedHoldingModalData.changeType === 'Increased' ? 'blue' :
                     selectedHoldingModalData.changeType === 'Decreased' ? 'orange' :
-                    'purple'
+                    selectedHoldingModalData.changeType === 'Mixed' ? 'purple' :
+                    'default'
                   }>
                     {selectedHoldingModalData.changeType}
                   </Tag>
@@ -1008,10 +1022,32 @@ const EnhancedAnalytics: React.FC = () => {
               style={{ marginBottom: 16 }}
             />
             
+            <Row style={{ marginBottom: 16 }}>
+              <Col span={24}>
+                <Space>
+                  <Text strong>Filter by Change Type:</Text>
+                  <Select
+                    value={modalFilterType}
+                    onChange={setModalFilterType}
+                    style={{ width: 150 }}
+                    size="small"
+                  >
+                    <Option value="all">All Funds</Option>
+                    <Option value="Added">Added</Option>
+                    <Option value="Removed">Removed</Option>
+                    <Option value="Increased">Increased</Option>
+                    <Option value="Decreased">Decreased</Option>
+                  </Select>
+                </Space>
+              </Col>
+            </Row>
+            
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              {selectedHoldingModalData.funds.map((fund: any, index: number) => (
+              {selectedHoldingModalData.fundChangeDetails
+                ?.filter((fund: any) => modalFilterType === 'all' || fund.changeType === modalFilterType)
+                ?.map((fund: any, index: number) => (
                 <Card 
-                  key={index} 
+                  key={fund.mutualFundId} 
                   size="small" 
                   style={{ 
                     border: '1px solid #f0f0f0',
@@ -1028,7 +1064,10 @@ const EnhancedAnalytics: React.FC = () => {
                     <Col span={10}>
                       <Space direction="vertical" size={2}>
                         <Text strong style={{ fontSize: '14px' }}>
-                          {fund.name}
+                          {fund.mutualFundName}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          Fund ID: {fund.mutualFundId}
                         </Text>
                       </Space>
                     </Col>
@@ -1060,37 +1099,58 @@ const EnhancedAnalytics: React.FC = () => {
                         >
                           {fund.weightChange > 0 ? '+' : ''}{fund.weightChange.toFixed(2)}%
                         </Text>
+                        <Tag 
+                          color={
+                            fund.changeType === 'Added' ? 'green' :
+                            fund.changeType === 'Removed' ? 'red' :
+                            fund.changeType === 'Increased' ? 'blue' :
+                            fund.changeType === 'Decreased' ? 'orange' :
+                            'purple'
+                          }
+                          style={{ fontSize: '11px' }}
+                        >
+                          {fund.changeType}
+                        </Tag>
                       </Space>
                     </Col>
                   </Row>
                 </Card>
-              ))}
+              )) || []}
             </Space>
             
             <Divider />
             
             <Row gutter={[16, 16]}>
-              <Col span={8}>
+              <Col span={6}>
                 <Statistic
                   title="Total Funds"
-                  value={selectedHoldingModalData.funds.length}
+                  value={selectedHoldingModalData.fundChangeDetails?.length || 0}
                   prefix={<FundOutlined />}
                 />
               </Col>
-              <Col span={8}>
+              <Col span={6}>
                 <Statistic
-                  title="Average Current Weight"
-                  value={(selectedHoldingModalData.funds.reduce((sum: number, f: any) => sum + f.currentWeight, 0) / selectedHoldingModalData.funds.length).toFixed(2)}
+                  title="Previous Weight"
+                  value={selectedHoldingModalData.previousWeight?.toFixed(2) || '0.00'}
                   suffix="%"
                 />
               </Col>
-              <Col span={8}>
+              <Col span={6}>
                 <Statistic
-                  title="Total Weight Change"
-                  value={selectedHoldingModalData.funds.reduce((sum: number, f: any) => sum + f.weightChange, 0).toFixed(2)}
+                  title="Current Weight"
+                  value={selectedHoldingModalData.currentWeight?.toFixed(2) || '0.00'}
+                  suffix="%"
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Col>
+              <Col span={6}>
+                <Statistic
+                  title="Total Change"
+                  value={selectedHoldingModalData.weightChange?.toFixed(2) || '0.00'}
                   suffix="%"
                   valueStyle={{ 
-                    color: selectedHoldingModalData.funds.reduce((sum: number, f: any) => sum + f.weightChange, 0) > 0 ? '#52c41a' : '#ff4d4f'
+                    color: (selectedHoldingModalData.weightChange || 0) > 0 ? '#52c41a' : 
+                           (selectedHoldingModalData.weightChange || 0) < 0 ? '#ff4d4f' : '#666666'
                   }}
                 />
               </Col>

@@ -14,17 +14,20 @@ public class FileUploadService : IFileUploadService
     private readonly MutualFundContext _context;
     private readonly IFileProcessingService _fileProcessingService;
     private readonly ILogger<FileUploadService> _logger;
+    private readonly IUnitOfWorkWrapper _unitOfWorkWrapper;
     private readonly string[] _allowedExtensions = { ".xlsx", ".xls", ".csv" };
     private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
 
     public FileUploadService(
         MutualFundContext context, 
         IFileProcessingService fileProcessingService,
-        ILogger<FileUploadService> logger)
+        ILogger<FileUploadService> logger,
+        IUnitOfWorkWrapper unitOfWorkWrapper)
     {
         _context = context;
         _fileProcessingService = fileProcessingService;
         _logger = logger;
+        _unitOfWorkWrapper = unitOfWorkWrapper;
     }
 
 
@@ -116,32 +119,33 @@ public class FileUploadService : IFileUploadService
         {
             try
             {
-                // Validate mutual fund exists
-                var mutualFund = await _context.MutualFunds.FindAsync(fileUpload.MutualFundId);
-                if (mutualFund == null)
+                var processedFile = await _unitOfWorkWrapper.ExecuteAsync(async () =>
                 {
-                    response.Errors.Add($"Mutual fund with ID {fileUpload.MutualFundId} not found for file {fileUpload.File.FileName}");
-                    continue;
-                }
+                    // Validate mutual fund exists
+                    var mutualFund = await _context.MutualFunds.FindAsync(fileUpload.MutualFundId);
+                    if (mutualFund == null)
+                    {
+                        throw new InvalidOperationException($"Mutual fund with ID {fileUpload.MutualFundId} not found for file {fileUpload.File.FileName}");
+                    }
 
-                // Validate file
-                if (!await ValidateFileAsync(fileUpload.File))
-                {
-                    response.Errors.Add($"File {fileUpload.File.FileName} failed validation");
-                    continue;
-                }
+                    // Validate file
+                    if (!await ValidateFileAsync(fileUpload.File))
+                    {
+                        throw new InvalidOperationException($"File {fileUpload.File.FileName} failed validation");
+                    }
 
-                // Parse report date if provided
-                DateTime? reportDate = null;
-                if (!string.IsNullOrEmpty(fileUpload.ReportDate) && DateTime.TryParse(fileUpload.ReportDate, out var parsedDate))
-                {
-                    reportDate = parsedDate;
-                }
+                    // Parse report date if provided
+                    DateTime? reportDate = null;
+                    if (!string.IsNullOrEmpty(fileUpload.ReportDate) && DateTime.TryParse(fileUpload.ReportDate, out var parsedDate))
+                    {
+                        reportDate = parsedDate;
+                    }
 
-                // Process file
-                var processedFile = await ProcessSingleFileAsync(fileUpload.File, fileUpload.MutualFundId, reportDate);
+                    // Process file
+                    return await ProcessSingleFileAsync(fileUpload.File, fileUpload.MutualFundId, reportDate);
+                });
+
                 response.ProcessedFiles.Add(processedFile);
-
                 _logger.LogInformation("Successfully processed file {FileName} for fund {FundId}", 
                     fileUpload.File.FileName, fileUpload.MutualFundId);
             }

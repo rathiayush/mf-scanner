@@ -1,17 +1,31 @@
 using Microsoft.EntityFrameworkCore;
 using MutualFundScanner.Infrastructure.Data;
 using MutualFundScanner.Application.Interfaces;
+using MutualFundScanner.Application.Services;
+using MutualFundScanner.Infrastructure.UnitOfWork;
 using Serilog;
 using Serilog.Events;
-using MutualFundScanner.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .WriteTo.File("logs/mutualfundscanner-.txt", rollingInterval: RollingInterval.Day)
-    .CreateLogger();
+var serilogConfig = builder.Configuration.GetSection("Serilog");
+var enableConsoleLogging = serilogConfig.GetValue<bool>("EnableConsoleLogging", true);
+var enableFileLogging = serilogConfig.GetValue<bool>("EnableFileLogging", true);
+
+var loggerConfig = new LoggerConfiguration();
+
+if (enableConsoleLogging)
+{
+    loggerConfig.WriteTo.Console();
+}
+
+if (enableFileLogging)
+{
+    loggerConfig.WriteTo.File("logs/mutualfundscanner-.txt", rollingInterval: RollingInterval.Day);
+}
+
+Log.Logger = loggerConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
@@ -40,6 +54,11 @@ builder.Services.AddScoped<MutualFundDetectionService>();
 builder.Services.AddScoped<IMutualFundService, MutualFundScanner.Application.Services.MutualFundService>();
 builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Services.AnalyticsService>();
 builder.Services.AddScoped<IFileUploadService, MutualFundScanner.Application.Services.FileUploadService>();
+
+// Register Unit of Work
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<Func<IUnitOfWork>>(provider => () => provider.GetService<IUnitOfWork>()!);
+builder.Services.AddScoped<IUnitOfWorkWrapper, UnitOfWorkWrapper>();
 
 // Register Helper Classes
 builder.Services.AddScoped<MutualFundScanner.Application.Helpers.AnalyticsCalculationHelper>();

@@ -407,6 +407,19 @@ public class FileProcessingService : IFileProcessingService
                     var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
                     var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
 
+                    // Only create portfolio holding if all key validations pass
+                    if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
+                        continue;
+                    
+                    if (weight <= 0m || weight > 100m)
+                        continue;
+
+                    var industry = ExtractSectorFromRow(worksheet, row, columnMapping);
+                    
+                    // Skip holdings where industry contains credit ratings
+                    if (IsCreditRating(industry))
+                        continue;
+
                     var holding = new PortfolioHolding
                     {
                         PortfolioFileId = portfolioFileId,
@@ -416,8 +429,8 @@ public class FileProcessingService : IFileProcessingService
                         Quantity = quantity,
                         MarketValue = 0, // Can be calculated from quantity * price if needed
                         Weight = weight,
-                        Sector = string.Empty, // Can be enhanced later
-                        Industry = string.Empty, // Can be enhanced later
+                        Sector = string.Empty,
+                        Industry = industry, // Can be enhanced later
                         AsOfDate = DateTime.UtcNow.Date
                     };
 
@@ -521,6 +534,19 @@ public class FileProcessingService : IFileProcessingService
                     var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
                     var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
 
+                    // Only create portfolio holding if all key validations pass
+                    if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
+                        continue;
+                    
+                    if (weight <= 0m || weight > 100m)
+                        continue;
+
+                    var sector = ExtractSectorFromRow(worksheet, row, columnMapping);
+                    
+                    // Skip holdings where sector contains credit ratings
+                    if (IsCreditRating(sector))
+                        continue;
+
                     var holding = new PortfolioHolding
                     {
                         PortfolioFileId = portfolioFileId,
@@ -530,7 +556,7 @@ public class FileProcessingService : IFileProcessingService
                         Quantity = quantity,
                         MarketValue = 0, // Can be calculated from quantity * price if needed
                         Weight = weight,
-                        Sector = string.Empty, // Can be enhanced later
+                        Sector = sector,
                         Industry = string.Empty, // Can be enhanced later
                         AsOfDate = DateTime.UtcNow.Date
                     };
@@ -643,6 +669,19 @@ public class FileProcessingService : IFileProcessingService
                     var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
                     var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
 
+                    // Only create portfolio holding if all key validations pass
+                    if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
+                        continue;
+                    
+                    if (weight <= 0m || weight > 100m)
+                        continue;
+
+                    var sector = ExtractSectorFromRow(worksheet, row, columnMapping);
+                    
+                    // Skip holdings where sector contains credit ratings
+                    if (IsCreditRating(sector))
+                        continue;
+                        
                     var holding = new PortfolioHolding
                     {
                         PortfolioFileId = portfolioFileId,
@@ -652,7 +691,7 @@ public class FileProcessingService : IFileProcessingService
                         Quantity = quantity,
                         MarketValue = 0, // Can be calculated from quantity * price if needed
                         Weight = weight,
-                        Sector = string.Empty, // Can be enhanced later
+                        Sector = sector,
                         Industry = string.Empty, // Can be enhanced later
                         AsOfDate = DateTime.UtcNow.Date
                     };
@@ -708,10 +747,11 @@ public class FileProcessingService : IFileProcessingService
             if (mapping.CompanyNameColumn != -1) break;
         }
 
-        // Detect numeric columns for quantity and weight
+        // Detect numeric columns for quantity and weight, and text-based columns for sector
         if (mapping.CompanyNameColumn != -1)
         {
             DetectNumericColumns(worksheet, mapping, rowCount, colCount);
+            DetectTextBasedColumns(worksheet, mapping, rowCount, colCount);
         }
 
         return mapping;
@@ -740,9 +780,19 @@ public class FileProcessingService : IFileProcessingService
     private void DetectNumericColumns(ISheet worksheet, ColumnMapping mapping, int rowCount, int colCount)
     {
         bool weightColumnFound = false;
+        bool quantityColumnFound = false;
+        
         for (int col = 0; col < colCount; col++)
         {
             if (col == mapping.CompanyNameColumn) continue;
+
+            // First check for header text patterns for quantity
+            if (!quantityColumnFound && IsQuantityColumn(worksheet, col, mapping.DataStartRow))
+            {
+                mapping.QuantityColumn = col;
+                quantityColumnFound = true;
+                continue;
+            }
 
             var columnStats = AnalyzeNumericColumn(worksheet, mapping.DataStartRow, col, rowCount);
             
@@ -753,12 +803,72 @@ public class FileProcessingService : IFileProcessingService
                 mapping.WeightColumn = col;
                 weightColumnFound = true;
             }
-            // Quantity column: integer values, typically larger numbers
-            else if (!columnStats.HasDecimals && columnStats.MaxValue > 100)
+            // Quantity column: integer values, typically larger numbers (fallback if header detection failed)
+            else if (!quantityColumnFound && !columnStats.HasDecimals && columnStats.MaxValue > 100)
             {
                 mapping.QuantityColumn = col;
+                quantityColumnFound = true;
             }
         }
+    }
+
+    private void DetectTextBasedColumns(ISheet worksheet, ColumnMapping mapping, int rowCount, int colCount)
+    {
+        for (int col = 0; col < colCount; col++)
+        {
+            if (col == mapping.CompanyNameColumn || col == mapping.WeightColumn || col == mapping.QuantityColumn) 
+                continue;
+
+            // Check for sector/industry column based on header text
+            if (IsSectorColumn(worksheet, col, mapping.DataStartRow))
+            {
+                mapping.SectorColumn = col;
+                break; // Only one sector column expected
+            }
+        }
+    }
+
+    private bool IsQuantityColumn(ISheet worksheet, int col, int dataStartRow)
+    {
+        // Check header rows (before data starts) for quantity-related text
+        for (int row = 0; row < dataStartRow; row++)
+        {
+            var headerRow = worksheet.GetRow(row);
+            if (headerRow == null) continue;
+
+            var cellValue = GetCellValue(headerRow, col)?.Trim();
+            if (string.IsNullOrEmpty(cellValue)) continue;
+
+            // Look for "quantity" text in header
+            if (cellValue.Contains("quantity", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool IsSectorColumn(ISheet worksheet, int col, int dataStartRow)
+    {
+        // Check header rows (before data starts) for sector/industry-related text
+        for (int row = 0; row < dataStartRow; row++)
+        {
+            var headerRow = worksheet.GetRow(row);
+            if (headerRow == null) continue;
+
+            var cellValue = GetCellValue(headerRow, col)?.Trim();
+            if (string.IsNullOrEmpty(cellValue)) continue;
+
+            // Look for "Industry", "Rating", or "Sector" text in header
+            if (cellValue.Contains("industry", StringComparison.OrdinalIgnoreCase) ||
+                cellValue.Contains("Industry / Rating", StringComparison.OrdinalIgnoreCase) ||
+                cellValue.Contains("Industry+", StringComparison.OrdinalIgnoreCase) ||
+                cellValue.Contains("sector", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private NumericColumnStats AnalyzeNumericColumn(ISheet worksheet, int startRow, int col, int rowCount)
@@ -813,17 +923,30 @@ public class FileProcessingService : IFileProcessingService
         return string.Empty;
     }
 
-    private bool IsValidISIN(string? text)
+    private bool IsValidISIN(string isin)
     {
-        if (string.IsNullOrWhiteSpace(text)) return false;
-        
-        // Indian equity ISINs: INE + 9 digits + 2 alphanumeric characters (total 12)
-        if (text.Length == 12 && text.StartsWith("INE", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(isin) || isin.Length != 12)
+            return false;
+
+        // Basic ISIN format check: 2 letters + 10 alphanumeric
+        return char.IsLetter(isin[0]) && char.IsLetter(isin[1]) && 
+               isin.Skip(2).All(c => char.IsLetterOrDigit(c));
+    }
+
+    private bool IsCreditRating(string sector)
+    {
+        if (string.IsNullOrWhiteSpace(sector))
+            return false;
+
+        var creditRatingPatterns = new[]
         {
-            return true;
-        }
-        
-        return false;
+            "IND A1+", "CRISIL A1+", "CARE A1+", "ICRA A1+",
+            "IND A1", "CRISIL A1", "CARE A1", "ICRA A1",
+            "A1+", "A1", "AA+", "AA", "AAA"
+        };
+
+        return creditRatingPatterns.Any(pattern => 
+            sector.Contains(pattern, StringComparison.OrdinalIgnoreCase));
     }
 
     private decimal ExtractQuantityFromRow(ISheet worksheet, int row, ColumnMapping mapping)
@@ -833,7 +956,22 @@ public class FileProcessingService : IFileProcessingService
         var dataRow = worksheet.GetRow(row);
         if (dataRow == null) return 0;
 
+        var cell = dataRow.GetCell(mapping.QuantityColumn);
+        if (cell == null) return 0;
+
+        // Handle numeric cells directly to avoid string conversion issues
+        if (cell.CellType == CellType.Numeric)
+        {
+            // Convert to int first since quantity should be whole numbers, then cast to decimal for entity compatibility
+            return (int)cell.NumericCellValue;
+        }
+        
+        // Handle other cell types using the existing GetCellValue method
         var cellValue = GetCellValue(dataRow, mapping.QuantityColumn)?.Trim();
+        if (int.TryParse(cellValue, out var intQuantity))
+        {
+            return intQuantity;
+        }
         return decimal.TryParse(cellValue, out var quantity) ? quantity : 0;
     }
 
@@ -844,8 +982,29 @@ public class FileProcessingService : IFileProcessingService
         var dataRow = worksheet.GetRow(row);
         if (dataRow == null) return 0;
 
+        var cell = dataRow.GetCell(mapping.WeightColumn);
+        if (cell == null) return 0;
+
+        // Handle numeric cells directly to avoid string conversion issues
+        if (cell.CellType == CellType.Numeric)
+        {
+            return Math.Round(((decimal)cell.NumericCellValue) * 100, 2);
+        }
+        
+        // Handle other cell types using the existing GetCellValue method
         var cellValue = GetCellValue(dataRow, mapping.WeightColumn)?.Trim();
         return decimal.TryParse(cellValue, out var weight) ? weight : 0;
+    }
+
+    private string ExtractSectorFromRow(ISheet worksheet, int row, ColumnMapping mapping)
+    {
+        if (mapping.SectorColumn == -1) return string.Empty;
+        
+        var dataRow = worksheet.GetRow(row);
+        if (dataRow == null) return string.Empty;
+
+        var cellValue = GetCellValue(dataRow, mapping.SectorColumn)?.Trim();
+        return string.IsNullOrEmpty(cellValue) ? string.Empty : cellValue;
     }
 
     private string ExtractTickerFromCompanyName(string companyName)
@@ -1054,6 +1213,7 @@ public class FileProcessingService : IFileProcessingService
         public int CompanyNameColumn { get; set; } = -1;
         public int QuantityColumn { get; set; } = -1;
         public int WeightColumn { get; set; } = -1;
+        public int SectorColumn { get; set; } = -1;
         public int DataStartRow { get; set; } = 0;
     }
 
