@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MutualFundScanner.Domain.Entities;
 using MutualFundScanner.Infrastructure.Data.Configurations;
-using MutualFundScanner.Infrastructure.Data.Seeding;
 
 namespace MutualFundScanner.Infrastructure.Data;
 
@@ -116,8 +115,6 @@ public class MutualFundContext : DbContext
 
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new ConcreteMutualFundConfiguration());
-        
-        // Apply seed data
-        ConcreteMutualFundSeeder.Seed(modelBuilder);
+        modelBuilder.ApplyConfiguration(new ConcreteMutualFundSeedConfiguration());
     }
 }
