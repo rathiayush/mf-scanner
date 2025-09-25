@@ -117,5 +117,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Seed database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<MutualFundContext>();
+    await MutualFundScanner.Infrastructure.Data.Seeders.DatabaseSeeder.SeedAsync(context);
+}
 
 app.Run("http://0.0.0.0:5247");

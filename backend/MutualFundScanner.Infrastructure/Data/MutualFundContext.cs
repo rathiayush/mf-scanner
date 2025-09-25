@@ -115,6 +115,6 @@ public class MutualFundContext : DbContext
 
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new ConcreteMutualFundConfiguration());
-        modelBuilder.ApplyConfiguration(new ConcreteMutualFundSeedConfiguration());
+        // Seed configuration removed - using SQL scripts approach instead
     }
 }
