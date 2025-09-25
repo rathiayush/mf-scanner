@@ -1,3 +1,6 @@
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace MutualFundScanner.Domain.Entities;
 
 public class PortfolioHolding
@@ -10,9 +13,13 @@ public class PortfolioHolding
     public string? SecurityName { get; set; }
     public string? Sector { get; set; }
     public string? Industry { get; set; }
+    [Column(TypeName = "decimal(18, 4)")]
     public decimal Quantity { get; set; }
+    [Column(TypeName = "decimal(18, 4)")]
     public decimal MarketValue { get; set; }
+    [Column(TypeName = "decimal(18, 4)")]
     public decimal Weight { get; set; }
+    [Column(TypeName = "decimal(18, 4)")]
     public decimal? PreviousWeight { get; set; } // Weight in previous month for comparison
     public DateTime AsOfDate { get; set; }
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

@@ -183,3 +183,27 @@ venv.bak/
 *.exe
 *.out
 *.app
+
+# .NET
+bin/
+obj/
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
+*.user
+*.suo
+*.cache
+*.vspscc
+*.vssscc
+*.vspscc
+*.vssscc
+*.scc
+*.vspscc
+*.vssscc
+*.scc
+*.vspscc
+*.vssscc
+*.scc
+*.vspscc
+*.vssscc
+*.scc

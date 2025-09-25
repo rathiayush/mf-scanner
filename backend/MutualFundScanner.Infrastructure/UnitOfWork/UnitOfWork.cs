@@ -87,8 +87,11 @@ namespace MutualFundScanner.Infrastructure.UnitOfWork
         {
             if (!_disposed && disposing)
             {
+                // Dispose only the transaction here. The DbContext is managed by the DI container
+                // (typically registered as Scoped) and should not be manually disposed here.
+                // Disposing the context here can cause ObjectDisposedException when other services
+                // that share the same scoped context try to use it after this UnitOfWork completes.
                 _transaction?.Dispose();
-                _context?.Dispose();
                 _disposed = true;
             }
         }

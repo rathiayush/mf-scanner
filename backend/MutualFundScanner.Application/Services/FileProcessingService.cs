@@ -710,6 +710,17 @@ public class FileProcessingService : IFileProcessingService
         if (holdings.Any())
         {
             _context.PortfolioHoldings.AddRange(holdings);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+            
             _logger.LogInformation("Successfully extracted {Count} holdings from sheet {SheetIndex} using intelligent detection", 
                 holdings.Count, sheetIndex);
         }

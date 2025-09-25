@@ -1,6 +1,9 @@
 # .NET Core
 bin/
 obj/
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
 *.user
 *.suo
 *.userosscache

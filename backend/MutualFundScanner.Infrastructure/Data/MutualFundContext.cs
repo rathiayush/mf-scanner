@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MutualFundScanner.Domain.Entities;
+using MutualFundScanner.Infrastructure.Data.Configurations;
+using MutualFundScanner.Infrastructure.Data.Seeding;
 
 namespace MutualFundScanner.Infrastructure.Data;
 
@@ -15,6 +17,7 @@ public class MutualFundContext : DbContext
     public DbSet<ProcessingLog> ProcessingLogs { get; set; }
     public DbSet<PortfolioSnapshot> PortfolioSnapshots { get; set; }
     public DbSet<HoldingChange> HoldingChanges { get; set; }
+    public DbSet<ConcreteMutualFund> ConcreteMutualFunds { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -110,5 +113,11 @@ public class MutualFundContext : DbContext
                   .HasForeignKey(e => e.MutualFundId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
+
+        // Apply entity configurations
+        modelBuilder.ApplyConfiguration(new ConcreteMutualFundConfiguration());
+        
+        // Apply seed data
+        ConcreteMutualFundSeeder.Seed(modelBuilder);
     }
 }

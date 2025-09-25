@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using MutualFundScanner.Domain.Enums;
 
 namespace MutualFundScanner.Domain.Entities;
@@ -11,8 +12,11 @@ public class MutualFund
     public string Category { get; set; } = string.Empty;
     public string SubCategory { get; set; } = string.Empty;
     public DateTime LaunchDate { get; set; }
+    [Column(TypeName = "decimal(18, 4)")]
     public decimal NAV { get; set; }
+    [Column(TypeName = "decimal(18, 4)")]
     public decimal AUM { get; set; }
+    [Column(TypeName = "decimal(18, 4)")]
     public decimal ExpenseRatio { get; set; }
     public string Status { get; set; } = "Active";
     public bool IsActive { get; set; } = true;

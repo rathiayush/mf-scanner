@@ -22,6 +22,58 @@ namespace MutualFundScanner.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("MutualFundScanner.Domain.Entities.ConcreteMutualFund", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AMCName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FundName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MatchPriority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("SubCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FundName");
+
+                    b.HasIndex("MatchPriority");
+
+                    b.HasIndex("AMCName", "Category");
+
+                    b.ToTable("ConcreteMutualFunds");
+                });
+
             modelBuilder.Entity("MutualFundScanner.Domain.Entities.HoldingChange", b =>
                 {
                     b.Property<long>("Id")
@@ -48,27 +100,27 @@ namespace MutualFundScanner.Infrastructure.Migrations
 
                     b.Property<decimal?>("NewQuantity")
                         .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal?>("NewValue")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal?>("NewWeight")
                         .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal?>("PreviousQuantity")
                         .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal?>("PreviousValue")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal?>("PreviousWeight")
                         .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<string>("SecurityName")
                         .HasMaxLength(200)
@@ -101,7 +153,7 @@ namespace MutualFundScanner.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("AUM")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -111,7 +163,7 @@ namespace MutualFundScanner.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("ExpenseRatio")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<string>("FolderPath")
                         .IsRequired()
@@ -141,7 +193,7 @@ namespace MutualFundScanner.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("NAV")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -240,7 +292,7 @@ namespace MutualFundScanner.Infrastructure.Migrations
 
                     b.Property<decimal>("MarketValue")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<int>("PortfolioFileId")
                         .HasColumnType("int");
@@ -250,11 +302,11 @@ namespace MutualFundScanner.Infrastructure.Migrations
 
                     b.Property<decimal?>("PreviousWeight")
                         .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<string>("Sector")
                         .HasMaxLength(100)
@@ -270,7 +322,7 @@ namespace MutualFundScanner.Infrastructure.Migrations
 
                     b.Property<decimal>("Weight")
                         .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.HasKey("Id");
 
@@ -303,7 +355,7 @@ namespace MutualFundScanner.Infrastructure.Migrations
 
                     b.Property<decimal>("TotalValue")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 4)");
 
                     b.HasKey("Id");
 

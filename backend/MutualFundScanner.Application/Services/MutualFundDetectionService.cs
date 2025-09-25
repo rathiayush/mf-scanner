@@ -1,146 +1,33 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MutualFundScanner.Application.DTOs;
+using MutualFundScanner.Application.Interfaces;
 using MutualFundScanner.Domain.Entities;
 using MutualFundScanner.Infrastructure.Data;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using NPOI.HSSF.UserModel;
 using Microsoft.AspNetCore.Http;
+using MutualFundScanner.Infrastructure.Repositories;
 
 namespace MutualFundScanner.Application.Services;
 
 public class MutualFundDetectionService
 {
     private readonly MutualFundContext _context;
+    private readonly IConcreteMutualFundRepository _concreteMutualFundRepository;
     private readonly ILogger<MutualFundDetectionService> _logger;
+    private List<ConcreteMutualFund>? _cachedMutualFunds;
+    private DateTime _lastCacheUpdate = DateTime.MinValue;
+    private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(30);
 
-    // Static list of mutual fund names/patterns to match against
-    // Static list of mutual fund names/patterns to match against
-    private readonly List<string> _mutualFundPatterns = new()
-{
-    // HDFC Mutual Fund
-    "HDFC NIFTY SMALLCAP 250 INDEX FUND","HDFC NIFTY MIDCAP 250 INDEX FUND",
-    
-    // ICICI Prudential
-    "ICICI Prudential Balanced Advantage Fund", "ICICI Prudential Bluechip Fund", "ICICI Prudential Value Discovery Fund",
-    "ICICI Prudential Technology Fund", "ICICI Prudential Banking and Financial Services Fund",
-    "ICICI Prudential Multi-Asset Fund", "ICICI Prudential Flexi Cap Fund", "ICICI Prudential Large & Mid Cap Fund",
-    
-    
-    
-    // Axis Mutual Fund
-    "Axis Bluechip Fund", "Axis Midcap Fund", "Axis Small Cap Fund", "Axis Flexi Cap Fund",
-    "Axis Long Term Equity Fund", "Axis Focused 25 Fund", "Axis Banking & Financial Services Fund",
-    "Axis Multi Cap Fund", "Axis Large Cap Fund", "Axis Growth Opportunities Fund",
-    
-    // Kotak Mutual Fund
-    "Kotak Standard Multicap Fund", "Kotak Bluechip Fund", "Kotak Emerging Equity Fund", "Kotak Small Cap Fund",
-    "Kotak Flexicap Fund", "Kotak Banking and Financial Services Fund", "Kotak Infrastructure & Economic Reform Fund",
-    "Kotak Multi Cap Fund", "Kotak Large Cap Fund", "Kotak Mid Cap Fund",
-    
-    // Reliance Mutual Fund / Nippon India
-    "Nippon India Large Cap Fund", "Nippon India Multi Cap Fund", "Nippon India Small Cap Fund",
-    "Nippon India Banking & Financial Services Fund", "Nippon India Growth Fund", "Nippon India Power & Natural Resources Fund",
-    "Reliance Large Cap Fund", "Reliance Multi Cap Fund", "Reliance Small Cap Fund",
-    
-    // Aditya Birla Sun Life
-    "Aditya Birla Sun Life Frontline Equity Fund", "Aditya Birla Sun Life Equity Fund", "Aditya Birla Sun Life Small Cap Fund",
-    "Aditya Birla Sun Life Mid Cap Fund", "Aditya Birla Sun Life Banking & Financial Services Fund",
-    "Aditya Birla Sun Life Digital India Fund", "Aditya Birla Sun Life Flexi Cap Fund",
-
-    // UTI Mutual Fund
-    "UTI Nifty Fund", "UTI Mastershare Fund", "UTI Mid Cap Fund", "UTI Small Cap Fund",
-    "UTI Flexi Cap Fund", "UTI Banking and Financial Services Fund", "UTI Transportation and Logistics Fund",
-    
-    // DSP Mutual Fund
-    "DSP Equity Fund", "DSP Mid Cap Fund", "DSP Small Cap Fund", "DSP Flexi Cap Fund",
-    "DSP Banking & Financial Services Fund", "DSP Healthcare Fund", "DSP Natural Resources and New Energy Fund",
-    
-    // Franklin Templeton
-    "Franklin India Bluechip Fund", "Franklin India Equity Fund", "Franklin India Smaller Companies Fund",
-    "Franklin India Mid Cap Fund", "Franklin India Banking & Financial Services Fund",
-    
-    // Mirae Asset
-    "Mirae Asset Large Cap Fund", "Mirae Asset Emerging Bluechip Fund", "Mirae Asset Focused Fund",
-    "Mirae Asset Tax Saver Fund", "Mirae Asset Banking and Financial Services Fund",
-    
-    // Tata Mutual Fund
-    "Tata Large Cap Fund", "Tata Mid Cap Growth Fund", "Tata Small Cap Fund", "Tata Flexi Cap Fund",
-    "Tata Banking and Financial Services Fund", "Tata Digital India Fund", "Tata Infrastructure Fund",
-    
-    // PGIM
-    "PGIM INDIA RETIREMENT FUND", "PGIM INDIA SMALL CAP FUND",
-
-    // Axis Equity Funds
-    "Axis Large Cap Fund", "Axis Large & Mid Cap Fund", "Axis Midcap Fund", "Axis Momentum Fund",
-    "Axis Multicap Fund", "Axis Flexi Cap Fund", "Axis Small Cap Fund", "Axis Quant Fund",
-    "Axis Nifty 100 Index Fund", "Axis Nifty 500 Index Fund", "Axis Nifty Next 50 Index Fund",
-    "Axis Nifty500 Momentum 50 Index Fund", "Axis Nifty500 Value 50 Index Fund",
-    "Axis Nifty Midcap 50 Index Fund", "Axis Nifty Smallcap 50 Index Fund", "Axis NASDAQ 100 Fund of Fund",
-
-    // Bajaj Finserv Mutual Fund
-    "Bajaj Finserv Flexi Cap Fund", "Bajaj Finserv Balanced Advantage Fund",
-    "Bajaj Finserv Arbitrage Fund", "Bajaj Finserv Large and Midcap Fund",
-    "Bajaj Finserv Multi Asset Allocation Fund", "Bajaj Finserv Nifty 50 ETF", "Bajaj Finserv Nifty Bank ETF",
-
-    //  Aditya Birla Sun Life (new equity/hybrid)
-    "Aditya Birla Sun Life Business Cycle Fund", "Aditya Birla Sun Life Conglomerate Fund",
-    "Aditya Birla Sun Life Multi Asset Allocation Fund", "Aditya Birla Sun Life Multi-Cap Fund",
-    "Aditya Birla Sun Life Quant Fund", "Aditya Birla Sun Life Large & Mid Cap Fund",
-    "Aditya Birla Sun Life Infrastructure Fund",
-
-    // Bank of India Mutual Fund
-    "Bank Of India Large & Mid Cap Equity Fund", "Bank of India Conservative Hybrid Fund",
-    "Bank of India ELSS Tax Saver", "Bank Of India Manufacturing and Infrastructure Fund",
-    "Bank Of India Mid & Small Cap Equity & Debt Fund", "Bank Of India Mid Cap Tax Fund Series 1",
-    "Bank Of India Mid Cap Tax Fund Series 2", "Bank Of India Small Cap Fund",
-    "Bank Of India Flexi Cap Fund", "Bank Of India Bluechip Fund", "Bank Of India Multi Cap Fund",
-    "Bank Of India Arbitrage Fund",
-
-    // Motilal Oswal Mutual Fund
-    "Motilal Oswal Focused Fund", "Motilal Oswal Midcap Fund", "Motilal Oswal Flexi Cap Fund",
-    "Motilal Oswal Balanced Advantage Fund", "Motilal Oswal ELSS Tax Saver Fund",
-    "Motilal Oswal Large and Midcap Fund", "Motilal Oswal Multi Asset Fund",
-    "Motilal Oswal Nifty 50 Index Fund", "Motilal Oswal Nifty 500 Index Fund",
-    "Motilal Oswal Nifty Midcap 150 Index Fund", "Motilal Oswal Nifty Smallcap 250 Index Fund",
-    "Motilal Oswal Nifty Bank Index Fund", "Motilal Oswal Nifty 50 ETF",
-    "Motilal Oswal Nifty Midcap 100 ETF",
-    // Nippon India (New Additions)
-"Nippon India Nifty Auto ETF",
-"Nippon India Nifty Alpha Low Volatility",
-"Nippon India Innovation Fund",
-"Nippon India Nifty 500 Momentum",
-"Nippon India Nifty Realty",
-"Nippon India Active Momentum Fund",
-"Nippon India Nifty 500 Low",
-"Nippon India Nifty 500 Quality 50 Index Fund",
-
-// Parag Parikh
-"Parag Parikh Flexi Cap Fund",
-"Parag Parikh ELSS Tax Saver Fund",
-
-// quant Mutual Fund
-"quant Multi Cap Fund",
-"quant Flexi Cap Fund",
-"quant Infrastructure Fund",
-"quant Small Cap Fund",
-"quant Large Cap Fund",
-"quant Large & Mid Cap Fund",
-"quant Manufacturing Fund",
-"quant ELSS Tax Saver Fund",
-
-// SBI Mutual Fund (New Additions)
-"SBI Large and Midcap Fund",
-"SBI ELSS Tax Saver Fund",
-"SBI Consumption Opportunities Fund",
-"SBI Midcap Fund",
-};
-
-
-    public MutualFundDetectionService(MutualFundContext context, ILogger<MutualFundDetectionService> logger)
+    public MutualFundDetectionService(
+        MutualFundContext context, 
+        IConcreteMutualFundRepository concreteMutualFundRepository,
+        ILogger<MutualFundDetectionService> logger)
     {
         _context = context;
+        _concreteMutualFundRepository = concreteMutualFundRepository;
         _logger = logger;
     }
 
@@ -158,7 +45,7 @@ public class MutualFundDetectionService
             var worksheet = workbook.GetSheetAt(0);
 
             // Scan first 50 rows across all columns
-            var detectedText = ScanWorksheetForMutualFund(worksheet);
+            var detectedText = await ScanWorksheetForMutualFundAsync(worksheet);
             
             if (!string.IsNullOrEmpty(detectedText.FundName))
             {
@@ -220,7 +107,7 @@ public class MutualFundDetectionService
             var worksheet = workbook.GetSheetAt(sheetIndex);
 
             // Scan first 50 rows across all columns
-            var detectedText = ScanWorksheetForMutualFund(worksheet);
+            var detectedText = await ScanWorksheetForMutualFundAsync(worksheet);
             
             if (!string.IsNullOrEmpty(detectedText.FundName))
             {
@@ -267,7 +154,7 @@ public class MutualFundDetectionService
         };
     }
 
-    private (string FundName, string MatchedText, int Row, int Column, double Confidence) ScanWorksheetForMutualFund(ISheet worksheet)
+    private async Task<(string FundName, string MatchedText, int Row, int Column, double Confidence)> ScanWorksheetForMutualFundAsync(ISheet worksheet)
     {
         // First, check if this sheet has the required column headers for mutual fund data
         if (!HasRequiredMutualFundColumns(worksheet))
@@ -292,7 +179,7 @@ public class MutualFundDetectionService
                 if (string.IsNullOrEmpty(cellValue)) continue;
 
                 // Check for exact match against mutual fund patterns
-                var exactMatch = FindExactMatch(cellValue);
+                var exactMatch = await FindExactMatchAsync(cellValue);
                 if (!string.IsNullOrEmpty(exactMatch))
                 {
                     return (exactMatch, cellValue, row, col, 1.0);
@@ -415,26 +302,39 @@ public class MutualFundDetectionService
         };
     }
 
-    private string FindExactMatch(string cellText)
+    private async Task<List<ConcreteMutualFund>> GetCachedMutualFundsAsync()
+    {
+        if (_cachedMutualFunds == null || DateTime.UtcNow - _lastCacheUpdate > _cacheExpiry)
+        {
+            _cachedMutualFunds = (await _concreteMutualFundRepository.GetActiveForDetectionAsync()).ToList();
+            _lastCacheUpdate = DateTime.UtcNow;
+            _logger.LogInformation("Refreshed mutual fund cache with {Count} active funds", _cachedMutualFunds.Count);
+        }
+        
+        return _cachedMutualFunds;
+    }
+
+    private async Task<string> FindExactMatchAsync(string cellText)
     {
         if (string.IsNullOrEmpty(cellText)) return string.Empty;
 
         var normalizedCellText = cellText.ToLowerInvariant().Trim();
+        var mutualFunds = await GetCachedMutualFundsAsync();
 
-        foreach (var pattern in _mutualFundPatterns)
+        foreach (var fund in mutualFunds)
         {
-            var normalizedPattern = pattern.ToLowerInvariant().Trim();
+            var normalizedPattern = fund.FundName.ToLowerInvariant().Trim();
             
             // Check for exact match
             if (normalizedCellText == normalizedPattern)
             {
-                return pattern;
+                return fund.FundName;
             }
             
             // Check if cell text contains the exact pattern
             if (normalizedCellText.Contains(normalizedPattern))
             {
-                return pattern;
+                return fund.FundName;
             }
         }
 

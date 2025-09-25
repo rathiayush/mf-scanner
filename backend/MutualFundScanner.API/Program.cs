@@ -3,6 +3,7 @@ using MutualFundScanner.Infrastructure.Data;
 using MutualFundScanner.Application.Interfaces;
 using MutualFundScanner.Application.Services;
 using MutualFundScanner.Infrastructure.UnitOfWork;
+using MutualFundScanner.Infrastructure.Repositories;
 using Serilog;
 using Serilog.Events;
 
@@ -54,6 +55,10 @@ builder.Services.AddScoped<MutualFundDetectionService>();
 builder.Services.AddScoped<IMutualFundService, MutualFundScanner.Application.Services.MutualFundService>();
 builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Services.AnalyticsService>();
 builder.Services.AddScoped<IFileUploadService, MutualFundScanner.Application.Services.FileUploadService>();
+builder.Services.AddScoped<IConcreteMutualFundService, MutualFundScanner.Application.Services.ConcreteMutualFundService>();
+
+// Register Repository Services
+builder.Services.AddScoped<IConcreteMutualFundRepository, ConcreteMutualFundRepository>();
 
 // Register Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
