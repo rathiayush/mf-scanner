@@ -169,7 +169,7 @@ export interface AnalyticsResponseDto {
   fromDate: string;
   toDate: string;
   addedRemovedHoldings: PagedResult<HoldingChangeDto>;
-  topShares: TopShareDto[];
+  topShares: PagedResult<TopShareDto>;
   summary: AnalyticsSummaryDto;
 }
 

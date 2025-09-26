@@ -807,8 +807,8 @@ const EnhancedAnalytics: React.FC = () => {
                           value={topSharesSortBy}
                           onChange={(value) => {
                             setTopSharesSortBy(value);
-                            // Reload top shares with new sorting
-                            loadTopShares();
+                            // Reload top shares with new sorting, reset to page 1
+                            loadTopShares(1, topSharesPageSize, value, topSharesSortDirection);
                           }}
                           style={{ width: 150 }}
                         >
@@ -823,8 +823,8 @@ const EnhancedAnalytics: React.FC = () => {
                           value={topSharesSortDirection}
                           onChange={(value) => {
                             setTopSharesSortDirection(value);
-                            // Reload top shares with new sorting
-                            loadTopShares();
+                            // Reload top shares with new sorting, reset to page 1
+                            loadTopShares(1, topSharesPageSize, topSharesSortBy, value);
                           }}
                           style={{ width: 100 }}
                         >
@@ -855,14 +855,14 @@ const EnhancedAnalytics: React.FC = () => {
                           if (pageSize !== topSharesPageSize) {
                             setTopSharesPageSize(pageSize);
                           }
-                          // Trigger reload with new pagination using updated values
-                          loadTopShares(page, pageSize);
+                          // Trigger reload with new pagination using updated values and current sorting
+                          loadTopShares(page, pageSize, topSharesSortBy, topSharesSortDirection);
                         },
                         onShowSizeChange: (_, size) => {
                           setTopSharesPage(1); // Reset to first page when changing page size
                           setTopSharesPageSize(size);
-                          // Trigger reload with new pagination using updated values
-                          loadTopShares(1, size);
+                          // Trigger reload with new pagination using updated values and current sorting
+                          loadTopShares(1, size, topSharesSortBy, topSharesSortDirection);
                         },
                       }}
                       scroll={{ x: 1000 }}
