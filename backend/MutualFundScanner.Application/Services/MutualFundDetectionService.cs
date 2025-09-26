@@ -216,6 +216,9 @@ public class MutualFundDetectionService
             if (dataRow == null) continue;
 
             var maxCols = dataRow.LastCellNum;
+            if (maxCols <= 2) {
+                return false;
+            }
             for (int col = 0; col < maxCols; col++)
             {
                 var cell = dataRow.GetCell(col);

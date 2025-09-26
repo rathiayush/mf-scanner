@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AppLayout from './components/Layout';
-import { FileUploadPage, AnalysePage, UploadFilesTriggerPage, MutualFundListPage } from './pages';
+import { FileUploadPage, AnalysePage, MutualFundListPage } from './pages';
 import CurrentHoldingsPage from './pages/CurrentHoldingsPage';
 import HoldingsComparison from './components/Holdings/HoldingsComparison';
 import PortfolioSummary from './components/Holdings/PortfolioSummary';
@@ -20,8 +20,6 @@ const App: React.FC = () => {
         return <FileUploadPage />;
       case '2':
         return <AnalysePage />;
-      case '3':
-        return <UploadFilesTriggerPage />;
       case '4':
         return <MutualFundListPage />;
       case '5':

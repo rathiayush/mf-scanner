@@ -144,7 +144,7 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
         <Title level={2}>
           <UploadOutlined /> Upload V2 - Auto Mutual Fund Detection
         </Title>
-        <Text type="secondary">
+        <Text type="secondary">UploadFilesTriggerPage
           Upload Excel files and the system will automatically detect mutual funds using exact name matching, 
           create missing funds, and process the files.
         </Text>

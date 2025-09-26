@@ -24,11 +24,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1', onMe
       label: 'Analyse',
     },
     {
-      key: '3',
-      icon: <CloudUploadOutlined />,
-      label: 'Upload Files & Trigger',
-    },
-    {
       key: '4',
       icon: <UnorderedListOutlined />,
       label: 'Mutual Fund List',
@@ -42,28 +37,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1', onMe
       key: '6',
       icon: <RobotOutlined />,
       label: 'Smart Upload V2',
-    },
-    {
-      key: '5',
-      icon: <DollarOutlined />,
-      label: 'Current Holdings',
-      children: [
-        {
-          key: '5-1',
-          icon: <FundOutlined />,
-          label: 'Fund Holdings View',
-        },
-        {
-          key: '5-2',
-          icon: <TableOutlined />,
-          label: 'Holdings Comparison',
-        },
-        {
-          key: '5-3',
-          icon: <PieChartOutlined />,
-          label: 'Portfolio Summary',
-        },
-      ],
     },
   ];
 

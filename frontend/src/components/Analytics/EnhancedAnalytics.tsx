@@ -781,66 +781,7 @@ const EnhancedAnalytics: React.FC = () => {
                   )}
                 </TabPane>
 
-                <TabPane 
-                  tab={
-                    <span>
-                      <BarChartOutlined />
-                      Current Holdings ({currentHoldings.reduce((acc, h) => acc + (h.holdingsCount || 0), 0)})
-                    </span>
-                  } 
-                  key="holdings"
-                >
-                  {currentHoldings.length > 0 ? (
-                    <Row gutter={[16, 16]}>
-                      {currentHoldings.map((holding, index) => (
-                        <Col span={24} key={index}>
-                          <Card 
-                            title={`${holding.mutualFundName} - ${holding.date}`}
-                            size="small"
-                          >
-                            <Table
-                              dataSource={holding.holdings}
-                              columns={[
-                                {
-                                  title: 'Company Name',
-                                  dataIndex: 'companyName',
-                                  key: 'companyName',
-                                },
-                                {
-                                  title: 'Weight',
-                                  dataIndex: 'weight',
-                                  key: 'weight',
-                                  render: (weight: number) => `${weight?.toFixed(2)}%`,
-                                },
-                                {
-                                  title: 'Value',
-                                  dataIndex: 'value',
-                                  key: 'value',
-                                  render: (value: number) => `₹${value?.toLocaleString()}`,
-                                },
-                                {
-                                  title: 'Sector',
-                                  dataIndex: 'sector',
-                                  key: 'sector',
-                                },
-                              ]}
-                              rowKey="id"
-                              pagination={{ pageSize: 10 }}
-                              size="small"
-                            />
-                          </Card>
-                        </Col>
-                      ))}
-                    </Row>
-                  ) : (
-                    <Alert
-                      message="No Holdings Data"
-                      description="Run analysis to see detailed holdings for selected funds and dates."
-                      type="info"
-                      showIcon
-                    />
-                  )}
-                </TabPane>
+               
               </Tabs>
             </Card>
           </Col>
