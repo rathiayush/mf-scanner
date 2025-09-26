@@ -24,8 +24,8 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("GetAnalytics called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}", 
-                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate);
+            _logger.LogInformation("GetAnalytics called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}, page: {Page}, pageSize: {PageSize}, sortBy: {SortBy}, sortDirection: {SortDirection}", 
+                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate, request.Page, request.PageSize, request.SortBy ?? "default", request.SortDirection ?? "desc");
 
             // Allow empty MutualFundIds for "All Funds" analysis
             // if (request.MutualFundIds == null || !request.MutualFundIds.Any())
@@ -53,8 +53,8 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("GetHoldingChanges called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}", 
-                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate);
+            _logger.LogInformation("GetHoldingChanges called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}, page: {Page}, pageSize: {PageSize}, sortBy: {SortBy}, sortDirection: {SortDirection}", 
+                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate, request.Page, request.PageSize, request.SortBy ?? "default", request.SortDirection ?? "desc");
 
             // Allow empty MutualFundIds for "All Funds" analysis
             // if (request.MutualFundIds == null || !request.MutualFundIds.Any())
@@ -72,53 +72,31 @@ public class AnalyticsController : ControllerBase
         }
     }
 
-    [HttpGet("top-shares")]
-    public async Task<IActionResult> GetTopShares(
-        [FromQuery] string? mutualFundIds = null,
-        [FromQuery] DateTime fromDate = default,
-        [FromQuery] DateTime toDate = default,
-        [FromQuery] int topCount = 15)
+    [HttpPost("top-shares")]
+    public async Task<IActionResult> GetTopShares([FromBody] TopSharesRequestDto request)
     {
         try
         {
-            _logger.LogInformation("GetTopShares called with mutualFundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}, topCount: {TopCount}", 
-                mutualFundIds, fromDate, toDate, topCount);
+            _logger.LogInformation("GetTopShares called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}, page: {Page}, pageSize: {PageSize}, sortBy: {SortBy}, sortDirection: {SortDirection}", 
+                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate, request.Page, request.PageSize, request.SortBy ?? "default", request.SortDirection ?? "desc");
             
-            List<int> fundIds = new List<int>();
-            if (!string.IsNullOrEmpty(mutualFundIds))
-            {
-                var ids = mutualFundIds.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                foreach (var id in ids)
-                {
-                    if (int.TryParse(id.Trim(), out int fundId))
-                    {
-                        fundIds.Add(fundId);
-                    }
-                }
-            }
-            
-            _logger.LogInformation("Parsed mutualFundIds: {FundIds}", string.Join(",", fundIds));
-            
-            // Allow empty fundIds for "All Funds" analysis
-            // if (!fundIds.Any())
+            // Allow empty MutualFundIds for "All Funds" analysis
+            // if (request.MutualFundIds == null || !request.MutualFundIds.Any())
             // {
-            //     _logger.LogWarning("GetTopShares: No mutual fund IDs provided");
             //     return BadRequest(new { Message = "At least one mutual fund must be selected" });
             // }
 
-            if (fromDate >= toDate)
+            if (request.FromDate >= request.ToDate)
             {
-                _logger.LogWarning("GetTopShares: From date {FromDate} is not before to date {ToDate}", fromDate, toDate);
                 return BadRequest(new { Message = "From date must be before to date" });
             }
 
-            var result = await _analyticsService.GetTopSharesAsync(fundIds, fromDate, toDate, topCount);
-            _logger.LogInformation("GetTopShares result: {Count} top shares for funds {FundIds}", result.Count, string.Join(",", fundIds));
+            var result = await _analyticsService.GetTopSharesAsync(request);
             return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting top shares for funds {FundIds}", mutualFundIds ?? "null");
+            _logger.LogError(ex, "Error getting top shares for funds {FundIds}", string.Join(",", request.MutualFundIds));
             return StatusCode(500, new { Message = ex.Message });
         }
     }
@@ -172,6 +150,9 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("GetCurrentHoldings called with fundId: {FundId}, targetDate: {TargetDate}, page: {Page}, pageSize: {PageSize}, sortBy: {SortBy}, sortDirection: {SortDirection}", 
+                request.MutualFundId, request.TargetDate, request.Page, request.PageSize, request.SortBy ?? "default", request.SortDirection ?? "desc");
+
             if (request.MutualFundId <= 0)
             {
                 return BadRequest(new { Message = "Valid mutual fund ID is required" });

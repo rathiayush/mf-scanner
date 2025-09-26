@@ -160,6 +160,8 @@ export interface AnalyticsRequestDto {
   page: number;
   pageSize: number;
   changeTypeFilter?: string; // Added, Removed, Increased, Decreased, Mixed, or undefined for all
+  sortBy?: string;
+  sortDirection?: string;
 }
 
 export interface AnalyticsResponseDto {
@@ -179,9 +181,10 @@ export interface HoldingChangeDto {
   previousWeight?: number;
   currentWeight: number;
   weightChange: number;
-  changeType: string; // Added, Removed, Increased, Decreased
+  changeType: string; // Added, Removed, Increased, Decreased, Mixed
   mutualFundNames: string[];
   fundChangeDetails: FundChangeDetailDto[];
+  constituentChangeTypes: string[]; // For Mixed: list of constituent change types (Added, Removed, etc.)
   fromDate: string;
   toDate: string;
 }
@@ -244,11 +247,25 @@ export interface MutualFundDateAvailability {
   availableDates: string[];
 }
 
+export interface TopSharesRequestDto {
+  mutualFundIds: number[];
+  fromDate: string;
+  toDate: string;
+  page: number;
+  pageSize: number;
+  sortBy?: string;
+  sortDirection?: string;
+}
+
 export interface CurrentHoldingsRequestDto {
   mutualFundId: number;
   targetDate: string;
   dateRangeStart?: string;
   dateRangeEnd?: string;
+  page: number;
+  pageSize: number;
+  sortBy?: string;
+  sortDirection?: string;
 }
 
 export interface CurrentHoldingDto {
@@ -270,7 +287,7 @@ export interface CurrentHoldingsResponseDto {
   mutualFundName: string;
   date: string;
   totalValue: number;
-  holdings: CurrentHoldingDto[];
+  holdings: PagedResult<CurrentHoldingDto>;
   holdingsCount: number;
 }
 

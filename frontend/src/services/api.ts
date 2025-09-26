@@ -13,6 +13,7 @@ import {
   AnalyticsRequestDto,
   AnalyticsResponseDto,
   TopShareDto,
+  TopSharesRequestDto,
   AvailableDatesResponseDto,
   AnalyticsSummaryDto,
   HoldingChangeDto,
@@ -199,16 +200,30 @@ export const analyticsService = {
     return response.data;
   },
 
-  getTopShares: async (
+  getTopShares: async (request: TopSharesRequestDto): Promise<PagedResult<TopShareDto>> => {
+    const response = await api.post('/analytics/top-shares', request);
+    return response.data;
+  },
+
+  // Legacy method for backward compatibility
+  getTopSharesLegacy: async (
     mutualFundIds: string, 
     fromDate: string, 
     toDate: string, 
     topCount: number = 50
   ): Promise<TopShareDto[]> => {
-    const response = await api.get('/analytics/top-shares', {
-      params: { mutualFundIds, fromDate, toDate, topCount }
-    });
-    return response.data;
+    const fundIds = mutualFundIds ? mutualFundIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+    const request: TopSharesRequestDto = {
+      mutualFundIds: fundIds,
+      fromDate,
+      toDate,
+      page: 1,
+      pageSize: topCount,
+      sortBy: 'totalWeight',
+      sortDirection: 'desc'
+    };
+    const result = await api.post('/analytics/top-shares', request);
+    return result.data.data || result.data; // Handle both PagedResult and direct array
   },
 
   getAvailableDates: async (mutualFundIds?: number[]): Promise<AvailableDatesResponseDto> => {
@@ -324,7 +339,7 @@ export const apiService = {
 
   getTopStocks: async (fromDate: string, toDate: string, fundId?: string) => {
     const fundIds = fundId ? fundId : '';
-    return analyticsService.getTopShares(fundIds, fromDate, toDate);
+    return analyticsService.getTopSharesLegacy(fundIds, fromDate, toDate);
   },
 
   getStockHoldings: async (fromDate: string, toDate: string, fundId?: string) => {

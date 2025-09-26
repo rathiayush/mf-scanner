@@ -31,6 +31,7 @@ import {
   AnalyticsResponseDto,
   HoldingChangeDto,
   TopShareDto,
+  TopSharesRequestDto,
   AvailableDatesResponseDto,
   PagedResult
 } from '../../types';
@@ -50,7 +51,7 @@ const EnhancedAnalytics: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsResponseDto | null>(null);
   const [holdingChanges, setHoldingChanges] = useState<PagedResult<HoldingChangeDto> | null>(null);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
-  const [topShares, setTopShares] = useState<TopShareDto[]>([]);
+  const [topShares, setTopShares] = useState<PagedResult<TopShareDto> | null>(null);
   const [portfolioSnapshots, setPortfolioSnapshots] = useState<any[]>([]);
   const [currentHoldings, setCurrentHoldings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,14 @@ const EnhancedAnalytics: React.FC = () => {
   const [showHoldingFundsModal, setShowHoldingFundsModal] = useState(false);
   const [selectedHoldingModalData, setSelectedHoldingModalData] = useState<any>(null);
   const [modalFilterType, setModalFilterType] = useState<string>('all');
+  
+  // Sorting state
+  const [holdingChangesSortBy, setHoldingChangesSortBy] = useState<string>('weightChange');
+  const [holdingChangesSortDirection, setHoldingChangesSortDirection] = useState<string>('desc');
+  const [topSharesSortBy, setTopSharesSortBy] = useState<string>('totalWeight');
+  const [topSharesSortDirection, setTopSharesSortDirection] = useState<string>('desc');
+  const [topSharesPage, setTopSharesPage] = useState<number>(1);
+  const [topSharesPageSize, setTopSharesPageSize] = useState<number>(20);
 
   useEffect(() => {
     loadMutualFunds();
@@ -139,7 +148,9 @@ const EnhancedAnalytics: React.FC = () => {
         fromDate: dateRange[0].format('YYYY-MM-DD'),
         toDate: dateRange[1].format('YYYY-MM-DD'),
         page: currentPage,
-        pageSize: pageSize
+        pageSize: pageSize,
+        sortBy: holdingChangesSortBy,
+        sortDirection: holdingChangesSortDirection
       };
 
       console.log('Analytics Request:', request);
@@ -147,21 +158,30 @@ const EnhancedAnalytics: React.FC = () => {
 
       // Fetch portfolio snapshots and holdings for the selected date range
       const fundsForAnalysis = isAllFundsSelected ? mutualFunds.map(f => f.id) : selectedFunds;
+      
+      const topSharesRequest: TopSharesRequestDto = {
+        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
+        fromDate: request.fromDate,
+        toDate: request.toDate,
+        page: topSharesPage,
+        pageSize: topSharesPageSize,
+        sortBy: topSharesSortBy,
+        sortDirection: topSharesSortDirection
+      };
+
       const [analytics, changes, shares, fromHoldings, toHoldings] = await Promise.all([
         analyticsService.getAnalytics(request),
         analyticsService.getHoldingChanges(request),
-        analyticsService.getTopShares(
-          isAllFundsSelected ? '' : selectedFunds.join(','), 
-          request.fromDate, 
-          request.toDate
-        ),
+        analyticsService.getTopShares(topSharesRequest),
         // Fetch current holdings for from date
         Promise.all(fundsForAnalysis.map(fundId => 
           analyticsService.getCurrentHoldings({
             mutualFundId: fundId,
             targetDate: request.fromDate,
             dateRangeStart: dateRange[0].subtract(30, 'day').format('YYYY-MM-DD'),
-            dateRangeEnd: dateRange[0].add(30, 'day').format('YYYY-MM-DD')
+            dateRangeEnd: dateRange[0].add(30, 'day').format('YYYY-MM-DD'),
+            page: 1,
+            pageSize: 100
           })
         )),
         // Fetch current holdings for to date
@@ -170,7 +190,9 @@ const EnhancedAnalytics: React.FC = () => {
             mutualFundId: fundId,
             targetDate: request.toDate,
             dateRangeStart: dateRange[1].subtract(30, 'day').format('YYYY-MM-DD'),
-            dateRangeEnd: dateRange[1].add(30, 'day').format('YYYY-MM-DD')
+            dateRangeEnd: dateRange[1].add(30, 'day').format('YYYY-MM-DD'),
+            page: 1,
+            pageSize: 100
           })
         ))
       ]);
@@ -208,11 +230,37 @@ const EnhancedAnalytics: React.FC = () => {
 
   const handleStatusFilterChange = (value: string) => {
     setSelectedStatusFilter(value);
+    setCurrentPage(1); // Reset to page 1 when filter changes
     // Reload holding changes with the new filter, passing the new value directly
-    loadHoldingChanges(currentPage, pageSize, value);
+    loadHoldingChanges(1, pageSize, value);
   };
 
-  const loadHoldingChanges = async (page: number, size: number, filterValue?: string) => {
+  const loadTopShares = async (page?: number, pageSize?: number, sortBy?: string, sortDirection?: string) => {
+    if (!dateRange || (selectedFunds.length === 0 && !isAllFundsSelected)) return;
+
+    setLoading(true);
+    try {
+      const topSharesRequest: TopSharesRequestDto = {
+        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
+        fromDate: dateRange[0].format('YYYY-MM-DD'),
+        toDate: dateRange[1].format('YYYY-MM-DD'),
+        page: page || topSharesPage,
+        pageSize: pageSize || topSharesPageSize,
+        sortBy: sortBy || topSharesSortBy,
+        sortDirection: sortDirection || topSharesSortDirection
+      };
+
+      const shares = await analyticsService.getTopShares(topSharesRequest);
+      setTopShares(shares);
+    } catch (error) {
+      console.error('Error loading top shares:', error);
+      message.error('Failed to load top shares');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadHoldingChanges = async (page: number, size: number, filterValue?: string, sortBy?: string, sortDirection?: string) => {
     if (!dateRange || (selectedFunds.length === 0 && !isAllFundsSelected)) return;
 
     setLoading(true);
@@ -227,7 +275,9 @@ const EnhancedAnalytics: React.FC = () => {
         toDate: dateRange[1].format('YYYY-MM-DD'),
         page,
         pageSize: size,
-        changeTypeFilter: currentFilter === 'all' ? undefined : currentFilter
+        changeTypeFilter: currentFilter === 'all' ? undefined : currentFilter,
+        sortBy: sortBy || holdingChangesSortBy,
+        sortDirection: sortDirection || holdingChangesSortDirection
       };
 
       const changes = await analyticsService.getHoldingChanges(request);
@@ -649,7 +699,7 @@ const EnhancedAnalytics: React.FC = () => {
           </Col>
         )}
 
-        {(holdingChanges || topShares.length > 0) && (
+        {(holdingChanges || (topShares && topShares.data.length > 0)) && (
           <Col span={24}>
             <Card>
               <Tabs defaultActiveKey="changes">
@@ -665,7 +715,7 @@ const EnhancedAnalytics: React.FC = () => {
                   {holdingChanges && (
                     <div>
                       <div style={{ marginBottom: 16 }}>
-                        <Space>
+                        <Space wrap>
                           <Text strong>Filter by Status:</Text>
                           <Select
                             value={selectedStatusFilter}
@@ -679,6 +729,40 @@ const EnhancedAnalytics: React.FC = () => {
                             <Option value="Decreased">Decreased</Option>
                             <Option value="Mixed">Mixed</Option>
                           </Select>
+                          
+                          <Text strong>Sort by:</Text>
+                          <Select
+                            value={holdingChangesSortBy}
+                            onChange={(value) => {
+                              setHoldingChangesSortBy(value);
+                              setCurrentPage(1); // Reset to page 1 when sorting changes
+                              loadHoldingChanges(1, pageSize, undefined, value, holdingChangesSortDirection);
+                            }}
+                            style={{ width: 150 }}
+                          >
+                            <Option value="securityName">Security Name</Option>
+                            <Option value="sector">Sector</Option>
+                            <Option value="industry">Industry</Option>
+                            <Option value="previousWeight">Previous Weight</Option>
+                            <Option value="currentWeight">Current Weight</Option>
+                            <Option value="weightChange">Weight Change</Option>
+                            <Option value="changeType">Change Type</Option>
+                            <Option value="mutualFundsCount">Mutual Funds Count</Option>
+                          </Select>
+                          
+                          <Select
+                            value={holdingChangesSortDirection}
+                            onChange={(value) => {
+                              setHoldingChangesSortDirection(value);
+                              setCurrentPage(1); // Reset to page 1 when sort direction changes
+                              loadHoldingChanges(1, pageSize, undefined, holdingChangesSortBy, value);
+                            }}
+                            style={{ width: 100 }}
+                          >
+                            <Option value="asc">Asc</Option>
+                            <Option value="desc">Desc</Option>
+                          </Select>
+                          
                           <Text type="secondary">
                             Showing {holdingChanges?.data.length || 0} of {holdingChanges?.totalCount || 0} holdings
                           </Text>
@@ -710,18 +794,80 @@ const EnhancedAnalytics: React.FC = () => {
                   tab={
                     <span>
                       <TrophyOutlined />
-                      Top 15 Shares ({topShares.length})
+                      Top Shares ({topShares?.totalCount || 0})
                     </span>
                   } 
                   key="topShares"
                 >
-                  <Table
-                    dataSource={topShares}
-                    columns={topSharesColumns}
-                    rowKey="isin"
-                    pagination={false}
-                    scroll={{ x: 1000 }}
-                  />
+                  <div>
+                    <div style={{ marginBottom: 16 }}>
+                      <Space wrap>
+                        <Text strong>Sort by:</Text>
+                        <Select
+                          value={topSharesSortBy}
+                          onChange={(value) => {
+                            setTopSharesSortBy(value);
+                            // Reload top shares with new sorting
+                            loadTopShares();
+                          }}
+                          style={{ width: 150 }}
+                        >
+                          <Option value="securityName">Security Name</Option>
+                          <Option value="sector">Sector</Option>
+                          <Option value="industry">Industry</Option>
+                          <Option value="totalWeight">Total Weight</Option>
+                          <Option value="holdingFundsCount">Holding Funds Count</Option>
+                        </Select>
+                        
+                        <Select
+                          value={topSharesSortDirection}
+                          onChange={(value) => {
+                            setTopSharesSortDirection(value);
+                            // Reload top shares with new sorting
+                            loadTopShares();
+                          }}
+                          style={{ width: 100 }}
+                        >
+                          <Option value="asc">Asc</Option>
+                          <Option value="desc">Desc</Option>
+                        </Select>
+                        
+                        <Text type="secondary">
+                          Showing {topShares?.data.length || 0} of {topShares?.totalCount || 0} shares
+                        </Text>
+                      </Space>
+                    </div>
+                    
+                    <Table
+                      dataSource={topShares?.data || []}
+                      columns={topSharesColumns}
+                      rowKey="isin"
+                      pagination={{
+                        current: topShares?.page || 1,
+                        pageSize: topShares?.pageSize || 20,
+                        total: topShares?.totalCount || 0,
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total, range) =>
+                          `${range[0]}-${range[1]} of ${total} shares`,
+                        onChange: (page, pageSize) => {
+                          setTopSharesPage(page);
+                          if (pageSize !== topSharesPageSize) {
+                            setTopSharesPageSize(pageSize);
+                          }
+                          // Trigger reload with new pagination using updated values
+                          loadTopShares(page, pageSize);
+                        },
+                        onShowSizeChange: (_, size) => {
+                          setTopSharesPage(1); // Reset to first page when changing page size
+                          setTopSharesPageSize(size);
+                          // Trigger reload with new pagination using updated values
+                          loadTopShares(1, size);
+                        },
+                      }}
+                      scroll={{ x: 1000 }}
+                    />
+                  </div>
                 </TabPane>
 
                 <TabPane 
@@ -759,13 +905,20 @@ const EnhancedAnalytics: React.FC = () => {
                             </Row>
                             <div style={{ marginTop: 16 }}>
                               <Text strong>Top 5 Holdings:</Text>
-                              {snapshot.holdings?.slice(0, 5).map((holding: any, idx: number) => (
-                                <div key={idx} style={{ marginTop: 4 }}>
-                                  <Text style={{ fontSize: '12px' }}>
-                                    {holding.companyName}: {holding.weight?.toFixed(2)}%
+                              {Array.isArray(snapshot.holdings) ? 
+                                snapshot.holdings.slice(0, 5).map((holding: any, idx: number) => (
+                                  <div key={idx} style={{ marginTop: 4 }}>
+                                    <Text style={{ fontSize: '12px' }}>
+                                      {holding.companyName}: {holding.weight?.toFixed(2)}%
+                                    </Text>
+                                  </div>
+                                )) : 
+                                <div style={{ marginTop: 4 }}>
+                                  <Text style={{ fontSize: '12px', color: '#999' }}>
+                                    No holdings data available
                                   </Text>
                                 </div>
-                              ))}
+                              }
                             </div>
                           </Card>
                         </Col>
@@ -946,16 +1099,38 @@ const EnhancedAnalytics: React.FC = () => {
                 <Space direction="vertical" size={2}>
                   <Text>ISIN: {selectedHoldingModalData.isin}</Text>
                   <Text>Sector: {selectedHoldingModalData.sector}</Text>
-                  <Tag color={
-                    selectedHoldingModalData.changeType === 'Added' ? 'green' :
-                    selectedHoldingModalData.changeType === 'Removed' ? 'red' :
-                    selectedHoldingModalData.changeType === 'Increased' ? 'blue' :
-                    selectedHoldingModalData.changeType === 'Decreased' ? 'orange' :
-                    selectedHoldingModalData.changeType === 'Mixed' ? 'purple' :
-                    'default'
-                  }>
-                    {selectedHoldingModalData.changeType}
-                  </Tag>
+                  <Space>
+                    <Tag color={
+                      selectedHoldingModalData.changeType === 'Added' ? 'green' :
+                      selectedHoldingModalData.changeType === 'Removed' ? 'red' :
+                      selectedHoldingModalData.changeType === 'Increased' ? 'blue' :
+                      selectedHoldingModalData.changeType === 'Decreased' ? 'orange' :
+                      selectedHoldingModalData.changeType === 'Mixed' ? 'purple' :
+                      'default'
+                    }>
+                      {selectedHoldingModalData.changeType}
+                    </Tag>
+                    {selectedHoldingModalData.changeType === 'Mixed' && selectedHoldingModalData.constituentChangeTypes && (
+                      <Space>
+                        <Text type="secondary">Contains:</Text>
+                        {selectedHoldingModalData.constituentChangeTypes.map((type: string) => (
+                          <Tag 
+                            key={type}
+                            color={
+                              type === 'Added' ? 'green' :
+                              type === 'Removed' ? 'red' :
+                              type === 'Increased' ? 'blue' :
+                              type === 'Decreased' ? 'orange' :
+                              'default'
+                            }
+                            style={{ fontSize: '11px', padding: '1px 6px' }}
+                          >
+                            {type}
+                          </Tag>
+                        ))}
+                      </Space>
+                    )}
+                  </Space>
                 </Space>
               }
               type="info"

@@ -8,6 +8,8 @@ public class AnalyticsRequestDto
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public string? ChangeTypeFilter { get; set; } // Added, Removed, Increased, Decreased, Mixed, or null for all
+    public string? SortBy { get; set; } // Column to sort by: SecurityName, Sector, Industry, PreviousWeight, CurrentWeight, WeightChange, ChangeType, MutualFundsCount
+    public string? SortDirection { get; set; } = "desc"; // asc or desc
 }
 
 public class AnalyticsResponseDto
@@ -16,7 +18,7 @@ public class AnalyticsResponseDto
     public DateTime FromDate { get; set; }
     public DateTime ToDate { get; set; }
     public PagedResult<HoldingChangeDto> AddedRemovedHoldings { get; set; } = new();
-    public List<TopShareDto> TopShares { get; set; } = new();
+    public PagedResult<TopShareDto> TopShares { get; set; } = new();
     public AnalyticsSummaryDto Summary { get; set; } = new();
 }
 
@@ -32,6 +34,7 @@ public class HoldingChangeDto
     public string ChangeType { get; set; } = string.Empty; // Added, Removed, Increased, Decreased, Mixed
     public List<string> MutualFundNames { get; set; } = new();
     public List<FundChangeDetailDto> FundChangeDetails { get; set; } = new(); // Details for each fund's contribution
+    public List<string> ConstituentChangeTypes { get; set; } = new(); // For Mixed: list of constituent change types (Added, Removed, etc.)
     public DateTime FromDate { get; set; }
     public DateTime ToDate { get; set; }
 }
@@ -99,4 +102,15 @@ public class MutualFundDateAvailability
     public DateTime? MinDate { get; set; }
     public DateTime? MaxDate { get; set; }
     public List<DateTime> AvailableDates { get; set; } = new();
+}
+
+public class TopSharesRequestDto
+{
+    public List<int> MutualFundIds { get; set; } = new();
+    public DateTime FromDate { get; set; }
+    public DateTime ToDate { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 15;
+    public string? SortBy { get; set; } // SecurityName, Sector, Industry, TotalWeight, HoldingFundsCount, ISIN
+    public string? SortDirection { get; set; } = "desc"; // asc or desc
 }

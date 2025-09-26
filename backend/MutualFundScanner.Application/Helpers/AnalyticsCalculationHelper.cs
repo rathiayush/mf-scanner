@@ -203,6 +203,7 @@ public class AnalyticsCalculationHelper
                     ChangeType = change.ChangeType
                 }
             },
+            ConstituentChangeTypes = new List<string> { change.ChangeType }, // Single fund, single change type
             FromDate = fromDate,
             ToDate = toDate
         }).ToList();
@@ -221,9 +222,22 @@ public class AnalyticsCalculationHelper
                 var totalCurrentWeight = fundChanges.Sum(c => c.CurrentWeight);
                 var totalWeightChange = totalCurrentWeight - totalPreviousWeight;
                 
-                // Get individual change types
+                // Get individual change types and fund details
                 var individualChangeTypes = fundChanges.Select(c => c.ChangeType).ToList();
+                var allFundDetails = fundChanges.SelectMany(fc => fc.FundChangeDetails).ToList();
                 var overallChangeType = DetermineOverallChangeType(individualChangeTypes, totalPreviousWeight, totalCurrentWeight);
+                
+                // Get constituent change types for Mixed scenarios
+                var constituentChangeTypes = new List<string>();
+                if (overallChangeType == "Mixed" && allFundDetails.Any())
+                {
+                    constituentChangeTypes = allFundDetails
+                        .Select(fd => fd.ChangeType)
+                        .Distinct()
+                        .Where(ct => ct != "Unchanged")
+                        .OrderBy(ct => ct)
+                        .ToList();
+                }
                 
                 return new HoldingChangeDto
                 {
@@ -236,7 +250,8 @@ public class AnalyticsCalculationHelper
                     WeightChange = totalWeightChange,
                     ChangeType = overallChangeType,
                     MutualFundNames = g.SelectMany(c => c.MutualFundNames).Distinct().OrderBy(name => name).ToList(),
-                    FundChangeDetails = fundChanges.SelectMany(fc => fc.FundChangeDetails).ToList(),
+                    FundChangeDetails = allFundDetails.OrderBy(fd => fd.MutualFundName).ToList(),
+                    ConstituentChangeTypes = constituentChangeTypes,
                     FromDate = g.First().FromDate,
                     ToDate = g.First().ToDate
                 };
@@ -293,27 +308,45 @@ public class AnalyticsCalculationHelper
     }
 
     /// <summary>
-    /// Applies filtering and pagination to holding changes
+    /// Applies filtering, sorting and pagination to holding changes
     /// </summary>
     public PagedResult<HoldingChangeDto> ApplyFilteringAndPagination(
         List<HoldingChangeDto> changes,
         string? changeTypeFilter,
         int page,
-        int pageSize)
+        int pageSize,
+        string? sortBy = null,
+        string? sortDirection = "desc")
     {
-        var orderedChanges = changes.OrderByDescending(c => Math.Abs(c.WeightChange)).ToList();
-
-        var filteredChanges = orderedChanges;
+        // Apply enhanced filtering that includes Mixed changes with constituent types
+        var filteredChanges = changes;
         if (!string.IsNullOrEmpty(changeTypeFilter))
         {
             _logger.LogInformation("Applying change type filter: {ChangeTypeFilter}", changeTypeFilter);
-            filteredChanges = orderedChanges.Where(c => c.ChangeType == changeTypeFilter).ToList();
-            _logger.LogInformation("Filtered changes count: {FilteredCount} from original count: {OriginalCount}", 
-                filteredChanges.Count, orderedChanges.Count);
+            
+            filteredChanges = changes.Where(c => 
+            {
+                // Direct match
+                if (c.ChangeType == changeTypeFilter) return true;
+                
+                // For Mixed changes, check if any fund has the requested change type
+                if (c.ChangeType == "Mixed" && c.FundChangeDetails != null)
+                {
+                    return c.FundChangeDetails.Any(fd => fd.ChangeType == changeTypeFilter);
+                }
+                
+                return false;
+            }).ToList();
+            
+            _logger.LogInformation("Enhanced filtered changes count: {FilteredCount} from original count: {OriginalCount} (includes Mixed with {ChangeTypeFilter})", 
+                filteredChanges.Count, changes.Count, changeTypeFilter);
         }
 
-        var totalCount = filteredChanges.Count;
-        var pagedChanges = filteredChanges.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        // Apply sorting
+        var sortedChanges = ApplySorting(filteredChanges, sortBy, sortDirection);
+
+        var totalCount = sortedChanges.Count;
+        var pagedChanges = sortedChanges.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
         return new PagedResult<HoldingChangeDto>
         {
@@ -321,6 +354,61 @@ public class AnalyticsCalculationHelper
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize
+        };
+    }
+
+    /// <summary>
+    /// Applies sorting to holding changes based on specified column and direction
+    /// </summary>
+    private List<HoldingChangeDto> ApplySorting(List<HoldingChangeDto> changes, string? sortBy, string? sortDirection)
+    {
+        if (string.IsNullOrEmpty(sortBy))
+        {
+            // Default sorting by absolute weight change descending
+            return changes.OrderByDescending(c => Math.Abs(c.WeightChange)).ToList();
+        }
+
+        var isAscending = sortDirection?.ToLower() == "asc";
+        
+        return sortBy.ToLower() switch
+        {
+            "securityname" => isAscending 
+                ? changes.OrderBy(c => c.SecurityName).ToList()
+                : changes.OrderByDescending(c => c.SecurityName).ToList(),
+            
+            "sector" => isAscending 
+                ? changes.OrderBy(c => c.Sector).ToList()
+                : changes.OrderByDescending(c => c.Sector).ToList(),
+            
+            "industry" => isAscending 
+                ? changes.OrderBy(c => c.Industry).ToList()
+                : changes.OrderByDescending(c => c.Industry).ToList(),
+            
+            "previousweight" => isAscending 
+                ? changes.OrderBy(c => c.PreviousWeight ?? 0).ToList()
+                : changes.OrderByDescending(c => c.PreviousWeight ?? 0).ToList(),
+            
+            "currentweight" => isAscending 
+                ? changes.OrderBy(c => c.CurrentWeight).ToList()
+                : changes.OrderByDescending(c => c.CurrentWeight).ToList(),
+            
+            "weightchange" => isAscending 
+                ? changes.OrderBy(c => c.WeightChange).ToList()
+                : changes.OrderByDescending(c => c.WeightChange).ToList(),
+            
+            "changetype" => isAscending 
+                ? changes.OrderBy(c => c.ChangeType).ToList()
+                : changes.OrderByDescending(c => c.ChangeType).ToList(),
+            
+            "mutualfundscount" => isAscending 
+                ? changes.OrderBy(c => c.MutualFundNames.Count).ToList()
+                : changes.OrderByDescending(c => c.MutualFundNames.Count).ToList(),
+            
+            "isin" => isAscending 
+                ? changes.OrderBy(c => c.ISIN).ToList()
+                : changes.OrderByDescending(c => c.ISIN).ToList(),
+            
+            _ => changes.OrderByDescending(c => Math.Abs(c.WeightChange)).ToList() // Default fallback
         };
     }
 
@@ -347,7 +435,7 @@ public class AnalyticsCalculationHelper
     public List<TopShareDto> CreateTopSharesFromSnapshots(
         List<PortfolioSnapshot> snapshots,
         Dictionary<int, string> fundNames,
-        int topCount = 15)
+        int? topCount = null)
     {
         var allHoldings = new Dictionary<string, TopShareDto>();
 
@@ -383,7 +471,8 @@ public class AnalyticsCalculationHelper
             }
         }
 
-        return allHoldings.Values.OrderByDescending(s => s.TotalWeight).Take(topCount).ToList();
+        var orderedHoldings = allHoldings.Values.OrderByDescending(s => s.TotalWeight);
+        return topCount.HasValue ? orderedHoldings.Take(topCount.Value).ToList() : orderedHoldings.ToList();
     }
 
     /// <summary>

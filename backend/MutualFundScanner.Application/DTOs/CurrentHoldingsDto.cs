@@ -12,6 +12,10 @@ public class CurrentHoldingsRequestDto
 
     public DateTime? DateRangeStart { get; set; }
     public DateTime? DateRangeEnd { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+    public string? SortBy { get; set; } // Symbol, CompanyName, Quantity, Price, Value, Weight, Sector, Industry
+    public string? SortDirection { get; set; } = "desc"; // asc or desc
 }
 
 public class CurrentHoldingDto
@@ -35,6 +39,6 @@ public class CurrentHoldingsResponseDto
     public string MutualFundName { get; set; } = string.Empty;
     public DateTime Date { get; set; }
     public decimal TotalValue { get; set; }
-    public List<CurrentHoldingDto> Holdings { get; set; } = new();
+    public PagedResult<CurrentHoldingDto> Holdings { get; set; } = new();
     public int HoldingsCount { get; set; }
 }
