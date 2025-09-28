@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.29.212:5247/api';
+const API_BASE_URL = 'http://172.19.32.1:5247/api';
 
 export interface ConcreteMutualFundDto {
   id: number;

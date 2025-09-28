@@ -37,7 +37,7 @@ public class AnalyticsCalculationHelper
     /// <summary>
     /// Represents the change in a security holding for a specific fund
     /// </summary>
-    private class FundSecurityChange
+    public class FundSecurityChange
     {
         public int FundId { get; set; }
         public string FundName { get; set; } = "";
@@ -60,9 +60,16 @@ public class AnalyticsCalculationHelper
     /// </summary>
     private string DetermineChangeType(decimal fromWeight, decimal toWeight)
     {
+        // If from weight is 0 and to weight is positive, it's added
         if (fromWeight == 0 && toWeight > 0) return "Added";
+        
+        // If from weight is positive and to weight is 0, it's removed
         if (fromWeight > 0 && toWeight == 0) return "Removed";
         
+        // If both weights are 0, it's unchanged
+        if (fromWeight == 0 && toWeight == 0) return "Unchanged";
+        
+        // Both weights are positive, check for significant change
         var weightDiff = toWeight - fromWeight;
         if (Math.Abs(weightDiff) < WEIGHT_THRESHOLD) return "Unchanged";
         
@@ -109,6 +116,11 @@ public class AnalyticsCalculationHelper
             foreach (var holding in snapshot.Holdings.Where(h => !string.IsNullOrEmpty(h.ISIN)))
             {
                 var key = (snapshot.MutualFundId, holding.ISIN!);
+                
+                // Check if this is a "to" snapshot with NULL weights (indicating removal)
+                // We need to distinguish between 0 weight and NULL/missing data
+                var weight = holding.Weight;
+                
                 holdings[key] = new FundSecurityHolding
                 {
                     FundId = snapshot.MutualFundId,
@@ -117,8 +129,8 @@ public class AnalyticsCalculationHelper
                     SecurityName = holding.SecurityName ?? "",
                     Sector = holding.Sector ?? "",
                     Industry = holding.Industry ?? "",
-                    Weight = holding.Weight,
-                    Exists = true
+                    Weight = weight,
+                    Exists = weight > 0m // Only exists if weight is positive
                 };
             }
         }
@@ -131,7 +143,7 @@ public class AnalyticsCalculationHelper
     /// <summary>
     /// Main method: Calculates holding changes from snapshots with clean, maintainable logic
     /// </summary>
-    public List<HoldingChangeDto> CalculateHoldingChangesFromSnapshots(
+    public List<FundSecurityChange> CalculateHoldingChangesFromSnapshots(
         List<PortfolioSnapshot> fromSnapshots,
         List<PortfolioSnapshot> toSnapshots,
         Dictionary<int, string> fundNames,
@@ -156,12 +168,37 @@ public class AnalyticsCalculationHelper
             // Skip if no meaningful change occurred
             if (fromHolding == null && toHolding == null) continue;
             
+            // Get weights - handle the case where holdings might exist but have 0 weight
             var fromWeight = fromHolding?.Weight ?? 0;
             var toWeight = toHolding?.Weight ?? 0;
-            var changeType = DetermineChangeType(fromWeight, toWeight);
             
-            if (changeType == "Unchanged") continue;
+            // Special handling for the case where both holdings exist but toWeight is 0
+            // This could indicate a removal OR a data issue
+            string changeType;
+            if (fromHolding != null && toHolding != null && fromWeight > 0 && toWeight == 0)
+            {
+                // Check if this is truly a removal or a data issue
+                // For now, we'll treat it as unchanged if both holdings exist
+                // This prevents false "Removed" detections
+                _logger.LogWarning("Potential data issue: Fund {FundId} ({FundName}) has holding in both snapshots but toWeight is 0. ISIN: {ISIN}", 
+                    fundId, fundNames[fundId], isin);
+                
+                // Treat as unchanged rather than removed to avoid false positives
+                changeType = "Unchanged";
+            }
+            else
+            {
+                // Log for debugging INOX Wind Limited
+                if (isin == "INE066P01011")
+                {
+                    _logger.LogInformation("Fund {FundId} ({FundName}): FromWeight={FromWeight}, ToWeight={ToWeight}", 
+                        fundId, fundNames[fundId], fromWeight, toWeight);
+                }
+                
+                changeType = DetermineChangeType(fromWeight, toWeight);
+            }
             
+            // Include all changes, even unchanged ones, for proper aggregation
             // Get security details from whichever holding exists
             var securityInfo = toHolding ?? fromHolding!;
             
@@ -179,7 +216,14 @@ public class AnalyticsCalculationHelper
             });
         }
         
-        // Convert to DTOs
+        return fundChanges;
+    }
+
+    /// <summary>
+    /// Converts fund security changes to holding change DTOs
+    /// </summary>
+    public List<HoldingChangeDto> ConvertFundChangesToDto(List<FundSecurityChange> fundChanges, DateTime fromDate, DateTime toDate)
+    {
         return fundChanges.Select(change => new HoldingChangeDto
         {
             ISIN = change.ISIN,
@@ -212,26 +256,36 @@ public class AnalyticsCalculationHelper
     /// <summary>
     /// Groups holding changes by ISIN with enhanced mixed scenario detection
     /// </summary>
-    public List<HoldingChangeDto> GroupChangesByISIN(List<HoldingChangeDto> changes)
+    public List<HoldingChangeDto> GroupChangesByISIN(List<FundSecurityChange> fundChanges, DateTime fromDate, DateTime toDate)
     {
-        return changes
+        return fundChanges
             .GroupBy(c => c.ISIN)
             .Select(g => {
-                var fundChanges = g.ToList();
-                var totalPreviousWeight = fundChanges.Sum(c => c.PreviousWeight ?? 0);
-                var totalCurrentWeight = fundChanges.Sum(c => c.CurrentWeight);
+                var changesForIsin = g.ToList();
+                var totalPreviousWeight = changesForIsin.Sum(c => c.FromWeight);
+                var totalCurrentWeight = changesForIsin.Sum(c => c.ToWeight);
                 var totalWeightChange = totalCurrentWeight - totalPreviousWeight;
                 
-                // Get individual change types and fund details
-                var individualChangeTypes = fundChanges.Select(c => c.ChangeType).ToList();
-                var allFundDetails = fundChanges.SelectMany(fc => fc.FundChangeDetails).ToList();
+                // Get individual change types
+                var individualChangeTypes = changesForIsin.Select(c => c.ChangeType).ToList();
                 var overallChangeType = DetermineOverallChangeType(individualChangeTypes, totalPreviousWeight, totalCurrentWeight);
+                
+                // Create fund change details
+                var fundChangeDetails = changesForIsin.Select(fc => new FundChangeDetailDto
+                {
+                    MutualFundId = fc.FundId,
+                    MutualFundName = fc.FundName,
+                    PreviousWeight = fc.FromWeight,
+                    CurrentWeight = fc.ToWeight,
+                    WeightChange = fc.WeightChange,
+                    ChangeType = fc.ChangeType
+                }).ToList();
                 
                 // Get constituent change types for Mixed scenarios
                 var constituentChangeTypes = new List<string>();
-                if (overallChangeType == "Mixed" && allFundDetails.Any())
+                if (overallChangeType == "Mixed" && fundChangeDetails.Any())
                 {
-                    constituentChangeTypes = allFundDetails
+                    constituentChangeTypes = fundChangeDetails
                         .Select(fd => fd.ChangeType)
                         .Distinct()
                         .Where(ct => ct != "Unchanged")
@@ -249,11 +303,11 @@ public class AnalyticsCalculationHelper
                     CurrentWeight = totalCurrentWeight,
                     WeightChange = totalWeightChange,
                     ChangeType = overallChangeType,
-                    MutualFundNames = g.SelectMany(c => c.MutualFundNames).Distinct().OrderBy(name => name).ToList(),
-                    FundChangeDetails = allFundDetails.OrderBy(fd => fd.MutualFundName).ToList(),
+                    MutualFundNames = changesForIsin.Select(c => c.FundName).Distinct().OrderBy(name => name).ToList(),
+                    FundChangeDetails = fundChangeDetails.OrderBy(fd => fd.MutualFundName).ToList(),
                     ConstituentChangeTypes = constituentChangeTypes,
-                    FromDate = g.First().FromDate,
-                    ToDate = g.First().ToDate
+                    FromDate = fromDate,
+                    ToDate = toDate
                 };
             })
             .Where(c => c.ChangeType != "Unchanged")

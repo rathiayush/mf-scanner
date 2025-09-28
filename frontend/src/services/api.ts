@@ -20,10 +20,13 @@ import {
   CurrentHoldingsRequestDto,
   CurrentHoldingsResponseDto,
   UploadV2RequestDto,
-  UploadV2ResponseDto
+  UploadV2ResponseDto,
+  SecurityAnalyticsRequestDto,
+  SecurityAnalyticsResponseDto,
+  AvailableSecuritiesResponseDto
 } from '../types';
 
-const API_BASE_URL = 'http://192.168.29.212:5247/api'; // Backend API URL - Using network IP
+const API_BASE_URL = 'http://172.19.32.1:5247/api'; // Backend API URL - Using network IP
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -268,6 +271,23 @@ export const analyticsService = {
     });
     
     console.log('API validateDatesForFunds response:', response.data);
+    return response.data;
+  },
+
+  getSecurityAnalytics: async (request: SecurityAnalyticsRequestDto): Promise<SecurityAnalyticsResponseDto> => {
+    const response = await api.post('/securityanalytics/analyze', request);
+    return response.data;
+  },
+
+  getAvailableSecurities: async (securityNameSearch?: string): Promise<AvailableSecuritiesResponseDto> => {
+    const params = securityNameSearch ? { securityNameSearch } : {};
+    const response = await api.get('/securityanalytics/available-securities', { params });
+    return response.data;
+  },
+
+  getSecuritiesByIsin: async (isinSearch?: string): Promise<AvailableSecuritiesResponseDto> => {
+    const params = isinSearch ? { isinSearch } : {};
+    const response = await api.get('/securityanalytics/securities-by-isin', { params });
     return response.data;
   },
 };

@@ -56,6 +56,7 @@ builder.Services.AddScoped<IMutualFundService, MutualFundScanner.Application.Ser
 builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Services.AnalyticsService>();
 builder.Services.AddScoped<IFileUploadService, MutualFundScanner.Application.Services.FileUploadService>();
 builder.Services.AddScoped<IConcreteMutualFundService, MutualFundScanner.Application.Services.ConcreteMutualFundService>();
+builder.Services.AddScoped<ISecurityAnalyticsService, SecurityAnalyticsService>();
 
 // Register Repository Services
 builder.Services.AddScoped<IConcreteMutualFundRepository, ConcreteMutualFundRepository>();

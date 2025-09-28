@@ -128,6 +128,15 @@ export interface FileUploadRequestDto {
   files: File[];
 }
 
+export interface UploadV2ResponseDto {
+  success: boolean;
+  message: string;
+  detectionResults: MutualFundDetectionResult[];
+  processedFileIds: number[];
+  createdMutualFunds: number;
+  processedFiles: number;
+}
+
 export interface FileUploadResponseDto {
   success: boolean;
   message: string;
@@ -308,11 +317,64 @@ export interface MutualFundDetectionResult {
   columnFound: number;
 }
 
-export interface UploadV2ResponseDto {
-  success: boolean;
-  message: string;
-  detectionResults: MutualFundDetectionResult[];
-  processedFileIds: number[];
-  createdMutualFunds: number;
-  processedFiles: number;
+export interface SecurityAnalyticsRequestDto {
+  isin?: string;
+  securityName?: string;
+  fromDate: string;
+  toDate: string;
+  page: number;
+  pageSize: number;
+  sortBy?: string;
+  sortDirection?: string;
+}
+
+export interface SecurityMonthlyChangeDto {
+  monthYear: string;
+  changeTypes: MonthlyChangeTypeDto[];
+  totalMutualFundsCount: number;
+  totalAbsoluteWeightChange: number;
+  allFundChanges: SecurityFundChangeDto[];
+}
+
+export interface MonthlyChangeTypeDto {
+  changeType: string;
+  mutualFundsCount: number;
+  totalWeightChange: number;
+}
+
+export interface SecurityFundChangeDto {
+  mutualFundId: number;
+  mutualFundName: string;
+  previousWeight: number;
+  currentWeight: number;
+  weightChange: number;
+  changeType: string;
+}
+
+export interface SecurityAnalyticsResponseDto {
+  isin: string;
+  securityName: string;
+  fromDate: string;
+  toDate: string;
+  monthlyChanges: SecurityMonthlyChangeDto[];
+  totalMutualFunds: number;
+  summary: SecurityAnalyticsSummaryDto;
+}
+
+export interface SecurityAnalyticsSummaryDto {
+  totalMonthsAnalyzed: number;
+  monthsWithChanges: number;
+  totalMutualFundsInvolved: number;
+  totalAbsoluteWeightChange: number;
+  changeTypeCounts: { [key: string]: number };
+}
+
+export interface SecurityDropdownDto {
+  isin: string;
+  securityName: string;
+  displayName: string;
+}
+
+export interface AvailableSecuritiesResponseDto {
+  securities: SecurityDropdownDto[];
 }

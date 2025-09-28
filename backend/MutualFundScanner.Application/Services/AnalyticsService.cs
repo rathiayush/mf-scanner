@@ -135,7 +135,7 @@ public class AnalyticsService : IAnalyticsService
             request.ToDate);
 
         // Group changes by ISIN
-        var groupedChanges = _analyticsCalculationHelper.GroupChangesByISIN(changes);
+        var groupedChanges = _analyticsCalculationHelper.GroupChangesByISIN(changes, request.FromDate, request.ToDate);
 
         // Apply database-level sorting by querying holdings with sorting applied
         var sortedAndFilteredChanges = await ApplyDatabaseLevelSortingAsync(

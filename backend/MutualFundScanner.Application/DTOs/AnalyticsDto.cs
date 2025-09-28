@@ -114,3 +114,73 @@ public class TopSharesRequestDto
     public string? SortBy { get; set; } // SecurityName, Sector, Industry, TotalWeight, HoldingFundsCount, ISIN
     public string? SortDirection { get; set; } = "desc"; // asc or desc
 }
+
+public class SecurityAnalyticsRequestDto
+{
+    public string? ISIN { get; set; }
+    public string? SecurityName { get; set; }
+    public DateTime FromDate { get; set; }
+    public DateTime ToDate { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+    public string? SortBy { get; set; } // Date, ChangeType, MutualFundName, WeightChange
+    public string? SortDirection { get; set; } = "desc"; // asc or desc
+}
+
+public class SecurityMonthlyChangeDto
+{
+    public DateTime MonthYear { get; set; }
+    public List<MonthlyChangeTypeDto> ChangeTypes { get; set; } = new();
+    public int TotalMutualFundsCount { get; set; }
+    public decimal TotalAbsoluteWeightChange { get; set; }
+    public List<SecurityFundChangeDto> AllFundChanges { get; set; } = new();
+}
+
+public class MonthlyChangeTypeDto
+{
+    public string ChangeType { get; set; } = string.Empty;
+    public int MutualFundsCount { get; set; }
+    public decimal TotalWeightChange { get; set; }
+}
+
+public class SecurityFundChangeDto
+{
+    public int MutualFundId { get; set; }
+    public string MutualFundName { get; set; } = string.Empty;
+    public decimal PreviousWeight { get; set; }
+    public decimal CurrentWeight { get; set; }
+    public decimal WeightChange { get; set; }
+    public string ChangeType { get; set; } = string.Empty;
+}
+
+public class SecurityAnalyticsResponseDto
+{
+    public string ISIN { get; set; } = string.Empty;
+    public string SecurityName { get; set; } = string.Empty;
+    public DateTime FromDate { get; set; }
+    public DateTime ToDate { get; set; }
+    public List<SecurityMonthlyChangeDto> MonthlyChanges { get; set; } = new();
+    public int TotalMutualFunds { get; set; }
+    public SecurityAnalyticsSummaryDto Summary { get; set; } = new();
+}
+
+public class SecurityAnalyticsSummaryDto
+{
+    public int TotalMonthsAnalyzed { get; set; }
+    public int MonthsWithChanges { get; set; }
+    public int TotalMutualFundsInvolved { get; set; }
+    public decimal TotalAbsoluteWeightChange { get; set; }
+    public Dictionary<string, int> ChangeTypeCounts { get; set; } = new();
+}
+
+public class SecurityDropdownDto
+{
+    public string ISIN { get; set; } = string.Empty;
+    public string SecurityName { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+}
+
+public class AvailableSecuritiesResponseDto
+{
+    public List<SecurityDropdownDto> Securities { get; set; } = new();
+}

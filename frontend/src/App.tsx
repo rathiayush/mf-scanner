@@ -6,6 +6,7 @@ import HoldingsComparison from './components/Holdings/HoldingsComparison';
 import PortfolioSummary from './components/Holdings/PortfolioSummary';
 import UploadV2 from './components/Upload/UploadV2';
 import ConcreteMutualFunds from './pages/ConcreteMutualFunds';
+import { SecurityAnalytics } from './components/Analytics';
 
 const App: React.FC = () => {
   const [selectedMenuKey, setSelectedMenuKey] = useState('1');
@@ -20,6 +21,8 @@ const App: React.FC = () => {
         return <FileUploadPage />;
       case '2':
         return <AnalysePage />;
+      case '3':
+        return <SecurityAnalytics />;
       case '4':
         return <MutualFundListPage />;
       case '5':
