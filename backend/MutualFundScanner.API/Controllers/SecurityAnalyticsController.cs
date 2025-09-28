@@ -20,17 +20,33 @@ public class SecurityAnalyticsController : ControllerBase
     }
 
     [HttpGet("available-securities")]
-    public async Task<IActionResult> GetAvailableSecurities()
+    public async Task<IActionResult> GetAvailableSecurities([FromQuery] string? securityNameSearch = null)
     {
         try
         {
-            _logger.LogInformation("GetAvailableSecurities called");
-            var result = await _securityAnalyticsService.GetAvailableSecuritiesAsync();
+            _logger.LogInformation("GetAvailableSecurities called with securityNameSearch: {SecurityNameSearch}", securityNameSearch);
+            var result = await _securityAnalyticsService.GetAvailableSecuritiesAsync(securityNameSearch);
             return Ok(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting available securities");
+            return StatusCode(500, new { Message = ex.Message });
+        }
+    }
+
+    [HttpGet("securities-by-isin")]
+    public async Task<IActionResult> GetSecuritiesByIsin([FromQuery] string? isinSearch = null)
+    {
+        try
+        {
+            _logger.LogInformation("GetSecuritiesByIsin called with isinSearch: {IsinSearch}", isinSearch);
+            var result = await _securityAnalyticsService.GetSecuritiesByIsinAsync(isinSearch);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting securities by ISIN");
             return StatusCode(500, new { Message = ex.Message });
         }
     }
