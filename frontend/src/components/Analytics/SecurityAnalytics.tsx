@@ -56,6 +56,7 @@ const SecurityAnalytics: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [showFundDetailsModal, setShowFundDetailsModal] = useState(false);
   const [selectedMonthData, setSelectedMonthData] = useState<SecurityMonthlyChangeDto | null>(null);
+  const [fundChangeFilter, setFundChangeFilter] = useState<string>('all');
 
   // Sorting state
   const [sortBy, setSortBy] = useState<string>('monthYear');
@@ -90,6 +91,7 @@ const SecurityAnalytics: React.FC = () => {
         .filter((security, index, self) =>
           index === self.findIndex(s => s.isin === security.isin)
         );
+
       setAvailableSecurities(uniqueSecurities);
     } catch (error: any) {
       console.error('Failed to load available securities:', error);
@@ -143,6 +145,16 @@ const SecurityAnalytics: React.FC = () => {
   };
 
   const filteredSecurities = availableSecurities;
+
+  const getFilteredFundChanges = () => {
+    if (!selectedMonthData) return [];
+
+    if (fundChangeFilter === 'all') {
+      return selectedMonthData.allFundChanges;
+    }
+
+    return selectedMonthData.allFundChanges.filter(fund => fund.changeType === fundChangeFilter);
+  };
 
   const monthlyChangesColumns = [
     {
@@ -235,13 +247,38 @@ const SecurityAnalytics: React.FC = () => {
               <Col span={12}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>Search Security</Text>
-                  <Search
+                  <Select
                     placeholder="Enter ISIN (e.g., INE040A01034)"
                     value={isinSearchTerm}
-                    onChange={(e) => setIsinSearchTerm(e.target.value)}
+                    onChange={(value) => {
+                      setIsinSearchTerm(value);
+                      // Auto-select security if ISIN matches exactly one result
+                      const matchingSecurity = availableSecurities.find(s => s.isin === value);
+                      if (matchingSecurity) {
+                        setSelectedSecurity(matchingSecurity);
+                      }
+                    }}
+                    onSearch={(value) => setIsinSearchTerm(value)}
+                    showSearch
+                    filterOption={false}
                     style={{ width: '100%' }}
                     allowClear
-                  />
+                    loading={searchLoading}
+                    notFoundContent={searchLoading ? 'Searching...' : 'No ISIN found'}
+                  >
+                    {availableSecurities
+                      .filter(security => security.isin.toLowerCase().includes(isinSearchTerm.toLowerCase()))
+                      .map(security => (
+                        <Option key={security.isin} value={security.isin}>
+                          <Space>
+                            <Text>{security.securityName}</Text>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                              ({security.isin})
+                            </Text>
+                          </Space>
+                        </Option>
+                      ))}
+                  </Select>
                   <Select
                     style={{ width: '100%' }}
                     placeholder="Select a security to analyze"
@@ -464,6 +501,26 @@ const SecurityAnalytics: React.FC = () => {
       >
         {selectedMonthData && (
           <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+            <div style={{ marginBottom: 16 }}>
+              <Space>
+                <Text strong>Filter by Change Type:</Text>
+                <Select
+                  value={fundChangeFilter}
+                  onChange={setFundChangeFilter}
+                  style={{ width: 150 }}
+                >
+                  <Option value="all">All Changes</Option>
+                  <Option value="Added">Added</Option>
+                  <Option value="Removed">Removed</Option>
+                  <Option value="Increased">Increased</Option>
+                  <Option value="Decreased">Decreased</Option>
+                </Select>
+                <Text type="secondary">
+                  Showing {getFilteredFundChanges().length} of {selectedMonthData.allFundChanges.length} funds
+                </Text>
+              </Space>
+            </div>
+
             <Alert
               message={`${dayjs(selectedMonthData.monthYear).format('MMMM YYYY')} - Multiple Change Types`}
               description={
@@ -493,7 +550,7 @@ const SecurityAnalytics: React.FC = () => {
             />
 
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              {[...new Map(selectedMonthData.allFundChanges.map(fund => [fund.mutualFundId, fund])).values()]
+              {getFilteredFundChanges()
                 .map((fund: SecurityFundChangeDto, index: number) => (
                 <Card
                   key={fund.mutualFundId}
