@@ -77,23 +77,27 @@ public class AnalyticsCalculationHelper
     }
 
     /// <summary>
-    /// Determines overall change type when multiple funds have different changes for same security
+    /// Determines overall change types when multiple funds have different changes for same security
+    /// Returns a list of distinct change types (may include "Unchanged")
     /// </summary>
-    private string DetermineOverallChangeType(List<string> individualChangeTypes, decimal totalFromWeight, decimal totalToWeight)
+    private List<string> DetermineOverallChangeTypes(List<string> individualChangeTypes, decimal totalFromWeight, decimal totalToWeight)
     {
-        var uniqueTypes = individualChangeTypes.Distinct().ToList();
+        // Get unique change types from all individual fund changes
+        var uniqueTypes = individualChangeTypes
+            .Distinct()
+            .OrderBy(ct => ct)
+            .ToList();
         
-        // If multiple different change types exist, it's mixed
-        if (uniqueTypes.Count > 1) return "Mixed";
+        // If only one change type, return it
+        if (uniqueTypes.Count == 1)
+        {
+            return uniqueTypes;
+        }
         
-        // If all funds have same change type, verify against total weights
-        var singleType = uniqueTypes.FirstOrDefault() ?? "Unchanged";
-        var weightBasedType = DetermineChangeType(totalFromWeight, totalToWeight);
-        
-        // If weight-based determination differs from individual types, it's mixed
-        if (weightBasedType == "Unchanged" && singleType != "Unchanged") return "Mixed";
-        
-        return weightBasedType;
+        // If multiple change types exist, return all of them (including "Unchanged" if it exists)
+        // This ensures that when a user filters by "Added", they see both pure "Added" records
+        // and "Mixed" records that contain "Added"
+        return uniqueTypes;
     }
 
     #endregion
@@ -254,7 +258,7 @@ public class AnalyticsCalculationHelper
     }
 
     /// <summary>
-    /// Groups holding changes by ISIN with enhanced mixed scenario detection
+    /// Groups holding changes by ISIN with enhanced multiple change type detection
     /// </summary>
     public List<HoldingChangeDto> GroupChangesByISIN(List<FundSecurityChange> fundChanges, DateTime fromDate, DateTime toDate)
     {
@@ -268,7 +272,22 @@ public class AnalyticsCalculationHelper
                 
                 // Get individual change types
                 var individualChangeTypes = changesForIsin.Select(c => c.ChangeType).ToList();
-                var overallChangeType = DetermineOverallChangeType(individualChangeTypes, totalPreviousWeight, totalCurrentWeight);
+                var overallChangeTypes = DetermineOverallChangeTypes(individualChangeTypes, totalPreviousWeight, totalCurrentWeight);
+                
+                // Determine primary change type for backward compatibility
+                string primaryChangeType;
+                if (overallChangeTypes.Count == 0)
+                {
+                    primaryChangeType = "Unchanged";
+                }
+                else if (overallChangeTypes.Count == 1)
+                {
+                    primaryChangeType = overallChangeTypes.First();
+                }
+                else
+                {
+                    primaryChangeType = "Mixed";
+                }
                 
                 // Create fund change details
                 var fundChangeDetails = changesForIsin.Select(fc => new FundChangeDetailDto
@@ -281,17 +300,8 @@ public class AnalyticsCalculationHelper
                     ChangeType = fc.ChangeType
                 }).ToList();
                 
-                // Get constituent change types for Mixed scenarios
-                var constituentChangeTypes = new List<string>();
-                if (overallChangeType == "Mixed" && fundChangeDetails.Any())
-                {
-                    constituentChangeTypes = fundChangeDetails
-                        .Select(fd => fd.ChangeType)
-                        .Distinct()
-                        .Where(ct => ct != "Unchanged")
-                        .OrderBy(ct => ct)
-                        .ToList();
-                }
+                // Always populate constituent change types (including "Unchanged" when relevant)
+                var constituentChangeTypes = overallChangeTypes;
                 
                 return new HoldingChangeDto
                 {
@@ -302,7 +312,7 @@ public class AnalyticsCalculationHelper
                     PreviousWeight = totalPreviousWeight,
                     CurrentWeight = totalCurrentWeight,
                     WeightChange = totalWeightChange,
-                    ChangeType = overallChangeType,
+                    ChangeType = primaryChangeType,
                     MutualFundNames = changesForIsin.Select(c => c.FundName).Distinct().OrderBy(name => name).ToList(),
                     FundChangeDetails = fundChangeDetails.OrderBy(fd => fd.MutualFundName).ToList(),
                     ConstituentChangeTypes = constituentChangeTypes,

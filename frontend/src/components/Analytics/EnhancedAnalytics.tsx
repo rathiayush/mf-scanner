@@ -231,8 +231,38 @@ const EnhancedAnalytics: React.FC = () => {
   const handleStatusFilterChange = (value: string) => {
     setSelectedStatusFilter(value);
     setCurrentPage(1); // Reset to page 1 when filter changes
-    // Reload holding changes with the new filter, passing the new value directly
     loadHoldingChanges(1, pageSize, value);
+  };
+
+  const filterByStatus = (data: HoldingChangeDto[], status: string) => {
+    if (status === 'all') return data;
+    
+    return data.filter(item => {
+      // Handle "Only" filters - show records that have ONLY that specific change type
+      if (status.startsWith('Only ')) {
+        const baseChangeType = status.replace('Only ', '');
+        
+        // Check if the main change type matches the base type
+        if (item.changeType !== baseChangeType) return false;
+        
+        // For "Only" filters, ensure there's only one change type (no mixing)
+        if (item.constituentChangeTypes && item.constituentChangeTypes.length > 0) {
+          // Should only have one unique change type that matches the requested type
+          return item.constituentChangeTypes.length === 1 && item.constituentChangeTypes[0] === baseChangeType;
+        }
+        
+        // If no constituent change types, just check the main change type
+        return item.changeType === baseChangeType;
+      }
+      
+      // Check if the main change type matches
+      if (item.changeType === status) return true;
+      
+      // Check if the constituent change types contain the selected status
+      if (item.constituentChangeTypes && item.constituentChangeTypes.includes(status)) return true;
+      
+      return false;
+    });
   };
 
   const loadTopShares = async (page?: number, pageSize?: number, sortBy?: string, sortDirection?: string) => {
@@ -312,16 +342,37 @@ const EnhancedAnalytics: React.FC = () => {
       title: 'Change Type',
       dataIndex: 'changeType',
       key: 'changeType',
-      width: 100,
-      render: (type: string) => {
+      width: 200,
+      render: (type: string, record: HoldingChangeDto) => {
         const colors = {
           Added: 'green',
           Removed: 'red',
           Increased: 'blue',
           Decreased: 'orange',
-          Mixed: 'purple'
+          Mixed: 'purple',
+          Unchanged: 'default'
         };
-        return <Tag color={colors[type as keyof typeof colors]}>{type}</Tag>;
+        
+        // Get the change types to display
+        const changeTypesToShow = record.constituentChangeTypes && record.constituentChangeTypes.length > 0 
+          ? record.constituentChangeTypes 
+          : [type];
+        
+        return (
+          <Space direction="vertical" size="small">
+            <Space size="small" wrap>
+              {changeTypesToShow.map((changeType, index) => (
+                <Tag 
+                  key={index} 
+                  color={colors[changeType as keyof typeof colors] || 'default'}
+                  style={{ fontSize: '10px' }}
+                >
+                  {changeType}
+                </Tag>
+              ))}
+            </Space>
+          </Space>
+        );
       },
     },
     {
@@ -721,14 +772,25 @@ const EnhancedAnalytics: React.FC = () => {
                             value={selectedStatusFilter}
                             onChange={handleStatusFilterChange}
                             style={{ width: 150 }}
+                            placeholder="Select filter type"
                           >
                             <Option value="all">All Statuses</Option>
                             <Option value="Added">Added</Option>
                             <Option value="Removed">Removed</Option>
                             <Option value="Increased">Increased</Option>
                             <Option value="Decreased">Decreased</Option>
+                            <Select.OptGroup label="Exclusive Filters">
+                              <Option value="Only Added">Only Added</Option>
+                              <Option value="Only Removed">Only Removed</Option>
+                              <Option value="Only Increased">Only Increased</Option>
+                              <Option value="Only Decreased">Only Decreased</Option>
+                            </Select.OptGroup>
                             <Option value="Mixed">Mixed</Option>
+                            <Option value="Unchanged">Unchanged</Option>
                           </Select>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            Exclusive filters show only pure change types
+                          </Text>
                           
                           <Text strong>Sort by:</Text>
                           <Select
@@ -769,23 +831,23 @@ const EnhancedAnalytics: React.FC = () => {
                         </Space>
                       </div>
                       <Table
-                        dataSource={holdingChanges?.data || []}
-                      columns={holdingChangesColumns}
-                      rowKey="isin"
-                      loading={loading}
-                      pagination={{
-                        current: holdingChanges?.page || 1,
-                        pageSize: holdingChanges?.pageSize || 20,
-                        total: holdingChanges?.totalCount || 0,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) =>
-                          `${range[0]}-${range[1]} of ${total} holdings`,
-                        onChange: handleTableChange,
-                        onShowSizeChange: handleTableChange,
-                      }}
-                      scroll={{ x: 1200 }}
-                    />
+                        dataSource={filterByStatus(holdingChanges?.data || [], selectedStatusFilter)}
+                        columns={holdingChangesColumns}
+                        rowKey="isin"
+                        loading={loading}
+                        pagination={{
+                          current: holdingChanges?.page || 1,
+                          pageSize: holdingChanges?.pageSize || 20,
+                          total: filterByStatus(holdingChanges?.data || [], selectedStatusFilter).length,
+                          showSizeChanger: true,
+                          showQuickJumper: true,
+                          showTotal: (total, range) =>
+                            `${range[0]}-${range[1]} of ${total} holdings`,
+                          onChange: handleTableChange,
+                          onShowSizeChange: handleTableChange,
+                        }}
+                        scroll={{ x: 1200 }}
+                      />
                     </div>
                   )}
                 </TabPane>
@@ -1147,20 +1209,40 @@ const EnhancedAnalytics: React.FC = () => {
                     onChange={setModalFilterType}
                     style={{ width: 150 }}
                     size="small"
+                    placeholder="Select filter type"
                   >
                     <Option value="all">All Funds</Option>
                     <Option value="Added">Added</Option>
                     <Option value="Removed">Removed</Option>
                     <Option value="Increased">Increased</Option>
                     <Option value="Decreased">Decreased</Option>
+                    <Select.OptGroup label="Exclusive Filters">
+                      <Option value="Only Added">Only Added</Option>
+                      <Option value="Only Removed">Only Removed</Option>
+                      <Option value="Only Increased">Only Increased</Option>
+                      <Option value="Only Decreased">Only Decreased</Option>
+                    </Select.OptGroup>
                   </Select>
+                  <Text type="secondary" style={{ fontSize: '11px' }}>
+                    Exclusive filters show pure change types
+                  </Text>
                 </Space>
               </Col>
             </Row>
             
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               {selectedHoldingModalData.fundChangeDetails
-                ?.filter((fund: any) => modalFilterType === 'all' || fund.changeType === modalFilterType)
+                ?.filter((fund: any) => {
+                  if (modalFilterType === 'all') return true;
+                  
+                  // Handle "Only" filters for modal
+                  if (modalFilterType.startsWith('Only ')) {
+                    const baseChangeType = modalFilterType.replace('Only ', '');
+                    return fund.changeType === baseChangeType;
+                  }
+                  
+                  return fund.changeType === modalFilterType;
+                })
                 ?.map((fund: any, index: number) => (
                 <Card 
                   key={fund.mutualFundId} 
