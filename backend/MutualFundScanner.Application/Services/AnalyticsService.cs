@@ -175,27 +175,7 @@ public class AnalyticsService : IAnalyticsService
         if (!string.IsNullOrEmpty(changeTypeFilter))
         {
             _logger.LogInformation("Applying change type filter: {ChangeTypeFilter}", changeTypeFilter);
-            
-            // Handle "Only" filters - show records that have ONLY that specific change type
-            if (changeTypeFilter.StartsWith("Only "))
-            {
-                var baseChangeType = changeTypeFilter.Replace("Only ", "");
-                
-                filteredChanges = changes.Where(c => 
-                    c.ChangeType == baseChangeType &&
-                    (c.ConstituentChangeTypes == null || 
-                     c.ConstituentChangeTypes.Count == 1 && 
-                     c.ConstituentChangeTypes[0] == baseChangeType)
-                ).ToList();
-            }
-            else
-            {
-                // Regular filters
-                filteredChanges = changes.Where(c => 
-                    c.ChangeType == changeTypeFilter || 
-                    (c.ConstituentChangeTypes != null && c.ConstituentChangeTypes.Contains(changeTypeFilter))
-                ).ToList();
-            }
+            filteredChanges = changes.Where(c => c.ChangeType == changeTypeFilter).ToList();
         }
 
         // Determine if we can use database sorting or need in-memory sorting
