@@ -179,4 +179,32 @@ public class MutualFundController : ControllerBase
             return StatusCode(500, new { Message = ex.Message });
         }
     }
+
+    [HttpDelete("hard-delete")]
+    public async Task<IActionResult> HardDeleteMutualFunds([FromBody] DeleteMutualFundsRequestDto request)
+    {
+        try
+        {
+            _logger.LogInformation("Hard delete request received for {Count} mutual funds", 
+                request.MutualFundIds?.Count ?? 0);
+            
+            var result = await _mutualFundService.HardDeleteMutualFundsAsync(request);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation("Successfully hard deleted {Count} mutual funds", result.DeletedFunds.Count);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Hard delete operation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error hard deleting mutual funds");
+            return StatusCode(500, new { Message = "An error occurred while deleting mutual funds." });
+        }
+    }
 }

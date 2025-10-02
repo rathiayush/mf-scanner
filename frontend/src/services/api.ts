@@ -23,7 +23,9 @@ import {
   UploadV2ResponseDto,
   SecurityAnalyticsRequestDto,
   SecurityAnalyticsResponseDto,
-  AvailableSecuritiesResponseDto
+  AvailableSecuritiesResponseDto,
+  DeleteMutualFundsRequestDto,
+  DeleteMutualFundsResponseDto
 } from '../types';
 
 const API_BASE_URL = 'http://172.19.32.1:5247/api'; // Backend API URL - Using network IP
@@ -117,10 +119,14 @@ export const mutualFundService = {
   },
 
   // Legacy compatibility
-  getAllMutualFunds: async (): Promise<MutualFundDto[]> => {
-    const response = await api.get('/MutualFund');
-    return response.data;
+  getAllMutualFunds(): Promise<MutualFundDto[]> {
+    return api.get('/mutualfund').then(res => res.data);
   },
+
+  // Hard delete mutual funds
+  hardDeleteMutualFunds(request: DeleteMutualFundsRequestDto): Promise<DeleteMutualFundsResponseDto> {
+    return api.delete('/mutualfund/hard-delete', { data: request }).then(res => res.data);
+  }
 };
 
 export const fileUploadService = {
@@ -296,6 +302,7 @@ export const uploadV2Service = {
   uploadFiles: async (request: UploadV2RequestDto): Promise<UploadV2ResponseDto> => {
     const formData = new FormData();
     formData.append('reportDate', request.reportDate);
+    formData.append('performDateCheck', request.performDateCheck?.toString() ?? 'true');
     
     request.files.forEach((file) => {
       formData.append('files', file);

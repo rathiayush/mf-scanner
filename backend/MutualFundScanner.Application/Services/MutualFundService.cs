@@ -288,6 +288,131 @@ public class MutualFundService : IMutualFundService
         }).ToList();
     }
 
+    public async Task<DeleteMutualFundsResponseDto> HardDeleteMutualFundsAsync(DeleteMutualFundsRequestDto request)
+    {
+        var response = new DeleteMutualFundsResponseDto();
+        
+        if (!request.ConfirmDeletion)
+        {
+            response.Success = false;
+            response.Message = "Deletion confirmation is required.";
+            return response;
+        }
+
+        if (request.MutualFundIds == null || !request.MutualFundIds.Any())
+        {
+            response.Success = false;
+            response.Message = "No mutual fund IDs provided for deletion.";
+            return response;
+        }
+
+        try
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            
+            // First, get fund information for logging and response
+            var fundIdsString = string.Join(",", request.MutualFundIds);
+            var fundsQuery = $"SELECT Id, FundName, FundCode FROM MutualFunds WHERE Id IN ({fundIdsString})";
+            var funds = await _context.Database.SqlQueryRaw<MutualFundInfo>(fundsQuery).ToListAsync();
+            
+            var foundFundIds = funds.Select(f => f.Id).ToHashSet();
+            var missingFundIds = request.MutualFundIds.Except(foundFundIds).ToList();
+            
+            foreach (var missingFundId in missingFundIds)
+            {
+                response.Errors.Add($"Mutual fund with ID {missingFundId} not found.");
+            }
+            
+            if (!foundFundIds.Any())
+            {
+                response.Success = false;
+                response.Message = "No valid mutual funds found for deletion.";
+                return response;
+            }
+            
+            var validFundIdsString = string.Join(",", foundFundIds);
+            
+            // Execute deletion in the correct order to respect foreign key constraints
+            
+            // 1. Delete holdings from portfolio files
+            var deletePortfolioFileHoldingsSql = $"DELETE FROM PortfolioHoldings WHERE PortfolioFileId IN (SELECT Id FROM PortfolioFiles WHERE MutualFundId IN ({validFundIdsString}))";
+            var portfolioFileHoldingsDeleted = await _context.Database.ExecuteSqlRawAsync(deletePortfolioFileHoldingsSql);
+            
+            // 2. Delete holdings from portfolio snapshots
+            var deletePortfolioSnapshotHoldingsSql = $"DELETE FROM PortfolioHoldings WHERE PortfolioSnapshotId IN (SELECT Id FROM PortfolioSnapshots WHERE MutualFundId IN ({validFundIdsString}))";
+            var portfolioSnapshotHoldingsDeleted = await _context.Database.ExecuteSqlRawAsync(deletePortfolioSnapshotHoldingsSql);
+            
+            // 3. Delete holding changes
+            var deleteHoldingChangesSql = $"DELETE FROM HoldingChanges WHERE MutualFundId IN ({validFundIdsString})";
+            var holdingChangesDeleted = await _context.Database.ExecuteSqlRawAsync(deleteHoldingChangesSql);
+            
+            // 4. Delete portfolio files
+            var deletePortfolioFilesSql = $"DELETE FROM PortfolioFiles WHERE MutualFundId IN ({validFundIdsString})";
+            var filesDeleted = await _context.Database.ExecuteSqlRawAsync(deletePortfolioFilesSql);
+            
+            // 5. Delete portfolio snapshots
+            var deletePortfolioSnapshotsSql = $"DELETE FROM PortfolioSnapshots WHERE MutualFundId IN ({validFundIdsString})";
+            var snapshotsDeleted = await _context.Database.ExecuteSqlRawAsync(deletePortfolioSnapshotsSql);
+            
+            // 6. Delete the mutual funds themselves
+            var deleteMutualFundsSql = $"DELETE FROM MutualFunds WHERE Id IN ({validFundIdsString})";
+            var mutualFundsDeleted = await _context.Database.ExecuteSqlRawAsync(deleteMutualFundsSql);
+            
+            await transaction.CommitAsync();
+            
+            // Build response with deleted fund information
+            foreach (var fund in funds)
+            {
+                var deletedFundInfo = new DeletedMutualFundInfo
+                {
+                    Id = fund.Id,
+                    FundName = fund.FundName,
+                    FundCode = fund.FundCode,
+                    HoldingsDeleted = 0, // We don't have per-fund breakdown with this approach
+                    HoldingChangesDeleted = 0,
+                    FilesDeleted = 0,
+                    SnapshotsDeleted = 0
+                };
+                
+                response.DeletedFunds.Add(deletedFundInfo);
+                
+                _logger.LogInformation("Hard deleted mutual fund: {FundName} (ID: {Id})", fund.FundName, fund.Id);
+            }
+            
+            // Set summary counts
+            if (response.DeletedFunds.Any())
+            {
+                var firstFund = response.DeletedFunds.First();
+                firstFund.HoldingsDeleted = portfolioFileHoldingsDeleted + portfolioSnapshotHoldingsDeleted;
+                firstFund.HoldingChangesDeleted = holdingChangesDeleted;
+                firstFund.FilesDeleted = filesDeleted;
+                firstFund.SnapshotsDeleted = snapshotsDeleted;
+            }
+            
+            response.Success = mutualFundsDeleted > 0;
+            response.Message = response.Success 
+                ? $"Successfully deleted {mutualFundsDeleted} mutual fund(s). Deleted {portfolioFileHoldingsDeleted + portfolioSnapshotHoldingsDeleted} holdings, {holdingChangesDeleted} holding changes, {filesDeleted} files, and {snapshotsDeleted} snapshots." 
+                : "No mutual funds were deleted.";
+        }
+        catch (Exception ex)
+        {
+            response.Success = false;
+            response.Message = "An error occurred during the deletion process.";
+            response.Errors.Add(ex.Message);
+            _logger.LogError(ex, "Error in HardDeleteMutualFundsAsync");
+        }
+
+        return response;
+    }
+    
+    // Helper class for SQL query results
+    private class MutualFundInfo
+    {
+        public int Id { get; set; }
+        public string FundName { get; set; } = string.Empty;
+        public string FundCode { get; set; } = string.Empty;
+    }
+
     private MutualFundDto MapToDto(MutualFund fund)
     {
         return new MutualFundDto

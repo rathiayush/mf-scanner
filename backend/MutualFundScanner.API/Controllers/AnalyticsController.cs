@@ -37,7 +37,7 @@ public class AnalyticsController : ControllerBase
             {
                 return BadRequest(new { Message = "From date must be before to date" });
             }
-
+            
             var result = await _analyticsService.GetAnalyticsAsync(request);
             return Ok(result);
         }

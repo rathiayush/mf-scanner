@@ -8,7 +8,6 @@ import {
   Modal,
   Form,
   Input,
-  DatePicker,
   InputNumber,
   Switch,
   Select,
@@ -17,14 +16,17 @@ import {
   Tag,
   Row,
   Col,
-  Statistic
+  Statistic,
+  Checkbox,
+  Alert
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
-  FundOutlined
+  FundOutlined,
+  WarningOutlined
 } from '@ant-design/icons';
 import { mutualFundService } from '../../services/api';
 import {
@@ -32,7 +34,9 @@ import {
   CreateMutualFundDto,
   UpdateMutualFundDto,
   MutualFundSearchDto,
-  PagedResult
+  PagedResult,
+  DeleteMutualFundsRequestDto,
+  DeleteMutualFundsResponseDto
 } from '../../types';
 import dayjs from 'dayjs';
 
@@ -71,6 +75,13 @@ const MutualFundManagement: React.FC = () => {
     pageSize: 20
   });
   const [form] = Form.useForm<MutualFundFormData>();
+  
+  // Hard delete states
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [hardDeleteModalVisible, setHardDeleteModalVisible] = useState(false);
+  const [confirmDeletion, setConfirmDeletion] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [hardDeleteLoading, setHardDeleteLoading] = useState(false);
 
   useEffect(() => {
     loadFunds();
@@ -186,6 +197,65 @@ const MutualFundManagement: React.FC = () => {
     } catch (error: any) {
       message.error(error.message || 'Failed to delete mutual fund');
     }
+  };
+
+  // Hard delete functionality
+  const handleHardDelete = async () => {
+    if (!confirmDeletion) {
+      message.error('Please confirm the deletion to proceed');
+      return;
+    }
+
+    setHardDeleteLoading(true);
+    try {
+      const request: DeleteMutualFundsRequestDto = {
+        mutualFundIds: selectedRowKeys.map(key => Number(key)),
+        confirmDeletion: true,
+        reason: deleteReason
+      };
+
+      const response: DeleteMutualFundsResponseDto = await mutualFundService.hardDeleteMutualFunds(request);
+      
+      if (response.success) {
+        message.success(`Successfully deleted ${response.deletedFunds.length} mutual funds`);
+        setSelectedRowKeys([]);
+        setHardDeleteModalVisible(false);
+        setConfirmDeletion(false);
+        setDeleteReason('');
+        loadFunds();
+      } else {
+        message.error(response.message || 'Failed to delete mutual funds');
+      }
+    } catch (error: any) {
+      message.error(error.message || 'Failed to delete mutual funds');
+    } finally {
+      setHardDeleteLoading(false);
+    }
+  };
+
+  const showHardDeleteModal = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select at least one mutual fund to delete');
+      return;
+    }
+    setHardDeleteModalVisible(true);
+  };
+
+  const handleHardDeleteModalCancel = () => {
+    setHardDeleteModalVisible(false);
+    setConfirmDeletion(false);
+    setDeleteReason('');
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(newSelectedRowKeys);
+    },
+    getCheckboxProps: (record: MutualFundDto) => ({
+      disabled: false,
+      name: record.fundName,
+    }),
   };
 
   const columns = [
@@ -332,13 +402,23 @@ const MutualFundManagement: React.FC = () => {
           <Card 
             title="Search & Filter"
             extra={
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => showModal()}
-              >
-                Add Mutual Fund
-              </Button>
+              <Space>
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={showHardDeleteModal}
+                  disabled={selectedRowKeys.length === 0}
+                >
+                  Hard Delete ({selectedRowKeys.length})
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => showModal()}
+                >
+                  Add Mutual Fund
+                </Button>
+              </Space>
             }
           >
             <Form
@@ -391,11 +471,12 @@ const MutualFundManagement: React.FC = () => {
         </Col>
 
         <Col span={24}>
-          <Card>
+          <Card title="Mutual Funds">
             <Table
-              dataSource={funds.data}
               columns={columns}
+              dataSource={funds.data}
               rowKey="id"
+              rowSelection={rowSelection}
               loading={loading}
               pagination={{
                 current: funds.page,
@@ -403,10 +484,8 @@ const MutualFundManagement: React.FC = () => {
                 total: funds.totalCount,
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} of ${total} funds`,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
                 onChange: handleTableChange,
-                onShowSizeChange: handleTableChange,
               }}
               scroll={{ x: 1200 }}
             />
@@ -414,6 +493,7 @@ const MutualFundManagement: React.FC = () => {
         </Col>
       </Row>
 
+      {/* Add/Edit Modal */}
       <Modal
         title={editingFund ? 'Edit Mutual Fund' : 'Add Mutual Fund'}
         open={modalVisible}
@@ -423,14 +503,10 @@ const MutualFundManagement: React.FC = () => {
           setEditingFund(null);
           form.resetFields();
         }}
-        width={600}
-        destroyOnClose
+        width={800}
+        confirmLoading={loading}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ isActive: true, status: 'Active' }}
-        >
+        <Form form={form} layout="vertical">
           <Form.Item
             name="fundName"
             label="Fund Name"
@@ -523,6 +599,64 @@ const MutualFundManagement: React.FC = () => {
             </Row>
           )}
         </Form>
+      </Modal>
+
+      {/* Hard Delete Confirmation Modal */}
+      <Modal
+        title="Hard Delete Mutual Funds"
+        open={hardDeleteModalVisible}
+        onOk={handleHardDelete}
+        onCancel={handleHardDeleteModalCancel}
+        width={600}
+        confirmLoading={hardDeleteLoading}
+        okButtonProps={{
+          danger: true,
+          disabled: !confirmDeletion,
+        }}
+        okText="Delete Permanently"
+      >
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Alert
+            message="Warning: Permanent Deletion"
+            description="This action will permanently delete the selected mutual funds and all associated data including portfolio files, snapshots, holdings, and holding changes. This action cannot be undone."
+            type="warning"
+            showIcon
+            icon={<WarningOutlined />}
+          />
+          
+          <div>
+            <Text strong>You are about to delete {selectedRowKeys.length} mutual fund(s):</Text>
+            <div style={{ marginTop: 8, maxHeight: 120, overflowY: 'auto', border: '1px solid #d9d9d9', borderRadius: 4, padding: 8 }}>
+              {funds.data
+                .filter(fund => selectedRowKeys.includes(fund.id))
+                .map(fund => (
+                  <div key={fund.id} style={{ marginBottom: 4 }}>
+                    <Text>{fund.fundName} ({fund.fundCode})</Text>
+                  </div>
+                ))}
+            </div>
+          </div>
+          
+          <Form layout="vertical">
+            <Form.Item label="Reason for deletion (optional):">
+              <Input.TextArea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Please provide a reason for this deletion..."
+                rows={3}
+              />
+            </Form.Item>
+            
+            <Form.Item>
+              <Checkbox
+                checked={confirmDeletion}
+                onChange={(e) => setConfirmDeletion(e.target.checked)}
+              >
+                <Text strong>I understand that this action is permanent and cannot be undone.</Text>
+              </Checkbox>
+            </Form.Item>
+          </Form>
+        </Space>
       </Modal>
     </div>
   );

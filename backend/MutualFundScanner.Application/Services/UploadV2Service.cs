@@ -53,30 +53,38 @@ public class UploadV2Service : IUploadV2Service
             // Use report date directly (already a DateTime type)
             DateTime? reportDate = request.ReportDate;
 
-            // Step 1: Validate date consistency for all files
+            // Step 1: Validate date consistency for all files (only if PerformDateCheck is true)
             var hasValidationErrors = false;
-            foreach (var file in request.Files)
+            if (request.PerformDateCheck)
             {
-                var dateValidationResult = DateValidationHelper.ValidateDateConsistency(file.FileName, reportDate);
-                if (!dateValidationResult.IsValid)
+                _logger.LogInformation("Date validation is enabled - validating date consistency for all files");
+                foreach (var file in request.Files)
                 {
-                    response.FileErrors.Add(new FileError
+                    var dateValidationResult = DateValidationHelper.ValidateDateConsistency(file.FileName, reportDate);
+                    if (!dateValidationResult.IsValid)
                     {
-                        FileName = file.FileName,
-                        ErrorMessage = dateValidationResult.ErrorMessage,
-                        ErrorType = "Validation"
-                    });
-                    hasValidationErrors = true;
-                    _logger.LogWarning("Date validation failed for file {FileName}: {Error}", file.FileName, dateValidationResult.ErrorMessage);
+                        response.FileErrors.Add(new FileError
+                        {
+                            FileName = file.FileName,
+                            ErrorMessage = dateValidationResult.ErrorMessage,
+                            ErrorType = "Validation"
+                        });
+                        hasValidationErrors = true;
+                        _logger.LogWarning("Date validation failed for file {FileName}: {Error}", file.FileName, dateValidationResult.ErrorMessage);
+                    }
+                }
+
+                // If all files failed validation, return error
+                if (hasValidationErrors && response.FileErrors.Count == request.Files.Count)
+                {
+                    response.Success = false;
+                    response.Message = "All files failed date validation";
+                    return response;
                 }
             }
-
-            // If all files failed validation, return error
-            if (hasValidationErrors && response.FileErrors.Count == request.Files.Count)
+            else
             {
-                response.Success = false;
-                response.Message = "All files failed date validation";
-                return response;
+                _logger.LogInformation("Date validation is disabled - skipping date consistency checks");
             }
 
             // Step 2: Detect mutual funds from each file (handling multi-sheet files)

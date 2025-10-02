@@ -69,3 +69,30 @@ public class PagedResult<T>
     public bool HasNextPage => Page < TotalPages;
     public bool HasPreviousPage => Page > 1;
 }
+
+// DTOs for Hard Delete Mutual Fund functionality
+public class DeleteMutualFundsRequestDto
+{
+    public List<int> MutualFundIds { get; set; } = new();
+    public bool ConfirmDeletion { get; set; } = false;
+    public string? Reason { get; set; }
+}
+
+public class DeleteMutualFundsResponseDto
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public List<DeletedMutualFundInfo> DeletedFunds { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
+}
+
+public class DeletedMutualFundInfo
+{
+    public int Id { get; set; }
+    public string FundName { get; set; } = string.Empty;
+    public string FundCode { get; set; } = string.Empty;
+    public int FilesDeleted { get; set; }
+    public int SnapshotsDeleted { get; set; }
+    public int HoldingsDeleted { get; set; }
+    public int HoldingChangesDeleted { get; set; }
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Button, DatePicker, Card, Table, Tag, message, Space, Typography } from 'antd';
+import { Upload, Button, DatePicker, Card, Table, Tag, message, Space, Typography, Switch } from 'antd';
 import { InboxOutlined, UploadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Dayjs } from 'dayjs';
 import { UploadV2RequestDto, UploadV2ResponseDto, MutualFundDetectionResult } from '../../types';
@@ -15,6 +15,7 @@ interface UploadV2Props {
 const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [reportDate, setReportDate] = useState<Dayjs | null>(null);
+  const [performDateCheck, setPerformDateCheck] = useState<boolean>(true);
   const [uploading, setUploading] = useState(false);
   const [uploadResponse, setUploadResponse] = useState<UploadV2ResponseDto | null>(null);
 
@@ -38,7 +39,8 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
     try {
       const request: UploadV2RequestDto = {
         reportDate: reportDate.format('YYYY-MM-DD'),
-        files: files
+        files: files,
+        performDateCheck: performDateCheck
       };
 
       const response = await uploadV2Service.uploadFiles(request);
@@ -62,6 +64,7 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
   const handleReset = () => {
     setFiles([]);
     setReportDate(null);
+    setPerformDateCheck(true);
     setUploadResponse(null);
   };
 
@@ -162,6 +165,25 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
                 style={{ width: 200 }}
                 disabled={uploading}
               />
+            </div>
+
+            {/* Date Validation Toggle */}
+            <div>
+              <Title level={4}>Date Validation</Title>
+              <Space>
+                <Switch
+                  checked={performDateCheck}
+                  onChange={setPerformDateCheck}
+                  disabled={uploading}
+                  checkedChildren="Enabled"
+                  unCheckedChildren="Disabled"
+                />
+                <Text>
+                  {performDateCheck 
+                    ? 'Date validation enabled - filename dates must match report date'
+                    : 'Date validation disabled - files will be processed regardless of filename dates'}
+                </Text>
+              </Space>
             </div>
 
             {/* File Upload */}

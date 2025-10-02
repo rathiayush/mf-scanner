@@ -304,6 +304,13 @@ export interface CurrentHoldingsResponseDto {
 export interface UploadV2RequestDto {
   reportDate: string;
   files: File[];
+  /**
+   * Controls whether date validation should be performed on uploaded files
+   * When true, validates that filename dates match the reported date
+   * When false, skips date validation and processes files regardless of filename dates
+   * Default: true
+   */
+  performDateCheck?: boolean;
 }
 
 export interface MutualFundDetectionResult {
@@ -377,4 +384,28 @@ export interface SecurityDropdownDto {
 
 export interface AvailableSecuritiesResponseDto {
   securities: SecurityDropdownDto[];
+}
+
+// Hard Delete Mutual Fund DTOs
+export interface DeleteMutualFundsRequestDto {
+  mutualFundIds: number[];
+  confirmDeletion: boolean;
+  reason?: string;
+}
+
+export interface DeleteMutualFundsResponseDto {
+  success: boolean;
+  message: string;
+  deletedFunds: DeletedMutualFundInfo[];
+  errors: string[];
+}
+
+export interface DeletedMutualFundInfo {
+  id: number;
+  fundName: string;
+  fundCode: string;
+  filesDeleted: number;
+  snapshotsDeleted: number;
+  holdingsDeleted: number;
+  holdingChangesDeleted: number;
 }

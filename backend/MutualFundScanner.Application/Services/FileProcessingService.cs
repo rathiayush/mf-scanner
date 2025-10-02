@@ -419,6 +419,13 @@ public class FileProcessingService : IFileProcessingService
                     // Skip holdings where industry contains credit ratings
                     if (IsCreditRating(industry))
                         continue;
+                        
+                    // Skip securities with parentheses in their names
+                    if (ContainsParentheses(companyName))
+                    {
+                        _logger.LogDebug("Skipping security with parentheses: {Company}", companyName);
+                        continue;
+                    }
 
                     var holding = new PortfolioHolding
                     {
@@ -546,6 +553,13 @@ public class FileProcessingService : IFileProcessingService
                     // Skip holdings where sector contains credit ratings
                     if (IsCreditRating(sector))
                         continue;
+                        
+                    // Skip securities with parentheses in their names
+                    if (ContainsParentheses(companyName))
+                    {
+                        _logger.LogDebug("Skipping security with parentheses: {Company}", companyName);
+                        continue;
+                    }
 
                     var holding = new PortfolioHolding
                     {
@@ -681,6 +695,13 @@ public class FileProcessingService : IFileProcessingService
                     // Skip holdings where sector contains credit ratings
                     if (IsCreditRating(sector))
                         continue;
+                        
+                    // Skip securities with parentheses in their names
+                    if (ContainsParentheses(companyName))
+                    {
+                        _logger.LogDebug("Skipping security with parentheses: {Company}", companyName);
+                        continue;
+                    }
                         
                     var holding = new PortfolioHolding
                     {
@@ -1243,18 +1264,31 @@ public class FileProcessingService : IFileProcessingService
     {
         try
         {
-            // Create portfolio snapshot
-            var snapshot = new PortfolioSnapshot
+            PortfolioSnapshot snapshot = null;
+            var existingsapshot = await _context.PortfolioSnapshots.FirstOrDefaultAsync(x => x.MutualFund == portfolioFile.MutualFund && x.SnapshotDate == portfolioFile.ReportDate);
+            if (existingsapshot == null)
             {
-                MutualFundId = portfolioFile.MutualFundId,
-                SnapshotDate = portfolioFile.ReportDate,
-                TotalValue = holdings.Sum(h => h.MarketValue),
-                TotalHoldings = holdings.Count,
-                CreatedDate = DateTime.UtcNow
-            };
+                // Create portfolio snapshot
+                 snapshot = new PortfolioSnapshot
+                {
+                    MutualFundId = portfolioFile.MutualFundId,
+                    SnapshotDate = portfolioFile.ReportDate,
+                    TotalValue = holdings.Sum(h => h.MarketValue),
+                    TotalHoldings = holdings.Count,
+                    CreatedDate = DateTime.UtcNow
+                };
+                _context.PortfolioSnapshots.Add(snapshot);
+                await _context.SaveChangesAsync();
+            }
+            else {
+                // Create portfolio snapshot
+                snapshot = existingsapshot;
+                existingsapshot.Holdings = new List<PortfolioHolding>();
+                
+                await _context.SaveChangesAsync();
+                existingsapshot.Holdings = holdings;
+            }
 
-            _context.PortfolioSnapshots.Add(snapshot);
-            await _context.SaveChangesAsync();
 
             // Update PortfolioHolding entities with the PortfolioSnapshotId
             foreach (var holding in holdings)
@@ -1278,6 +1312,7 @@ public class FileProcessingService : IFileProcessingService
 
     /// <summary>
     /// Tracks holding changes by comparing current holdings with previous snapshot
+    /// and recalculates subsequent snapshots if needed
     /// </summary>
     private async Task TrackHoldingChangesAsync(int mutualFundId, DateTime currentDate, ICollection<PortfolioHolding> currentHoldings)
     {
@@ -1449,10 +1484,242 @@ public class FileProcessingService : IFileProcessingService
                 _logger.LogInformation("No holding changes detected for fund {FundId} between {FromDate} and {ToDate}",
                     mutualFundId, previousSnapshot.SnapshotDate, currentDate);
             }
+
+            // Check if this newly uploaded data fills a gap between existing snapshots
+            // If so, recalculate holding changes for all subsequent snapshots
+            await RecalculateSubsequentHoldingChangesAsync(mutualFundId, currentDate);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error tracking holding changes for fund {FundId} on {Date}", mutualFundId, currentDate);
         }
+    }
+
+    /// <summary>
+    /// Recalculates holding changes for the immediate next snapshot after the specified date
+    /// This is called when missing data is filled (e.g., uploading July data between June and August)
+    /// Only processes the very next snapshot, not all subsequent ones
+    /// </summary>
+    private async Task RecalculateSubsequentHoldingChangesAsync(int mutualFundId, DateTime filledDate)
+    {
+        try
+        {
+            // Find only the immediate next snapshot after the filled date
+            var nextSnapshot = await _context.PortfolioSnapshots
+                .Where(s => s.MutualFundId == mutualFundId && s.SnapshotDate > filledDate)
+                .OrderBy(s => s.SnapshotDate)
+                .FirstOrDefaultAsync();
+
+            if (nextSnapshot == null)
+            {
+                _logger.LogInformation("No next snapshot found for fund {FundId} after {Date}", mutualFundId, filledDate);
+                return;
+            }
+
+            _logger.LogInformation("Recalculating holding changes for the next snapshot {Date} for fund {FundId} after {Date}",
+                nextSnapshot.SnapshotDate, mutualFundId, filledDate);
+
+            // Process only the immediate next snapshot
+            var subsequentSnapshot = nextSnapshot;
+            
+            // Get the most recent snapshot before this subsequent snapshot
+            var previousSnapshot = await _context.PortfolioSnapshots
+                .Where(s => s.MutualFundId == mutualFundId && s.SnapshotDate < subsequentSnapshot.SnapshotDate)
+                .OrderByDescending(s => s.SnapshotDate)
+                .FirstOrDefaultAsync();
+
+            if (previousSnapshot == null)
+            {
+                _logger.LogWarning("No previous snapshot found for subsequent snapshot {Date} for fund {FundId}",
+                    subsequentSnapshot.SnapshotDate, mutualFundId);
+                return;
+            }
+
+            // Get holdings for both snapshots
+            var previousHoldings = await _context.PortfolioHoldings
+                .Where(h => h.PortfolioFile.MutualFundId == mutualFundId && 
+                           h.PortfolioFile.ReportDate == previousSnapshot.SnapshotDate)
+                .ToListAsync();
+
+            var currentHoldings = await _context.PortfolioHoldings
+                .Where(h => h.PortfolioFile.MutualFundId == mutualFundId && 
+                           h.PortfolioFile.ReportDate == subsequentSnapshot.SnapshotDate)
+                .ToListAsync();
+
+            // Remove existing holding changes for this snapshot
+            var existingChanges = await _context.HoldingChanges
+                .Where(c => c.MutualFundId == mutualFundId && c.ToDate == subsequentSnapshot.SnapshotDate)
+                .ToListAsync();
+
+            if (existingChanges.Any())
+            {
+                _context.HoldingChanges.RemoveRange(existingChanges);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Removed {Count} existing holding changes for fund {FundId} on {Date}",
+                    existingChanges.Count, mutualFundId, subsequentSnapshot.SnapshotDate);
+            }
+
+            // Recalculate holding changes
+            await RecalculateHoldingChangesForSnapshotAsync(mutualFundId, subsequentSnapshot.SnapshotDate, 
+                previousHoldings, currentHoldings, previousSnapshot.SnapshotDate);
+
+            _logger.LogInformation("Completed recalculation of holding changes for fund {FundId} after {Date}",
+                mutualFundId, filledDate);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recalculating subsequent holding changes for fund {FundId} after {Date}",
+                mutualFundId, filledDate);
+        }
+    }
+
+    /// <summary>
+    /// Recalculates holding changes for a specific snapshot
+    /// </summary>
+    private async Task RecalculateHoldingChangesForSnapshotAsync(int mutualFundId, DateTime currentDate, 
+        ICollection<PortfolioHolding> previousHoldings, ICollection<PortfolioHolding> currentHoldings, DateTime previousDate)
+    {
+        try
+        {
+            // Create dictionaries with proper duplicate handling
+            var fromHoldings = CreateHoldingDictionaryByISIN(previousHoldings);
+            var toHoldings = CreateHoldingDictionaryByISIN(currentHoldings);
+
+            var changes = new List<HoldingChange>();
+            var processedIsins = new HashSet<string>();
+
+            // Check for changes and new holdings using the dictionaries
+            foreach (var currentHolding in currentHoldings)
+            {
+                var isin = currentHolding.ISIN ?? string.Empty;
+                if (string.IsNullOrEmpty(isin)) continue;
+                
+                processedIsins.Add(isin);
+                
+                var previousHoldingExists = fromHoldings.TryGetValue(isin, out var previousHolding);
+                
+                if (!previousHoldingExists)
+                {
+                    // New holding added
+                    changes.Add(new HoldingChange
+                    {
+                        MutualFundId = mutualFundId,
+                        ISIN = currentHolding.ISIN,
+                        Ticker = currentHolding.Ticker,
+                        SecurityName = currentHolding.SecurityName,
+                        ChangeType = HoldingChangeType.Added,
+                        PreviousQuantity = null,
+                        NewQuantity = currentHolding.Quantity,
+                        PreviousWeight = null,
+                        NewWeight = currentHolding.Weight,
+                        PreviousValue = null,
+                        NewValue = currentHolding.MarketValue,
+                        FromDate = previousDate,
+                        ToDate = currentDate,
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    // Check for changes
+                    var quantityChanged = previousHolding!.Quantity != currentHolding.Quantity;
+                    var weightChanged = previousHolding!.Weight != currentHolding.Weight;
+                    var valueChanged = previousHolding!.MarketValue != currentHolding.MarketValue;
+
+                    if (quantityChanged || weightChanged || valueChanged)
+                    {
+                        var changeType = HoldingChangeType.Unchanged;
+                        if (quantityChanged)
+                        {
+                            changeType = currentHolding.Quantity > previousHolding!.Quantity 
+                                ? HoldingChangeType.Increased 
+                                : HoldingChangeType.Decreased;
+                        }
+                        else if (weightChanged)
+                        {
+                            changeType = currentHolding.Weight > previousHolding!.Weight 
+                                ? HoldingChangeType.Increased 
+                                : HoldingChangeType.Decreased;
+                        }
+
+                        changes.Add(new HoldingChange
+                        {
+                            MutualFundId = mutualFundId,
+                            ISIN = currentHolding.ISIN,
+                            Ticker = currentHolding.Ticker,
+                            SecurityName = currentHolding.SecurityName,
+                            ChangeType = changeType,
+                            PreviousQuantity = previousHolding!.Quantity,
+                            NewQuantity = currentHolding.Quantity,
+                            PreviousWeight = previousHolding!.Weight,
+                            NewWeight = currentHolding.Weight,
+                            PreviousValue = previousHolding!.MarketValue,
+                            NewValue = currentHolding.MarketValue,
+                            FromDate = previousDate,
+                            ToDate = currentDate,
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+
+            // Check for removed holdings using the dictionaries
+            foreach (var kvp in fromHoldings)
+            {
+                var isin = kvp.Key;
+                var previousHolding = kvp.Value;
+                
+                if (!processedIsins.Contains(isin))
+                {
+                    changes.Add(new HoldingChange
+                    {
+                        MutualFundId = mutualFundId,
+                        ISIN = previousHolding.ISIN,
+                        Ticker = previousHolding.Ticker,
+                        SecurityName = previousHolding.SecurityName,
+                        ChangeType = HoldingChangeType.Removed,
+                        PreviousQuantity = previousHolding.Quantity,
+                        NewQuantity = null,
+                        PreviousWeight = previousHolding.Weight,
+                        NewWeight = null,
+                        PreviousValue = previousHolding.MarketValue,
+                        NewValue = null,
+                        FromDate = previousDate,
+                        ToDate = currentDate,
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+            }
+
+            if (changes.Any())
+            {
+                _context.HoldingChanges.AddRange(changes);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Recalculated {Count} holding changes for fund {FundId} between {FromDate} and {ToDate}",
+                    changes.Count, mutualFundId, previousDate, currentDate);
+            }
+            else
+            {
+                _logger.LogInformation("No holding changes found during recalculation for fund {FundId} between {FromDate} and {ToDate}",
+                    mutualFundId, previousDate, currentDate);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recalculating holding changes for fund {FundId} on {Date}", mutualFundId, currentDate);
+        }
+    }
+
+    /// <summary>
+    /// Checks if a security or company name contains parentheses and should be ignored
+    /// </summary>
+    /// <param name="securityName">The security or company name to check</param>
+    /// <returns>True if the name contains parentheses and should be ignored, false otherwise</returns>
+    private bool ContainsParentheses(string securityName)
+    {
+        if (string.IsNullOrEmpty(securityName))
+            return false;
+            
+        return securityName.Contains('(') || securityName.Contains(')');
     }
 }

@@ -23,6 +23,9 @@ public interface IMutualFundService
     // New search and pagination methods
     Task<PagedResult<MutualFundDto>> SearchMutualFundsAsync(MutualFundSearchDto searchDto);
     Task<List<MutualFundDto>> GetMutualFundsForDropdownAsync(string? searchTerm = null);
+    
+    // Hard delete methods
+    Task<DeleteMutualFundsResponseDto> HardDeleteMutualFundsAsync(DeleteMutualFundsRequestDto request);
 }
 
 public class MonthlyAnalyticsResult

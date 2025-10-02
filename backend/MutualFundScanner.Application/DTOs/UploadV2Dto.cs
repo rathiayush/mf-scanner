@@ -10,6 +10,14 @@ public class UploadV2RequestDto
 
     [Required(ErrorMessage = "At least one file is required")]
     public List<IFormFile> Files { get; set; } = new();
+
+    /// <summary>
+    /// Controls whether date validation should be performed on uploaded files
+    /// When true, validates that filename dates match the reported date
+    /// When false, skips date validation and processes files regardless of filename dates
+    /// Default: true
+    /// </summary>
+    public bool PerformDateCheck { get; set; } = true;
 }
 
 public class MutualFundDetectionResult

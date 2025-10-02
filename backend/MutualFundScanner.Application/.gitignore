@@ -1,5 +1,6 @@
 # .NET Core
-# Note: bin/ and obj/ folders are intentionally NOT ignored to track build artifacts
+bin/
+obj/
 *.deps.json
 *.runtimeconfig.json
 *.runtimeconfig.dev.json
