@@ -208,16 +208,44 @@ public class MutualFundDetectionService
         };
 
         var foundColumns = new HashSet<string>();
-        var maxRowsToCheck = Math.Min(10, worksheet.LastRowNum + 1); // Check first 10 rows for headers
+        var maxRowsToCheck = Math.Min(15, worksheet.LastRowNum + 1); // Check first 15 rows for headers
+        bool hasDSP = false;
 
+        // First pass: Check if any cell contains "DSP" (case-insensitive)//DSP specific check
+        for (int row = 0; row < maxRowsToCheck; row++)
+        {
+            var dataRow = worksheet.GetRow(row);
+            if (dataRow == null) continue;
+
+            for (int col = 0; col < dataRow.LastCellNum; col++)
+            {
+                var cell = dataRow.GetCell(col);
+                if (cell == null) continue;
+
+                var cellValue = GetCellValue(cell)?.ToUpperInvariant();
+                if (!string.IsNullOrEmpty(cellValue) && cellValue.Contains("DSP"))
+                {
+                    hasDSP = true;
+                    _logger.LogDebug("Found 'DSP' in worksheet, bypassing column count check");
+                    break;
+                }
+            }
+            if (hasDSP) break;
+        }
+
+        // Second pass: Check for required columns
         for (int row = 0; row < maxRowsToCheck; row++)
         {
             var dataRow = worksheet.GetRow(row);
             if (dataRow == null) continue;
 
             var maxCols = dataRow.LastCellNum;
-            if (maxCols <= 2) {
-                return false;
+            
+            // Skip the maxCols check if DSP is found
+            if (!hasDSP && maxCols <= 2)
+            {
+                _logger.LogDebug("Skipping row with {MaxCols} columns (DSP not found)", maxCols);
+                continue;
             }
             for (int col = 0; col < maxCols; col++)
             {
