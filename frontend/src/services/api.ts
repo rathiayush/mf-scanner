@@ -27,8 +27,9 @@ import {
   DeleteMutualFundsRequestDto,
   DeleteMutualFundsResponseDto
 } from '../types';
+import env from '../config/env';
 
-const API_BASE_URL = 'http://172.19.32.1:5247/api'; // Backend API URL - Using network IP
+const API_BASE_URL = env.api.baseUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
