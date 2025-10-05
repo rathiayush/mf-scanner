@@ -194,6 +194,7 @@ export interface HoldingChangeDto {
   mutualFundNames: string[];
   fundChangeDetails: FundChangeDetailDto[];
   constituentChangeTypes: string[]; // For Mixed: list of constituent change types (Added, Removed, etc.)
+  changeTypeCounts?: { [key: string]: number }; // Count of each change type (e.g., { 'Added': 2, 'Removed': 1 })
   fromDate: string;
   toDate: string;
 }

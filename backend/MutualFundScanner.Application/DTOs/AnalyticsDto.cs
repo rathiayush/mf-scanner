@@ -35,6 +35,7 @@ public class HoldingChangeDto
     public List<string> MutualFundNames { get; set; } = new();
     public List<FundChangeDetailDto> FundChangeDetails { get; set; } = new(); // Details for each fund's contribution
     public List<string> ConstituentChangeTypes { get; set; } = new(); // For Mixed: list of constituent change types (Added, Removed, etc.)
+    public Dictionary<string, int> ChangeTypeCounts { get; set; } = new(); // Count of each change type for UI display
     public DateTime FromDate { get; set; }
     public DateTime ToDate { get; set; }
 }

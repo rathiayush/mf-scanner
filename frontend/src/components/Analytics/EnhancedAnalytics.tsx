@@ -42,6 +42,20 @@ const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
+// Add styles for blinking animation
+const styles = `
+  @keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+  }
+`;
+
+// Create a style element
+const styleElement = document.createElement('style');
+styleElement.textContent = styles;
+document.head.appendChild(styleElement);
+
 const EnhancedAnalytics: React.FC = () => {
   const [mutualFunds, setMutualFunds] = useState<MutualFundDto[]>([]);
   const [selectedFunds, setSelectedFunds] = useState<number[]>([]);
@@ -312,8 +326,8 @@ const EnhancedAnalytics: React.FC = () => {
       title: 'Change Type',
       dataIndex: 'changeType',
       key: 'changeType',
-      width: 100,
-      render: (type: string) => {
+      width: 150,
+      render: (type: string, record: HoldingChangeDto) => {
         const colors = {
           Added: 'green',
           Removed: 'red',
@@ -321,7 +335,105 @@ const EnhancedAnalytics: React.FC = () => {
           Decreased: 'orange',
           Mixed: 'purple'
         };
+
+        // If we have change type counts, show them as tags
+        if (record.changeTypeCounts) {
+          const changeCounts = Object.entries(record.changeTypeCounts);
+          
+          // If only one change type, show it as a simple tag
+          if (changeCounts.length === 1) {
+            const [changeType, count] = changeCounts[0];
+            return (
+              <Tag color={colors[changeType as keyof typeof colors]}>
+                {changeType} ({count})
+              </Tag>
+            );
+          }
+          
+          // For multiple change types, show them as a row of tags
+          return (
+            <Space size={[0, 4]} wrap>
+              {changeCounts.map(([changeType, count]) => (
+                <Tag 
+                  key={changeType}
+                  color={colors[changeType as keyof typeof colors]}
+                  style={{ margin: '0 4px 4px 0' }}
+                >
+                  {changeType} ({count})
+                </Tag>
+              ))}
+            </Space>
+          );
+        }
+        
+        // Fallback for records without change type counts
         return <Tag color={colors[type as keyof typeof colors]}>{type}</Tag>;
+      },
+    },
+    {
+      title: 'Trend',
+      key: 'trend',
+      width: 120,
+      render: (_: any, record: HoldingChangeDto) => {
+        if (!record.changeTypeCounts) {
+          return <Tag color="default">Neutral</Tag>;
+        }
+
+        const counts = record.changeTypeCounts;
+        const added = counts['Added'] || 0;
+        const removed = counts['Removed'] || 0;
+        const increased = counts['Increased'] || 0;
+        const decreased = counts['Decreased'] || 0;
+        
+        // Calculate total positive and negative signals
+        const positive = added * 2 + increased; // Added counts more than increased
+        const negative = removed * 2 + decreased; // Removed counts more than decreased
+        
+        // Calculate trend score (-1 to 1)
+        const total = positive + negative || 1;
+        const score = (positive - negative) / total;
+        
+        // Add blinking animation styles
+        const blinkStyle = {
+          animation: 'blink 1s step-end infinite',
+          fontWeight: 'bold',
+          padding: '0 8px',
+          borderRadius: '4px'
+        } as React.CSSProperties;
+        
+        // Determine trend based on score with more granular categories
+        if (score >= 0.8) return (
+          <Tag style={{
+            ...blinkStyle,
+            backgroundColor: '#00FF00',
+            color: 'black',
+            border: '1px solid #00CC00',
+            boxShadow: '0 0 10px #00FF00'
+          }}>
+            EXTREMELY BULLISH
+          </Tag>
+        );
+        if (score >= 0.6) return <Tag color="#52c41a" style={{ fontWeight: 'bold' }}>VERY BULLISH</Tag>;
+        if (score >= 0.4) return <Tag color="#73d13d">Strongly Bullish</Tag>;
+        if (score >= 0.2) return <Tag color="#95de64">Bullish</Tag>;
+        if (score >= 0.1) return <Tag color="#b7eb8f">Slightly Bullish</Tag>;
+        if (score <= -0.8) return (
+          <Tag style={{
+            ...blinkStyle,
+            backgroundColor: '#8B0000',
+            color: 'white',
+            border: '1px solid #FF0000',
+            boxShadow: '0 0 10px #FF0000'
+          }}>
+            EXTREMELY BEARISH
+          </Tag>
+        );
+        if (score <= -0.6) return <Tag color="#ff4d4f" style={{ fontWeight: 'bold' }}>VERY BEARISH</Tag>;
+        if (score <= -0.4) return <Tag color="#ff7a45">Strongly Bearish</Tag>;
+        if (score <= -0.2) return <Tag color="#ffbb96">Bearish</Tag>;
+        if (score <= -0.1) return <Tag color="#ffd8bf">Slightly Bearish</Tag>;
+        if (Math.abs(positive - negative) <= 1) return <Tag color="#d9d9d9">Neutral</Tag>;
+        return <Tag color="#722ed1" style={{ color: 'white' }}>MIXED SIGNALS</Tag>;
       },
     },
     {

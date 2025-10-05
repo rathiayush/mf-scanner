@@ -266,7 +266,7 @@ public class AnalyticsCalculationHelper
                 var totalCurrentWeight = changesForIsin.Sum(c => c.ToWeight);
                 var totalWeightChange = totalCurrentWeight - totalPreviousWeight;
                 
-                // Get individual change types
+                // Get individual change types and determine overall change type
                 var individualChangeTypes = changesForIsin.Select(c => c.ChangeType).ToList();
                 var overallChangeType = DetermineOverallChangeType(individualChangeTypes, totalPreviousWeight, totalCurrentWeight);
                 
@@ -280,19 +280,24 @@ public class AnalyticsCalculationHelper
                     WeightChange = fc.WeightChange,
                     ChangeType = fc.ChangeType
                 }).ToList();
-                
-                // Get constituent change types for Mixed scenarios
-                var constituentChangeTypes = new List<string>();
-                if (overallChangeType == "Mixed" && fundChangeDetails.Any())
-                {
-                    constituentChangeTypes = fundChangeDetails
-                        .Select(fd => fd.ChangeType)
+
+                // For Mixed changes, collect all constituent change types
+                var constituentChangeTypes = overallChangeType == "Mixed"
+                    ? changesForIsin
+                        .Select(c => c.ChangeType)
                         .Distinct()
-                        .Where(ct => ct != "Unchanged")
-                        .OrderBy(ct => ct)
-                        .ToList();
-                }
-                
+                        .OrderBy(t => t)
+                        .ToList()
+                    : new List<string> { overallChangeType };
+
+                // Calculate change type counts for UI display
+                var changeTypeCounts = changesForIsin
+                    .GroupBy(c => c.ChangeType)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Count()
+                    );
+
                 return new HoldingChangeDto
                 {
                     ISIN = g.Key,
@@ -306,6 +311,7 @@ public class AnalyticsCalculationHelper
                     MutualFundNames = changesForIsin.Select(c => c.FundName).Distinct().OrderBy(name => name).ToList(),
                     FundChangeDetails = fundChangeDetails.OrderBy(fd => fd.MutualFundName).ToList(),
                     ConstituentChangeTypes = constituentChangeTypes,
+                    ChangeTypeCounts = changeTypeCounts,
                     FromDate = fromDate,
                     ToDate = toDate
                 };
