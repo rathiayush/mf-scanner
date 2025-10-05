@@ -65,6 +65,29 @@ const EnhancedAnalytics: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsResponseDto | null>(null);
   const [holdingChanges, setHoldingChanges] = useState<PagedResult<HoldingChangeDto> | null>(null);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascend' | 'descend' | null }>({ 
+    key: 'score', 
+    direction: 'descend' 
+  });
+  
+  // Function to handle sorting
+  const requestSort = (key: string) => {
+    let direction: 'ascend' | 'descend' = 'ascend';
+    if (sortConfig.key === key && sortConfig.direction === 'ascend') {
+      direction = 'descend';
+    } else if (sortConfig.key === key && sortConfig.direction === 'descend') {
+      return setSortConfig({ key: '', direction: null });
+    }
+    setSortConfig({ key, direction });
+  };
+  
+  // Function to get sort order for a column
+  const getSortOrder = (key: string) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction;
+    }
+    return null;
+  };
   const [topShares, setTopShares] = useState<PagedResult<TopShareDto> | null>(null);
   const [portfolioSnapshots, setPortfolioSnapshots] = useState<any[]>([]);
   const [currentHoldings, setCurrentHoldings] = useState<any[]>([]);
@@ -371,9 +394,21 @@ const EnhancedAnalytics: React.FC = () => {
       },
     },
     {
-      title: 'Trend',
+      title: (
+        <span 
+          onClick={() => requestSort('score')} 
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Trend
+          {sortConfig.key === 'score' && (
+            sortConfig.direction === 'ascend' ? ' ↑' : ' ↓'
+          )}
+        </span>
+      ),
       key: 'trend',
-      width: 120,
+      width: 140,
+      sorter: (a: any, b: any) => (a.score || 0) - (b.score || 0),
+      sortOrder: getSortOrder('score'),
       render: (_: any, record: HoldingChangeDto) => {
         if (!record.changeTypeCounts) {
           return <Tag color="default">Neutral</Tag>;
@@ -393,41 +428,51 @@ const EnhancedAnalytics: React.FC = () => {
         const total = positive + negative || 1;
         const score = (positive - negative) / total;
         
-        // Add blinking animation styles
-        const blinkStyle = {
-          animation: 'blink 1s step-end infinite',
+        // Add score to the record for sorting
+        if (!record.score) {
+          record.score = score;
+        }
+        
+        // Check if there are multiple change types
+        const hasMultipleChangeTypes = record.changeTypeCounts && 
+          Object.keys(record.changeTypeCounts).length > 1;
+        
+        // Base style for all tags
+        const baseStyle = {
           fontWeight: 'bold',
           padding: '0 8px',
-          borderRadius: '4px'
+          borderRadius: '4px',
+          ...(hasMultipleChangeTypes && {
+            animation: 'blink 1s step-end infinite'
+          })
         } as React.CSSProperties;
         
         // Determine trend based on score with more granular categories
-        if (score >= 0.8) return (
-          <Tag style={{
-            ...blinkStyle,
+        if (score >= 0.8) {
+          const style = {
+            ...baseStyle,
             backgroundColor: '#00FF00',
             color: 'black',
             border: '1px solid #00CC00',
-            boxShadow: '0 0 10px #00FF00'
-          }}>
-            EXTREMELY BULLISH
-          </Tag>
-        );
+            boxShadow: hasMultipleChangeTypes ? '0 0 10px #00FF00' : 'none'
+          };
+          return <Tag style={style}>EXTREMELY BULLISH</Tag>;
+        }
         if (score >= 0.6) return <Tag color="#52c41a" style={{ fontWeight: 'bold' }}>VERY BULLISH</Tag>;
         if (score >= 0.4) return <Tag color="#73d13d">Strongly Bullish</Tag>;
         if (score >= 0.2) return <Tag color="#95de64">Bullish</Tag>;
         if (score >= 0.1) return <Tag color="#b7eb8f">Slightly Bullish</Tag>;
-        if (score <= -0.8) return (
-          <Tag style={{
-            ...blinkStyle,
+        
+        if (score <= -0.8) {
+          const style = {
+            ...baseStyle,
             backgroundColor: '#8B0000',
             color: 'white',
             border: '1px solid #FF0000',
-            boxShadow: '0 0 10px #FF0000'
-          }}>
-            EXTREMELY BEARISH
-          </Tag>
-        );
+            boxShadow: hasMultipleChangeTypes ? '0 0 10px #FF0000' : 'none'
+          };
+          return <Tag style={style}>EXTREMELY BEARISH</Tag>;
+        }
         if (score <= -0.6) return <Tag color="#ff4d4f" style={{ fontWeight: 'bold' }}>VERY BEARISH</Tag>;
         if (score <= -0.4) return <Tag color="#ff7a45">Strongly Bearish</Tag>;
         if (score <= -0.2) return <Tag color="#ffbb96">Bearish</Tag>;
