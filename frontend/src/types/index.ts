@@ -168,7 +168,8 @@ export interface AnalyticsRequestDto {
   toDate: string;
   page: number;
   pageSize: number;
-  changeTypeFilter?: string; // Added, Removed, Increased, Decreased, Mixed, or undefined for all
+  changeTypeFilters?: string[]; // One or more of: Added, Removed, Increased, Decreased, Mixed. Omit or empty for all
+  changeTypeMatchMode?: 'any' | 'only'; // any: OR; only: exact match of constituent types set
   sortBy?: string;
   sortDirection?: string;
 }

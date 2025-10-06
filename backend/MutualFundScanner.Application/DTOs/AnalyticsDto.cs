@@ -7,7 +7,8 @@ public class AnalyticsRequestDto
     public DateTime ToDate { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
-    public string? ChangeTypeFilter { get; set; } // Added, Removed, Increased, Decreased, Mixed, or null for all
+    public List<string>? ChangeTypeFilters { get; set; } // One or more of: Added, Removed, Increased, Decreased, Mixed, or null/empty for all
+    public string? ChangeTypeMatchMode { get; set; } = "any"; // 'any' or 'only'
     public string? SortBy { get; set; } // Column to sort by: SecurityName, Sector, Industry, PreviousWeight, CurrentWeight, WeightChange, ChangeType, MutualFundsCount
     public string? SortDirection { get; set; } = "desc"; // asc or desc
 }

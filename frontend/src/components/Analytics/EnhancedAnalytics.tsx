@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   Card,
   Select,
@@ -9,33 +9,41 @@ import {
   Col,
   Typography,
   Space,
-  Tag,
   Statistic,
   Alert,
   message,
-  Tabs,
-  Modal,
-  Progress,
-  Divider
+  Tabs
 } from 'antd';
 import {
   BarChartOutlined,
   FundOutlined,
   SwapOutlined,
-  TrophyOutlined,
-  EyeOutlined
+  TrophyOutlined
 } from '@ant-design/icons';
 import { mutualFundService, analyticsService } from '../../services/api';
-import {
-  MutualFundDto,
-  AnalyticsResponseDto,
-  HoldingChangeDto,
-  TopShareDto,
-  TopSharesRequestDto,
-  AvailableDatesResponseDto,
-  PagedResult
-} from '../../types';
+import { TopSharesRequestDto } from '../../types';
 import dayjs, { Dayjs } from 'dayjs';
+
+// Hooks
+import { useAnalyticsState } from './hooks/useAnalyticsState';
+import { useSortingAndPagination } from './hooks/useSortingAndPagination';
+import { useModalState } from './hooks/useModalState';
+
+// Components
+import HoldingChangesControls from './components/HoldingChangesControls';
+import TopSharesControls from './components/TopSharesControls';
+import PortfolioSnapshotsTab from './components/PortfolioSnapshotsTab';
+
+// Modals
+import FundHoldingsModal from './modals/FundHoldingsModal';
+import HoldingChangeFundsModal from './modals/HoldingChangeFundsModal';
+
+// Columns
+import { getHoldingChangesColumns } from './columns/holdingChangesColumns';
+import { getTopSharesColumns } from './columns/topSharesColumns';
+
+// Utils
+import { disabledDateLogic } from './utils/dateValidation';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -51,62 +59,18 @@ const styles = `
   }
 `;
 
-// Create a style element
 const styleElement = document.createElement('style');
 styleElement.textContent = styles;
-document.head.appendChild(styleElement);
+if (!document.head.querySelector('style[data-analytics-styles]')) {
+  styleElement.setAttribute('data-analytics-styles', 'true');
+  document.head.appendChild(styleElement);
+}
 
 const EnhancedAnalytics: React.FC = () => {
-  const [mutualFunds, setMutualFunds] = useState<MutualFundDto[]>([]);
-  const [selectedFunds, setSelectedFunds] = useState<number[]>([]);
-  const [isAllFundsSelected, setIsAllFundsSelected] = useState(false);
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [availableDates, setAvailableDates] = useState<AvailableDatesResponseDto | null>(null);
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsResponseDto | null>(null);
-  const [holdingChanges, setHoldingChanges] = useState<PagedResult<HoldingChangeDto> | null>(null);
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascend' | 'descend' | null }>({ 
-    key: 'score', 
-    direction: 'descend' 
-  });
-  
-  // Function to handle sorting
-  const requestSort = (key: string) => {
-    let direction: 'ascend' | 'descend' = 'ascend';
-    if (sortConfig.key === key && sortConfig.direction === 'ascend') {
-      direction = 'descend';
-    } else if (sortConfig.key === key && sortConfig.direction === 'descend') {
-      return setSortConfig({ key: '', direction: null });
-    }
-    setSortConfig({ key, direction });
-  };
-  
-  // Function to get sort order for a column
-  const getSortOrder = (key: string) => {
-    if (sortConfig.key === key) {
-      return sortConfig.direction;
-    }
-    return null;
-  };
-  const [topShares, setTopShares] = useState<PagedResult<TopShareDto> | null>(null);
-  const [portfolioSnapshots, setPortfolioSnapshots] = useState<any[]>([]);
-  const [currentHoldings, setCurrentHoldings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [showFundsModal, setShowFundsModal] = useState(false);
-  const [selectedModalData, setSelectedModalData] = useState<any>(null);
-  const [showHoldingFundsModal, setShowHoldingFundsModal] = useState(false);
-  const [selectedHoldingModalData, setSelectedHoldingModalData] = useState<any>(null);
-  const [modalFilterType, setModalFilterType] = useState<string>('all');
-  
-  // Sorting state
-  const [holdingChangesSortBy, setHoldingChangesSortBy] = useState<string>('weightChange');
-  const [holdingChangesSortDirection, setHoldingChangesSortDirection] = useState<string>('desc');
-  const [topSharesSortBy, setTopSharesSortBy] = useState<string>('totalWeight');
-  const [topSharesSortDirection, setTopSharesSortDirection] = useState<string>('desc');
-  const [topSharesPage, setTopSharesPage] = useState<number>(1);
-  const [topSharesPageSize, setTopSharesPageSize] = useState<number>(20);
+  // State hooks
+  const analyticsState = useAnalyticsState();
+  const sortingPagination = useSortingAndPagination();
+  const modalState = useModalState();
 
   useEffect(() => {
     loadMutualFunds();
@@ -114,15 +78,15 @@ const EnhancedAnalytics: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedFunds.length > 0 || isAllFundsSelected) {
-      loadAvailableDates(isAllFundsSelected ? undefined : selectedFunds);
+    if (analyticsState.selectedFunds.length > 0 || analyticsState.isAllFundsSelected) {
+      loadAvailableDates(analyticsState.isAllFundsSelected ? undefined : analyticsState.selectedFunds);
     }
-  }, [selectedFunds, isAllFundsSelected]);
+  }, [analyticsState.selectedFunds, analyticsState.isAllFundsSelected]);
 
   const loadMutualFunds = async () => {
     try {
       const funds = await mutualFundService.getMutualFundsForDropdown();
-      setMutualFunds(funds);
+      analyticsState.setMutualFunds(funds);
     } catch (error) {
       message.error('Failed to load mutual funds');
     }
@@ -131,43 +95,37 @@ const EnhancedAnalytics: React.FC = () => {
   const loadAvailableDates = async (fundIds?: number[]) => {
     try {
       const dates = await analyticsService.getAvailableDates(fundIds);
-      setAvailableDates(dates);
+      analyticsState.setAvailableDates(dates);
     } catch (error) {
       message.error('Failed to load available dates');
     }
   };
 
   const handleAnalyze = async () => {
-    // Reset status filter to 'all' when analyzing
-    setSelectedStatusFilter('all');
+    sortingPagination.setSelectedStatusFilters([]);
     
-    if (selectedFunds.length === 0 && !isAllFundsSelected) {
+    if (analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected) {
       message.warning('Please select at least one mutual fund or select "All Funds"');
       return;
     }
 
-    if (!dateRange) {
+    if (!analyticsState.dateRange) {
       message.warning('Please select a date range');
       return;
     }
 
-    // Validate that selected dates have snapshot data for all selected funds using backend validation
     try {
-      const fundsToValidate = isAllFundsSelected ? [] : selectedFunds;
-      console.log('Validating dates for funds:', fundsToValidate, 'isAllFunds:', isAllFundsSelected);
-      console.log('Date range:', dateRange);
+      const fundsToValidate = analyticsState.isAllFundsSelected ? [] : analyticsState.selectedFunds;
       
       const validation = await analyticsService.validateDatesForFunds(
         fundsToValidate,
-        dateRange[0].format('YYYY-MM-DD'),
-        dateRange[1].format('YYYY-MM-DD')
+        analyticsState.dateRange[0].format('YYYY-MM-DD'),
+        analyticsState.dateRange[1].format('YYYY-MM-DD')
       );
-      
-      console.log('Validation response:', validation);
 
       if (!validation.isValid) {
         message.warning(
-          isAllFundsSelected 
+          analyticsState.isAllFundsSelected 
             ? 'No snapshot data available for the selected date range. Please select dates where portfolio data exists.'
             : 'No snapshot data available for selected funds on one or both selected dates. Please select dates where all funds have portfolio data.'
         );
@@ -178,71 +136,65 @@ const EnhancedAnalytics: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    analyticsState.setLoading(true);
     try {
       const request = {
-        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
-        fromDate: dateRange[0].format('YYYY-MM-DD'),
-        toDate: dateRange[1].format('YYYY-MM-DD'),
-        page: currentPage,
-        pageSize: pageSize,
-        sortBy: holdingChangesSortBy,
-        sortDirection: holdingChangesSortDirection
+        mutualFundIds: analyticsState.isAllFundsSelected ? [] : analyticsState.selectedFunds,
+        fromDate: analyticsState.dateRange[0].format('YYYY-MM-DD'),
+        toDate: analyticsState.dateRange[1].format('YYYY-MM-DD'),
+        page: sortingPagination.currentPage,
+        pageSize: sortingPagination.pageSize,
+        sortBy: sortingPagination.holdingChangesSortBy,
+        sortDirection: sortingPagination.holdingChangesSortDirection
       };
 
-      console.log('Analytics Request:', request);
-      console.log('Selected Funds:', selectedFunds, 'isAllFunds:', isAllFundsSelected);
-
-      // Fetch portfolio snapshots and holdings for the selected date range
-      const fundsForAnalysis = isAllFundsSelected ? mutualFunds.map(f => f.id) : selectedFunds;
+      const fundsForAnalysis = analyticsState.isAllFundsSelected 
+        ? analyticsState.mutualFunds.map(f => f.id) 
+        : analyticsState.selectedFunds;
       
       const topSharesRequest: TopSharesRequestDto = {
-        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
+        mutualFundIds: analyticsState.isAllFundsSelected ? [] : analyticsState.selectedFunds,
         fromDate: request.fromDate,
         toDate: request.toDate,
-        page: topSharesPage,
-        pageSize: topSharesPageSize,
-        sortBy: topSharesSortBy,
-        sortDirection: topSharesSortDirection
+        page: sortingPagination.topSharesPage,
+        pageSize: sortingPagination.topSharesPageSize,
+        sortBy: sortingPagination.topSharesSortBy,
+        sortDirection: sortingPagination.topSharesSortDirection
       };
 
       const [analytics, changes, shares, fromHoldings, toHoldings] = await Promise.all([
         analyticsService.getAnalytics(request),
         analyticsService.getHoldingChanges(request),
         analyticsService.getTopShares(topSharesRequest),
-        // Fetch current holdings for from date
         Promise.all(fundsForAnalysis.map(fundId => 
           analyticsService.getCurrentHoldings({
             mutualFundId: fundId,
             targetDate: request.fromDate,
-            dateRangeStart: dateRange[0].subtract(30, 'day').format('YYYY-MM-DD'),
-            dateRangeEnd: dateRange[0].add(30, 'day').format('YYYY-MM-DD'),
+            dateRangeStart: analyticsState.dateRange[0].subtract(30, 'day').format('YYYY-MM-DD'),
+            dateRangeEnd: analyticsState.dateRange[0].add(30, 'day').format('YYYY-MM-DD'),
             page: 1,
             pageSize: 100
           })
         )),
-        // Fetch current holdings for to date
         Promise.all(fundsForAnalysis.map(fundId => 
           analyticsService.getCurrentHoldings({
             mutualFundId: fundId,
             targetDate: request.toDate,
-            dateRangeStart: dateRange[1].subtract(30, 'day').format('YYYY-MM-DD'),
-            dateRangeEnd: dateRange[1].add(30, 'day').format('YYYY-MM-DD'),
+            dateRangeStart: analyticsState.dateRange[1].subtract(30, 'day').format('YYYY-MM-DD'),
+            dateRangeEnd: analyticsState.dateRange[1].add(30, 'day').format('YYYY-MM-DD'),
             page: 1,
             pageSize: 100
           })
         ))
       ]);
 
-      setAnalyticsData(analytics);
-      setHoldingChanges(changes);
-      setTopShares(shares);
+      analyticsState.setAnalyticsData(analytics);
+      analyticsState.setHoldingChanges(changes);
+      analyticsState.setTopShares(shares);
       
-      // Combine holdings data from both dates
       const allHoldings = [...fromHoldings, ...toHoldings].filter(h => h.success);
-      setCurrentHoldings(allHoldings);
+      analyticsState.setCurrentHoldings(allHoldings);
       
-      // Create portfolio snapshots summary
       const snapshots = allHoldings.map(holding => ({
         fundId: holding.mutualFundId,
         fundName: holding.mutualFundName,
@@ -251,481 +203,103 @@ const EnhancedAnalytics: React.FC = () => {
         holdingsCount: holding.holdingsCount,
         holdings: holding.holdings
       }));
-      setPortfolioSnapshots(snapshots);
+      analyticsState.setPortfolioSnapshots(snapshots);
     } catch (error: any) {
       message.error(error.message || 'Failed to analyze data');
     } finally {
-      setLoading(false);
+      analyticsState.setLoading(false);
     }
   };
 
   const handleTableChange = (page: number, size?: number) => {
-    setCurrentPage(page);
-    if (size) setPageSize(size);
-    loadHoldingChanges(page, size || pageSize);
+    sortingPagination.setCurrentPage(page);
+    if (size) sortingPagination.setPageSize(size);
+    loadHoldingChanges(page, size || sortingPagination.pageSize);
   };
 
-  const handleStatusFilterChange = (value: string) => {
-    setSelectedStatusFilter(value);
-    setCurrentPage(1); // Reset to page 1 when filter changes
-    // Reload holding changes with the new filter, passing the new value directly
-    loadHoldingChanges(1, pageSize, value);
+  const handleStatusFilterChange = (values: string[]) => {
+    sortingPagination.setSelectedStatusFilters(values);
+    sortingPagination.setCurrentPage(1);
+    loadHoldingChanges(1, sortingPagination.pageSize, values);
   };
 
   const loadTopShares = async (page?: number, pageSize?: number, sortBy?: string, sortDirection?: string) => {
-    if (!dateRange || (selectedFunds.length === 0 && !isAllFundsSelected)) return;
+    if (!analyticsState.dateRange || (analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected)) return;
 
-    setLoading(true);
+    analyticsState.setLoading(true);
     try {
       const topSharesRequest: TopSharesRequestDto = {
-        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
-        fromDate: dateRange[0].format('YYYY-MM-DD'),
-        toDate: dateRange[1].format('YYYY-MM-DD'),
-        page: page || topSharesPage,
-        pageSize: pageSize || topSharesPageSize,
-        sortBy: sortBy || topSharesSortBy,
-        sortDirection: sortDirection || topSharesSortDirection
+        mutualFundIds: analyticsState.isAllFundsSelected ? [] : analyticsState.selectedFunds,
+        fromDate: analyticsState.dateRange[0].format('YYYY-MM-DD'),
+        toDate: analyticsState.dateRange[1].format('YYYY-MM-DD'),
+        page: page || sortingPagination.topSharesPage,
+        pageSize: pageSize || sortingPagination.topSharesPageSize,
+        sortBy: sortBy || sortingPagination.topSharesSortBy,
+        sortDirection: sortDirection || sortingPagination.topSharesSortDirection
       };
 
       const shares = await analyticsService.getTopShares(topSharesRequest);
-      setTopShares(shares);
+      analyticsState.setTopShares(shares);
     } catch (error) {
-      console.error('Error loading top shares:', error);
       message.error('Failed to load top shares');
     } finally {
-      setLoading(false);
+      analyticsState.setLoading(false);
     }
   };
 
-  const loadHoldingChanges = async (page: number, size: number, filterValue?: string, sortBy?: string, sortDirection?: string) => {
-    if (!dateRange || (selectedFunds.length === 0 && !isAllFundsSelected)) return;
+  const loadHoldingChanges = async (
+    page: number,
+    size: number,
+    filterValues?: string[],
+    sortBy?: string,
+    sortDirection?: string,
+    matchModeOverride?: 'any' | 'only'
+  ) => {
+    if (!analyticsState.dateRange || (analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected)) return;
 
-    setLoading(true);
+    analyticsState.setLoading(true);
 
     try {
-      // Use the passed filterValue or fall back to current state
-      const currentFilter = filterValue !== undefined ? filterValue : selectedStatusFilter;
-      
+      const currentFilters = filterValues !== undefined ? filterValues : sortingPagination.selectedStatusFilters;
       const request = {
-        mutualFundIds: isAllFundsSelected ? [] : selectedFunds,
-        fromDate: dateRange[0].format('YYYY-MM-DD'),
-        toDate: dateRange[1].format('YYYY-MM-DD'),
+        mutualFundIds: analyticsState.isAllFundsSelected ? [] : analyticsState.selectedFunds,
+        fromDate: analyticsState.dateRange[0].format('YYYY-MM-DD'),
+        toDate: analyticsState.dateRange[1].format('YYYY-MM-DD'),
         page,
         pageSize: size,
-        changeTypeFilter: currentFilter === 'all' ? undefined : currentFilter,
-        sortBy: sortBy || holdingChangesSortBy,
-        sortDirection: sortDirection || holdingChangesSortDirection
+        changeTypeFilters: currentFilters && currentFilters.length > 0 ? currentFilters : undefined,
+        changeTypeMatchMode: matchModeOverride ?? sortingPagination.changeTypeMatchMode,
+        sortBy: sortBy || sortingPagination.holdingChangesSortBy,
+        sortDirection: sortDirection || sortingPagination.holdingChangesSortDirection
       };
 
       const changes = await analyticsService.getHoldingChanges(request);
-      setHoldingChanges(changes);
+      analyticsState.setHoldingChanges(changes);
     } catch (error: any) {
       message.error(error.message || 'Failed to load data');
     } finally {
-      setLoading(false);
+      analyticsState.setLoading(false);
     }
   };
-
-  const holdingChangesColumns = [
-    {
-      title: 'Security Name',
-      dataIndex: 'securityName',
-      key: 'securityName',
-      width: 200,
-      render: (text: string, record: HoldingChangeDto) => (
-        <Space direction="vertical" size="small">
-          <Text strong>{text}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>{record.isin}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Sector',
-      dataIndex: 'sector',
-      key: 'sector',
-      width: 120,
-    },
-    {
-      title: 'Change Type',
-      dataIndex: 'changeType',
-      key: 'changeType',
-      width: 150,
-      render: (type: string, record: HoldingChangeDto) => {
-        const colors = {
-          Added: 'green',
-          Removed: 'red',
-          Increased: 'blue',
-          Decreased: 'orange',
-          Mixed: 'purple'
-        };
-
-        // If we have change type counts, show them as tags
-        if (record.changeTypeCounts) {
-          const changeCounts = Object.entries(record.changeTypeCounts);
-          
-          // If only one change type, show it as a simple tag
-          if (changeCounts.length === 1) {
-            const [changeType, count] = changeCounts[0];
-            return (
-              <Tag color={colors[changeType as keyof typeof colors]}>
-                {changeType} ({count})
-              </Tag>
-            );
-          }
-          
-          // For multiple change types, show them as a row of tags
-          return (
-            <Space size={[0, 4]} wrap>
-              {changeCounts.map(([changeType, count]) => (
-                <Tag 
-                  key={changeType}
-                  color={colors[changeType as keyof typeof colors]}
-                  style={{ margin: '0 4px 4px 0' }}
-                >
-                  {changeType} ({count})
-                </Tag>
-              ))}
-            </Space>
-          );
-        }
-        
-        // Fallback for records without change type counts
-        return <Tag color={colors[type as keyof typeof colors]}>{type}</Tag>;
-      },
-    },
-    {
-      title: (
-        <span 
-          onClick={() => requestSort('score')} 
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Trend
-          {sortConfig.key === 'score' && (
-            sortConfig.direction === 'ascend' ? ' ↑' : ' ↓'
-          )}
-        </span>
-      ),
-      key: 'trend',
-      width: 140,
-      sorter: (a: any, b: any) => (a.score || 0) - (b.score || 0),
-      sortOrder: getSortOrder('score'),
-      render: (_: any, record: HoldingChangeDto) => {
-        if (!record.changeTypeCounts) {
-          return <Tag color="default">Neutral</Tag>;
-        }
-
-        const counts = record.changeTypeCounts;
-        const added = counts['Added'] || 0;
-        const removed = counts['Removed'] || 0;
-        const increased = counts['Increased'] || 0;
-        const decreased = counts['Decreased'] || 0;
-        
-        // Calculate total positive and negative signals
-        const positive = added * 2 + increased; // Added counts more than increased
-        const negative = removed * 2 + decreased; // Removed counts more than decreased
-        
-        // Calculate trend score (-1 to 1)
-        const total = positive + negative || 1;
-        const score = (positive - negative) / total;
-        
-        // Add score to the record for sorting
-        if (!record.score) {
-          record.score = score;
-        }
-        
-        // Check if there are multiple change types
-        const hasMultipleChangeTypes = record.changeTypeCounts && 
-          Object.keys(record.changeTypeCounts).length > 1;
-        
-        // Base style for all tags
-        const baseStyle = {
-          fontWeight: 'bold',
-          padding: '0 8px',
-          borderRadius: '4px',
-          ...(hasMultipleChangeTypes && {
-            animation: 'blink 1s step-end infinite'
-          })
-        } as React.CSSProperties;
-        
-        // Determine trend based on score with more granular categories
-        if (score >= 0.8) {
-          const style = {
-            ...baseStyle,
-            backgroundColor: '#00FF00',
-            color: 'black',
-            border: '1px solid #00CC00',
-            boxShadow: hasMultipleChangeTypes ? '0 0 10px #00FF00' : 'none'
-          };
-          return <Tag style={style}>EXTREMELY BULLISH</Tag>;
-        }
-        if (score >= 0.6) return <Tag color="#52c41a" style={{ fontWeight: 'bold' }}>VERY BULLISH</Tag>;
-        if (score >= 0.4) return <Tag color="#73d13d">Strongly Bullish</Tag>;
-        if (score >= 0.2) return <Tag color="#95de64">Bullish</Tag>;
-        if (score >= 0.1) return <Tag color="#b7eb8f">Slightly Bullish</Tag>;
-        
-        if (score <= -0.8) {
-          const style = {
-            ...baseStyle,
-            backgroundColor: '#8B0000',
-            color: 'white',
-            border: '1px solid #FF0000',
-            boxShadow: hasMultipleChangeTypes ? '0 0 10px #FF0000' : 'none'
-          };
-          return <Tag style={style}>EXTREMELY BEARISH</Tag>;
-        }
-        if (score <= -0.6) return <Tag color="#ff4d4f" style={{ fontWeight: 'bold' }}>VERY BEARISH</Tag>;
-        if (score <= -0.4) return <Tag color="#ff7a45">Strongly Bearish</Tag>;
-        if (score <= -0.2) return <Tag color="#ffbb96">Bearish</Tag>;
-        if (score <= -0.1) return <Tag color="#ffd8bf">Slightly Bearish</Tag>;
-        if (Math.abs(positive - negative) <= 1) return <Tag color="#d9d9d9">Neutral</Tag>;
-        return <Tag color="#722ed1" style={{ color: 'white' }}>MIXED SIGNALS</Tag>;
-      },
-    },
-    {
-      title: 'Previous Weight',
-      dataIndex: 'previousWeight',
-      key: 'previousWeight',
-      width: 120,
-      render: (weight: number) => weight ? `${weight.toFixed(2)}%` : '-',
-    },
-    {
-      title: 'Current Weight',
-      dataIndex: 'currentWeight',
-      key: 'currentWeight',
-      width: 120,
-      render: (weight: number) => `${weight.toFixed(2)}%`,
-    },
-    {
-      title: 'Weight Change',
-      dataIndex: 'weightChange',
-      key: 'weightChange',
-      width: 120,
-      render: (change: number) => (
-        <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
-          {change > 0 ? '+' : ''}{change.toFixed(2)}%
-        </Text>
-      ),
-    },
-    {
-      title: 'Total Funds',
-      dataIndex: 'mutualFundNames',
-      key: 'totalFunds',
-      width: 100,
-      align: 'center' as const,
-      render: (names: string[], record: HoldingChangeDto) => (
-        <Space direction="vertical" size="small" style={{ alignItems: 'center' }}>
-          <Tag color="blue" style={{ fontSize: '12px', fontWeight: 'bold' }}>
-            {names.length}
-          </Tag>
-          {names.length > 2 && (
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<EyeOutlined />}
-              onClick={() => {
-                // Determine if this is a Mixed scenario
-                const fundDetails = record.fundChangeDetails || [];
-                const hasIncreased = fundDetails.some((f: any) => f.changeType === 'Increased');
-                const hasDecreased = fundDetails.some((f: any) => f.changeType === 'Decreased');
-                const hasAdded = fundDetails.some((f: any) => f.changeType === 'Added');
-                const hasRemoved = fundDetails.some((f: any) => f.changeType === 'Removed');
-                
-                let finalChangeType = record.changeType;
-                if ((hasIncreased && hasDecreased) || (hasAdded && hasRemoved) || 
-                    (hasIncreased && hasRemoved) || (hasDecreased && hasAdded)) {
-                  finalChangeType = 'Mixed';
-                }
-                
-                setSelectedHoldingModalData({
-                  securityName: record.securityName,
-                  isin: record.isin,
-                  sector: record.sector,
-                  changeType: finalChangeType,
-                  previousWeight: record.previousWeight,
-                  currentWeight: record.currentWeight,
-                  weightChange: record.weightChange,
-                  fundChangeDetails: fundDetails
-                });
-                setModalFilterType('all');
-                setShowHoldingFundsModal(true);
-              }}
-              style={{ padding: 0, fontSize: '10px' }}
-            >
-              Details
-            </Button>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Mutual Funds',
-      dataIndex: 'mutualFundNames',
-      key: 'mutualFundNames',
-      render: (names: string[]) => (
-        <Space direction="vertical" size="small">
-          {names.slice(0, 2).map(name => (
-            <Tag key={name} style={{ fontSize: '11px' }}>{name}</Tag>
-          ))}
-          {names.length > 2 && (
-            <Text type="secondary" style={{ fontSize: '11px' }}>+{names.length - 2} more</Text>
-          )}
-        </Space>
-      ),
-    },
-  ];
-
-  const topSharesColumns = [
-    {
-      title: 'Security Name',
-      dataIndex: 'securityName',
-      key: 'securityName',
-      width: 200,
-      render: (text: string, record: TopShareDto) => (
-        <Space direction="vertical" size="small">
-          <Text strong>{text}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>{record.isin}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Sector',
-      dataIndex: 'sector',
-      key: 'sector',
-      width: 120,
-    },
-    {
-      title: 'Total Weight',
-      dataIndex: 'totalWeight',
-      key: 'totalWeight',
-      width: 120,
-      render: (weight: number) => `${weight.toFixed(2)}%`,
-      sorter: (a: TopShareDto, b: TopShareDto) => b.totalWeight - a.totalWeight,
-    },
-    {
-      title: 'Holding Funds',
-      dataIndex: 'holdingFundsCount',
-      key: 'holdingFundsCount',
-      width: 100,
-      render: (count: number) => <Tag color="blue">{count} funds</Tag>,
-    },
-    {
-      title: 'Fund Holdings',
-      dataIndex: 'fundHoldings',
-      key: 'fundHoldings',
-      render: (holdings: any[]) => (
-        <Space direction="vertical" size="small">
-          {holdings.slice(0, 3).map(holding => (
-            <div key={holding.mutualFundId}>
-              <Text style={{ fontSize: '12px' }}>
-                {holding.mutualFundName}: {holding.weight.toFixed(2)}%
-              </Text>
-            </div>
-          ))}
-          {holdings.length > 3 && (
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<EyeOutlined />}
-              onClick={() => {
-                setSelectedModalData(holdings);
-                setShowFundsModal(true);
-              }}
-              style={{ padding: 0, fontSize: '12px' }}
-            >
-              View all {holdings.length} funds
-            </Button>
-          )}
-        </Space>
-      ),
-    },
-  ];
 
   const disabledDate = (current: Dayjs) => {
-    // If no funds selected and not all funds selected, use global date range
-    if (selectedFunds.length === 0 && !isAllFundsSelected) {
-      if (!availableDates || !availableDates.minDate || !availableDates.maxDate) {
-        return false; // Enable all dates
-      }
-      
-      try {
-        const minDate = dayjs(availableDates.minDate);
-        const maxDate = dayjs(availableDates.maxDate);
-        
-        if (!minDate.isValid() || !maxDate.isValid()) {
-          return false; // Enable all dates
-        }
-        
-        return current.isBefore(minDate.startOf('month')) || current.isAfter(maxDate.endOf('month'));
-      } catch (error) {
-        return false; // Enable all dates
-      }
-    }
-    
-    // If funds are selected or all funds selected, validate against fund-specific availability
-    if (availableDates?.fundDateAvailabilities && availableDates.fundDateAvailabilities.length > 0) {
-      // Get the selected funds' availability data
-      const selectedFundAvailabilities = isAllFundsSelected 
-        ? availableDates.fundDateAvailabilities
-        : availableDates.fundDateAvailabilities.filter(
-            fund => selectedFunds.includes(fund.mutualFundId)
-          );
-      
-      if (selectedFundAvailabilities.length === 0) {
-        return false; // No availability data, enable all dates
-      }
-      
-      try {
-        // Find the intersection of available dates for all selected funds
-        const availableDateStrings = selectedFundAvailabilities.reduce((intersection, fund) => {
-          const fundDates = fund.availableDates.map(dateStr => dayjs(dateStr).format('YYYY-MM-DD'));
-          return intersection.length === 0 
-            ? fundDates 
-            : intersection.filter(date => fundDates.includes(date));
-        }, [] as string[]);
-        
-        if (availableDateStrings.length === 0) {
-          return true; // No common available dates, disable all dates
-        }
-        
-        // Check if current date is in the available dates
-        const currentDateStr = current.format('YYYY-MM-DD');
-        return !availableDateStrings.includes(currentDateStr);
-        
-      } catch (error) {
-        // Fallback to global range if there's an error
-        if (!availableDates.minDate || !availableDates.maxDate) {
-          return false;
-        }
-        
-        const minDate = dayjs(availableDates.minDate);
-        const maxDate = dayjs(availableDates.maxDate);
-        
-        if (!minDate.isValid() || !maxDate.isValid()) {
-          return false;
-        }
-        
-        return current.isBefore(minDate.startOf('month')) || current.isAfter(maxDate.endOf('month'));
-      }
-    }
-    
-    // Fallback to global date range if no fund-specific data
-    if (!availableDates || !availableDates.minDate || !availableDates.maxDate) {
-      return false; // Enable all dates
-    }
-    
-    try {
-      const minDate = dayjs(availableDates.minDate);
-      const maxDate = dayjs(availableDates.maxDate);
-      
-      if (!minDate.isValid() || !maxDate.isValid()) {
-        return false; // Enable all dates
-      }
-      
-      return current.isBefore(minDate.startOf('month')) || current.isAfter(maxDate.endOf('month'));
-    } catch (error) {
-      return false; // Enable all dates
-    }
+    return disabledDateLogic(
+      current,
+      analyticsState.selectedFunds,
+      analyticsState.isAllFundsSelected,
+      analyticsState.availableDates
+    );
   };
+
+  const holdingChangesColumns = getHoldingChangesColumns({
+    requestSort: sortingPagination.requestSort,
+    getSortOrder: sortingPagination.getSortOrder,
+    onViewFundDetails: modalState.openHoldingFundsModal
+  });
+
+  const topSharesColumns = getTopSharesColumns({
+    onViewFundHoldings: modalState.openFundsModal
+  });
 
   return (
     <div>
@@ -746,28 +320,28 @@ const EnhancedAnalytics: React.FC = () => {
                     style={{ width: '100%' }}
                     placeholder="Select mutual funds to analyze or choose 'All Funds'"
                     showSearch
-                    filterOption={(input, option) =>
-                      (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
-                    }
-                    value={isAllFundsSelected ? ['all'] : selectedFunds}
+                    autoClearSearchValue={false}
+                    defaultActiveFirstOption={false}
+                    optionFilterProp="title"
+                    value={analyticsState.isAllFundsSelected ? ['all'] : analyticsState.selectedFunds}
                     onChange={(value) => {
                       if (value.includes('all')) {
-                        setIsAllFundsSelected(true);
-                        setSelectedFunds([]);
+                        analyticsState.setIsAllFundsSelected(true);
+                        analyticsState.setSelectedFunds([]);
                       } else {
-                        setIsAllFundsSelected(false);
-                        setSelectedFunds(value.filter(v => v !== 'all'));
+                        analyticsState.setIsAllFundsSelected(false);
+                        analyticsState.setSelectedFunds(value.filter(v => v !== 'all'));
                       }
                     }}
                   >
-                    <Option key="all" value="all">
+                    <Option key="all" value="all" title="All Funds">
                       <Space>
                         <Text strong style={{ color: '#1890ff' }}>All Funds</Text>
                         <Text type="secondary">(Analyze all available funds)</Text>
                       </Space>
                     </Option>
-                    {mutualFunds.map(fund => (
-                      <Option key={fund.id} value={fund.id}>
+                    {analyticsState.mutualFunds.map(fund => (
+                      <Option key={fund.id} value={fund.id} title={`${fund.fundName} (${fund.fundCode})`}>
                         <Space>
                           <Text>{fund.fundName}</Text>
                           <Text type="secondary">({fund.fundCode})</Text>
@@ -783,20 +357,20 @@ const EnhancedAnalytics: React.FC = () => {
                   <Text strong>Date Range</Text>
                   <RangePicker
                     style={{ width: '100%' }}
-                    value={dateRange}
+                    value={analyticsState.dateRange}
                     onChange={(dates) => {
-          if (dates && dates.length === 2) {
-            setDateRange([dates[0]!, dates[1]!]);
-          } else {
-            setDateRange(null);
-          }
-        }}
+                      if (dates && dates.length === 2) {
+                        analyticsState.setDateRange([dates[0]!, dates[1]!]);
+                      } else {
+                        analyticsState.setDateRange(null);
+                      }
+                    }}
                     disabledDate={disabledDate}
                     placeholder={['From Date', 'To Date']}
                   />
-                  {availableDates && (
+                  {analyticsState.availableDates && (
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Available: {availableDates.minDate} to {availableDates.maxDate}
+                      Available: {analyticsState.availableDates.minDate} to {analyticsState.availableDates.maxDate}
                     </Text>
                   )}
                 </Space>
@@ -807,9 +381,9 @@ const EnhancedAnalytics: React.FC = () => {
               <Button
                 type="primary"
                 icon={<BarChartOutlined />}
-                loading={loading}
+                loading={analyticsState.loading}
                 onClick={handleAnalyze}
-                disabled={(selectedFunds.length === 0 && !isAllFundsSelected) || !dateRange}
+                disabled={(analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected) || !analyticsState.dateRange}
               >
                 Analyze Portfolio
               </Button>
@@ -817,35 +391,35 @@ const EnhancedAnalytics: React.FC = () => {
           </Card>
         </Col>
 
-        {analyticsData && (
+        {analyticsState.analyticsData && (
           <Col span={24}>
             <Card title="Analytics Summary">
               <Row gutter={[16, 16]}>
                 <Col span={6}>
                   <Statistic
                     title="Total Holdings Analyzed"
-                    value={analyticsData.summary.totalHoldingsAnalyzed}
+                    value={analyticsState.analyticsData.summary.totalHoldingsAnalyzed}
                     prefix={<FundOutlined />}
                   />
                 </Col>
                 <Col span={6}>
                   <Statistic
                     title="Added Holdings"
-                    value={analyticsData.summary.addedHoldings}
+                    value={analyticsState.analyticsData.summary.addedHoldings}
                     valueStyle={{ color: '#3f8600' }}
                   />
                 </Col>
                 <Col span={6}>
                   <Statistic
                     title="Removed Holdings"
-                    value={analyticsData.summary.removedHoldings}
+                    value={analyticsState.analyticsData.summary.removedHoldings}
                     valueStyle={{ color: '#cf1322' }}
                   />
                 </Col>
                 <Col span={6}>
                   <Statistic
                     title="Total Weight Change"
-                    value={analyticsData.summary.totalWeightChange}
+                    value={analyticsState.analyticsData.summary.totalWeightChange}
                     precision={2}
                     suffix="%"
                     prefix={<SwapOutlined />}
@@ -856,7 +430,7 @@ const EnhancedAnalytics: React.FC = () => {
           </Col>
         )}
 
-        {(holdingChanges || (topShares && topShares.data.length > 0)) && (
+        {(analyticsState.holdingChanges || (analyticsState.topShares && analyticsState.topShares.data.length > 0)) && (
           <Col span={24}>
             <Card>
               <Tabs defaultActiveKey="changes">
@@ -864,85 +438,65 @@ const EnhancedAnalytics: React.FC = () => {
                   tab={
                     <span>
                       <SwapOutlined />
-                      Holding Changes ({holdingChanges?.totalCount || 0})
+                      Holding Changes ({analyticsState.holdingChanges?.totalCount || 0})
                     </span>
                   } 
                   key="changes"
                 >
-                  {holdingChanges && (
+                  {analyticsState.holdingChanges && (
                     <div>
                       <div style={{ marginBottom: 16 }}>
-                        <Space wrap>
-                          <Text strong>Filter by Status:</Text>
-                          <Select
-                            value={selectedStatusFilter}
-                            onChange={handleStatusFilterChange}
-                            style={{ width: 150 }}
-                          >
-                            <Option value="all">All Statuses</Option>
-                            <Option value="Added">Added</Option>
-                            <Option value="Removed">Removed</Option>
-                            <Option value="Increased">Increased</Option>
-                            <Option value="Decreased">Decreased</Option>
-                            <Option value="Mixed">Mixed</Option>
-                          </Select>
-                          
-                          <Text strong>Sort by:</Text>
-                          <Select
-                            value={holdingChangesSortBy}
-                            onChange={(value) => {
-                              setHoldingChangesSortBy(value);
-                              setCurrentPage(1); // Reset to page 1 when sorting changes
-                              loadHoldingChanges(1, pageSize, undefined, value, holdingChangesSortDirection);
-                            }}
-                            style={{ width: 150 }}
-                          >
-                            <Option value="securityName">Security Name</Option>
-                            <Option value="sector">Sector</Option>
-                            <Option value="industry">Industry</Option>
-                            <Option value="previousWeight">Previous Weight</Option>
-                            <Option value="currentWeight">Current Weight</Option>
-                            <Option value="weightChange">Weight Change</Option>
-                            <Option value="changeType">Change Type</Option>
-                            <Option value="mutualFundsCount">Mutual Funds Count</Option>
-                          </Select>
-                          
-                          <Select
-                            value={holdingChangesSortDirection}
-                            onChange={(value) => {
-                              setHoldingChangesSortDirection(value);
-                              setCurrentPage(1); // Reset to page 1 when sort direction changes
-                              loadHoldingChanges(1, pageSize, undefined, holdingChangesSortBy, value);
-                            }}
-                            style={{ width: 100 }}
-                          >
-                            <Option value="asc">Asc</Option>
-                            <Option value="desc">Desc</Option>
-                          </Select>
-                          
-                          <Text type="secondary">
-                            Showing {holdingChanges?.data.length || 0} of {holdingChanges?.totalCount || 0} holdings
-                          </Text>
-                        </Space>
+                        <HoldingChangesControls
+                          selectedStatusFilters={sortingPagination.selectedStatusFilters}
+                          onStatusFilterChange={handleStatusFilterChange}
+                          matchMode={sortingPagination.changeTypeMatchMode}
+                          onMatchModeChange={(value) => {
+                            console.log('[HoldingChanges] onMatchModeChange', value);
+                            sortingPagination.setChangeTypeMatchMode(value);
+                            sortingPagination.setCurrentPage(1);
+                            loadHoldingChanges(
+                              1,
+                              sortingPagination.pageSize,
+                              sortingPagination.selectedStatusFilters,
+                              sortingPagination.holdingChangesSortBy,
+                              sortingPagination.holdingChangesSortDirection,
+                              value
+                            );
+                          }}
+                          sortBy={sortingPagination.holdingChangesSortBy}
+                          onSortByChange={(value) => {
+                            sortingPagination.setHoldingChangesSortBy(value);
+                            sortingPagination.setCurrentPage(1);
+                            loadHoldingChanges(1, sortingPagination.pageSize, sortingPagination.selectedStatusFilters, value, sortingPagination.holdingChangesSortDirection);
+                          }}
+                          sortDirection={sortingPagination.holdingChangesSortDirection}
+                          onSortDirectionChange={(value) => {
+                            sortingPagination.setHoldingChangesSortDirection(value);
+                            sortingPagination.setCurrentPage(1);
+                            loadHoldingChanges(1, sortingPagination.pageSize, sortingPagination.selectedStatusFilters, sortingPagination.holdingChangesSortBy, value);
+                          }}
+                          totalCount={analyticsState.holdingChanges?.totalCount || 0}
+                          currentCount={analyticsState.holdingChanges?.data.length || 0}
+                        />
                       </div>
                       <Table
-                        dataSource={holdingChanges?.data || []}
-                      columns={holdingChangesColumns}
-                      rowKey="isin"
-                      loading={loading}
-                      pagination={{
-                        current: holdingChanges?.page || 1,
-                        pageSize: holdingChanges?.pageSize || 20,
-                        total: holdingChanges?.totalCount || 0,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) =>
-                          `${range[0]}-${range[1]} of ${total} holdings`,
-                        onChange: handleTableChange,
-                        onShowSizeChange: handleTableChange,
-                      }}
-                      scroll={{ x: 1200 }}
-                    />
+                        dataSource={analyticsState.holdingChanges?.data || []}
+                        columns={holdingChangesColumns}
+                        rowKey="isin"
+                        loading={analyticsState.loading}
+                        pagination={{
+                          current: analyticsState.holdingChanges?.page || 1,
+                          pageSize: analyticsState.holdingChanges?.pageSize || 20,
+                          total: analyticsState.holdingChanges?.totalCount || 0,
+                          showSizeChanger: true,
+                          showQuickJumper: true,
+                          showTotal: (total, range) =>
+                            `${range[0]}-${range[1]} of ${total} holdings`,
+                          onChange: handleTableChange,
+                          onShowSizeChange: handleTableChange,
+                        }}
+                        scroll={{ x: 1200 }}
+                      />
                     </div>
                   )}
                 </TabPane>
@@ -951,75 +505,52 @@ const EnhancedAnalytics: React.FC = () => {
                   tab={
                     <span>
                       <TrophyOutlined />
-                      Top Shares ({topShares?.totalCount || 0})
+                      Top Shares ({analyticsState.topShares?.totalCount || 0})
                     </span>
                   } 
                   key="topShares"
                 >
                   <div>
                     <div style={{ marginBottom: 16 }}>
-                      <Space wrap>
-                        <Text strong>Sort by:</Text>
-                        <Select
-                          value={topSharesSortBy}
-                          onChange={(value) => {
-                            setTopSharesSortBy(value);
-                            // Reload top shares with new sorting, reset to page 1
-                            loadTopShares(1, topSharesPageSize, value, topSharesSortDirection);
-                          }}
-                          style={{ width: 150 }}
-                        >
-                          <Option value="securityName">Security Name</Option>
-                          <Option value="sector">Sector</Option>
-                          <Option value="industry">Industry</Option>
-                          <Option value="totalWeight">Total Weight</Option>
-                          <Option value="holdingFundsCount">Holding Funds Count</Option>
-                        </Select>
-                        
-                        <Select
-                          value={topSharesSortDirection}
-                          onChange={(value) => {
-                            setTopSharesSortDirection(value);
-                            // Reload top shares with new sorting, reset to page 1
-                            loadTopShares(1, topSharesPageSize, topSharesSortBy, value);
-                          }}
-                          style={{ width: 100 }}
-                        >
-                          <Option value="asc">Asc</Option>
-                          <Option value="desc">Desc</Option>
-                        </Select>
-                        
-                        <Text type="secondary">
-                          Showing {topShares?.data.length || 0} of {topShares?.totalCount || 0} shares
-                        </Text>
-                      </Space>
+                      <TopSharesControls
+                        sortBy={sortingPagination.topSharesSortBy}
+                        onSortByChange={(value) => {
+                          sortingPagination.setTopSharesSortBy(value);
+                          loadTopShares(1, sortingPagination.topSharesPageSize, value, sortingPagination.topSharesSortDirection);
+                        }}
+                        sortDirection={sortingPagination.topSharesSortDirection}
+                        onSortDirectionChange={(value) => {
+                          sortingPagination.setTopSharesSortDirection(value);
+                          loadTopShares(1, sortingPagination.topSharesPageSize, sortingPagination.topSharesSortBy, value);
+                        }}
+                        totalCount={analyticsState.topShares?.totalCount || 0}
+                        currentCount={analyticsState.topShares?.data.length || 0}
+                      />
                     </div>
                     
                     <Table
-                      dataSource={topShares?.data || []}
+                      dataSource={analyticsState.topShares?.data || []}
                       columns={topSharesColumns}
                       rowKey="isin"
                       pagination={{
-                        current: topShares?.page || 1,
-                        pageSize: topShares?.pageSize || 20,
-                        total: topShares?.totalCount || 0,
+                        current: analyticsState.topShares?.page || 1,
+                        pageSize: analyticsState.topShares?.pageSize || 20,
+                        total: analyticsState.topShares?.totalCount || 0,
                         showSizeChanger: true,
                         showQuickJumper: true,
                         showTotal: (total, range) =>
                           `${range[0]}-${range[1]} of ${total} shares`,
                         onChange: (page, pageSize) => {
-                          setTopSharesPage(page);
-                          if (pageSize !== topSharesPageSize) {
-                            setTopSharesPageSize(pageSize);
+                          sortingPagination.setTopSharesPage(page);
+                          if (pageSize !== sortingPagination.topSharesPageSize) {
+                            sortingPagination.setTopSharesPageSize(pageSize);
                           }
-                          // Trigger reload with new pagination using updated values and current sorting
-                          loadTopShares(page, pageSize, topSharesSortBy, topSharesSortDirection);
+                          loadTopShares(page, pageSize, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
                         },
                         onShowSizeChange: (_, size) => {
-                          setTopSharesPage(1); // Reset to first page when changing page size
-                          setTopSharesPageSize(size);
-                          // Trigger reload with new pagination using updated values and current sorting
-                          loadTopShares(1, size, topSharesSortBy, topSharesSortDirection);
+                          sortingPagination.setTopSharesPage(1);
+                          sortingPagination.setTopSharesPageSize(size);
+                          loadTopShares(1, size, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
                         },
                       }}
                       scroll={{ x: 1000 }}
@@ -1031,73 +562,19 @@ const EnhancedAnalytics: React.FC = () => {
                   tab={
                     <span>
                       <FundOutlined />
-                      Portfolio Snapshots ({portfolioSnapshots.length})
+                      Portfolio Snapshots ({analyticsState.portfolioSnapshots.length})
                     </span>
                   } 
                   key="snapshots"
                 >
-                  {portfolioSnapshots.length > 0 ? (
-                    <Row gutter={[16, 16]}>
-                      {portfolioSnapshots.map((snapshot, index) => (
-                        <Col span={12} key={index}>
-                          <Card 
-                            title={`${snapshot.fundName} - ${snapshot.date}`}
-                            size="small"
-                          >
-                            <Row gutter={[8, 8]}>
-                              <Col span={12}>
-                                <Statistic
-                                  title="Total Value"
-                                  value={snapshot.totalValue}
-                                  prefix="₹"
-                                  precision={2}
-                                />
-                              </Col>
-                              <Col span={12}>
-                                <Statistic
-                                  title="Holdings Count"
-                                  value={snapshot.holdingsCount}
-                                />
-                              </Col>
-                            </Row>
-                            <div style={{ marginTop: 16 }}>
-                              <Text strong>Top 5 Holdings:</Text>
-                              {Array.isArray(snapshot.holdings) ? 
-                                snapshot.holdings.slice(0, 5).map((holding: any, idx: number) => (
-                                  <div key={idx} style={{ marginTop: 4 }}>
-                                    <Text style={{ fontSize: '12px' }}>
-                                      {holding.companyName}: {holding.weight?.toFixed(2)}%
-                                    </Text>
-                                  </div>
-                                )) : 
-                                <div style={{ marginTop: 4 }}>
-                                  <Text style={{ fontSize: '12px', color: '#999' }}>
-                                    No holdings data available
-                                  </Text>
-                                </div>
-                              }
-                            </div>
-                          </Card>
-                        </Col>
-                      ))}
-                    </Row>
-                  ) : (
-                    <Alert
-                      message="No Portfolio Snapshots"
-                      description="Run analysis to see portfolio snapshots for selected funds and dates."
-                      type="info"
-                      showIcon
-                    />
-                  )}
+                  <PortfolioSnapshotsTab snapshots={analyticsState.portfolioSnapshots} />
                 </TabPane>
-
-               
               </Tabs>
             </Card>
           </Col>
         )}
 
-        {selectedFunds.length === 0 && !isAllFundsSelected && (
+        {analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected && (
           <Col span={24}>
             <Alert
               message="Select Mutual Funds"
@@ -1109,328 +586,19 @@ const EnhancedAnalytics: React.FC = () => {
         )}
       </Row>
 
-      {/* Mutual Funds Weight Modal */}
-      <Modal
-        title={
-          <Space>
-            <FundOutlined />
-            <Text strong>Mutual Fund Holdings Details</Text>
-          </Space>
-        }
-        open={showFundsModal}
-        onCancel={() => {
-          setShowFundsModal(false);
-          setSelectedModalData(null);
-        }}
-        footer={[
-          <Button key="close" onClick={() => {
-            setShowFundsModal(false);
-            setSelectedModalData(null);
-          }}>
-            Close
-          </Button>
-        ]}
-        width={800}
-        style={{ top: 20 }}
-      >
-        {selectedModalData && (
-          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            <Alert
-              message="Fund Weight Distribution"
-              description={`Showing holdings across ${selectedModalData.length} mutual funds`}
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-            
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              {selectedModalData
-                .sort((a: any, b: any) => b.weight - a.weight)
-                .map((holding: any, index: number) => (
-                  <Card 
-                    key={holding.mutualFundId} 
-                    size="small" 
-                    style={{ 
-                      border: '1px solid #f0f0f0',
-                      borderRadius: 8,
-                      backgroundColor: index % 2 === 0 ? '#fafafa' : '#ffffff'
-                    }}
-                  >
-                    <Row align="middle" gutter={[16, 8]}>
-                      <Col span={2}>
-                        <Tag color="blue" style={{ margin: 0 }}>
-                          #{index + 1}
-                        </Tag>
-                      </Col>
-                      <Col span={14}>
-                        <Space direction="vertical" size={2}>
-                          <Text strong style={{ fontSize: '14px' }}>
-                            {holding.mutualFundName}
-                          </Text>
-                          <Text type="secondary" style={{ fontSize: '12px' }}>
-                            Fund ID: {holding.mutualFundId}
-                          </Text>
-                        </Space>
-                      </Col>
-                      <Col span={8}>
-                        <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
-                              {holding.weight.toFixed(2)}%
-                            </Text>
-                          </div>
-                          <Progress 
-                            percent={holding.weight} 
-                            showInfo={false} 
-                            strokeColor={{
-                              '0%': '#108ee9',
-                              '100%': '#87d068',
-                            }}
-                            size="small"
-                          />
-                        </Space>
-                      </Col>
-                    </Row>
-                  </Card>
-                ))}
-            </Space>
-            
-            <Divider />
-            
-            <Row gutter={[16, 16]}>
-              <Col span={8}>
-                <Statistic
-                  title="Total Funds"
-                  value={selectedModalData.length}
-                  prefix={<FundOutlined />}
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title="Average Weight"
-                  value={(selectedModalData.reduce((sum: number, h: any) => sum + h.weight, 0) / selectedModalData.length).toFixed(2)}
-                  suffix="%"
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title="Total Weight"
-                  value={selectedModalData.reduce((sum: number, h: any) => sum + h.weight, 0).toFixed(2)}
-                  suffix="%"
-                />
-              </Col>
-            </Row>
-          </div>
-        )}
-      </Modal>
+      <FundHoldingsModal
+        visible={modalState.showFundsModal}
+        data={modalState.selectedModalData}
+        onClose={modalState.closeFundsModal}
+      />
 
-      {/* Holding Changes Funds Modal */}
-      <Modal
-        title={
-          <Space>
-            <SwapOutlined />
-            <Text strong>Holding Change Fund Details</Text>
-          </Space>
-        }
-        open={showHoldingFundsModal}
-        onCancel={() => {
-          setShowHoldingFundsModal(false);
-          setSelectedHoldingModalData(null);
-        }}
-        footer={[
-          <Button key="close" onClick={() => {
-            setShowHoldingFundsModal(false);
-            setSelectedHoldingModalData(null);
-          }}>
-            Close
-          </Button>
-        ]}
-        width={900}
-        style={{ top: 20 }}
-      >
-        {selectedHoldingModalData && (
-          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            <Alert
-              message={`Holding Change: ${selectedHoldingModalData.securityName}`}
-              description={
-                <Space direction="vertical" size={2}>
-                  <Text>ISIN: {selectedHoldingModalData.isin}</Text>
-                  <Text>Sector: {selectedHoldingModalData.sector}</Text>
-                  <Space>
-                    <Tag color={
-                      selectedHoldingModalData.changeType === 'Added' ? 'green' :
-                      selectedHoldingModalData.changeType === 'Removed' ? 'red' :
-                      selectedHoldingModalData.changeType === 'Increased' ? 'blue' :
-                      selectedHoldingModalData.changeType === 'Decreased' ? 'orange' :
-                      selectedHoldingModalData.changeType === 'Mixed' ? 'purple' :
-                      'default'
-                    }>
-                      {selectedHoldingModalData.changeType}
-                    </Tag>
-                    {selectedHoldingModalData.changeType === 'Mixed' && selectedHoldingModalData.constituentChangeTypes && (
-                      <Space>
-                        <Text type="secondary">Contains:</Text>
-                        {selectedHoldingModalData.constituentChangeTypes.map((type: string) => (
-                          <Tag 
-                            key={type}
-                            color={
-                              type === 'Added' ? 'green' :
-                              type === 'Removed' ? 'red' :
-                              type === 'Increased' ? 'blue' :
-                              type === 'Decreased' ? 'orange' :
-                              'default'
-                            }
-                            style={{ fontSize: '11px', padding: '1px 6px' }}
-                          >
-                            {type}
-                          </Tag>
-                        ))}
-                      </Space>
-                    )}
-                  </Space>
-                </Space>
-              }
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-            
-            <Row style={{ marginBottom: 16 }}>
-              <Col span={24}>
-                <Space>
-                  <Text strong>Filter by Change Type:</Text>
-                  <Select
-                    value={modalFilterType}
-                    onChange={setModalFilterType}
-                    style={{ width: 150 }}
-                    size="small"
-                  >
-                    <Option value="all">All Funds</Option>
-                    <Option value="Added">Added</Option>
-                    <Option value="Removed">Removed</Option>
-                    <Option value="Increased">Increased</Option>
-                    <Option value="Decreased">Decreased</Option>
-                  </Select>
-                </Space>
-              </Col>
-            </Row>
-            
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              {selectedHoldingModalData.fundChangeDetails
-                ?.filter((fund: any) => modalFilterType === 'all' || fund.changeType === modalFilterType)
-                ?.map((fund: any, index: number) => (
-                <Card 
-                  key={fund.mutualFundId} 
-                  size="small" 
-                  style={{ 
-                    border: '1px solid #f0f0f0',
-                    borderRadius: 8,
-                    backgroundColor: index % 2 === 0 ? '#fafafa' : '#ffffff'
-                  }}
-                >
-                  <Row align="middle" gutter={[16, 8]}>
-                    <Col span={2}>
-                      <Tag color="blue" style={{ margin: 0 }}>
-                        #{index + 1}
-                      </Tag>
-                    </Col>
-                    <Col span={10}>
-                      <Space direction="vertical" size={2}>
-                        <Text strong style={{ fontSize: '14px' }}>
-                          {fund.mutualFundName}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          Fund ID: {fund.mutualFundId}
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col span={4}>
-                      <Space direction="vertical" size={2} align="center">
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Previous</Text>
-                        <Text style={{ fontSize: '14px' }}>
-                          {fund.previousWeight ? `${fund.previousWeight.toFixed(2)}%` : '-'}
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col span={4}>
-                      <Space direction="vertical" size={2} align="center">
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Current</Text>
-                        <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
-                          {fund.currentWeight.toFixed(2)}%
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col span={4}>
-                      <Space direction="vertical" size={2} align="center">
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Change</Text>
-                        <Text 
-                          strong 
-                          style={{ 
-                            fontSize: '14px', 
-                            color: fund.weightChange > 0 ? '#52c41a' : fund.weightChange < 0 ? '#ff4d4f' : '#666666'
-                          }}
-                        >
-                          {fund.weightChange > 0 ? '+' : ''}{fund.weightChange.toFixed(2)}%
-                        </Text>
-                        <Tag 
-                          color={
-                            fund.changeType === 'Added' ? 'green' :
-                            fund.changeType === 'Removed' ? 'red' :
-                            fund.changeType === 'Increased' ? 'blue' :
-                            fund.changeType === 'Decreased' ? 'orange' :
-                            'purple'
-                          }
-                          style={{ fontSize: '11px' }}
-                        >
-                          {fund.changeType}
-                        </Tag>
-                      </Space>
-                    </Col>
-                  </Row>
-                </Card>
-              )) || []}
-            </Space>
-            
-            <Divider />
-            
-            <Row gutter={[16, 16]}>
-              <Col span={6}>
-                <Statistic
-                  title="Total Funds"
-                  value={selectedHoldingModalData.fundChangeDetails?.length || 0}
-                  prefix={<FundOutlined />}
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Previous Weight"
-                  value={selectedHoldingModalData.previousWeight?.toFixed(2) || '0.00'}
-                  suffix="%"
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Current Weight"
-                  value={selectedHoldingModalData.currentWeight?.toFixed(2) || '0.00'}
-                  suffix="%"
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Total Change"
-                  value={selectedHoldingModalData.weightChange?.toFixed(2) || '0.00'}
-                  suffix="%"
-                  valueStyle={{ 
-                    color: (selectedHoldingModalData.weightChange || 0) > 0 ? '#52c41a' : 
-                           (selectedHoldingModalData.weightChange || 0) < 0 ? '#ff4d4f' : '#666666'
-                  }}
-                />
-              </Col>
-            </Row>
-          </div>
-        )}
-      </Modal>
+      <HoldingChangeFundsModal
+        visible={modalState.showHoldingFundsModal}
+        data={modalState.selectedHoldingModalData}
+        filterType={modalState.modalFilterType}
+        onFilterChange={modalState.setModalFilterType}
+        onClose={modalState.closeHoldingFundsModal}
+      />
     </div>
   );
 };

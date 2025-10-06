@@ -81,7 +81,8 @@ public class AnalyticsService : IAnalyticsService
             ToDate = request.ToDate,
             Page = request.Page,
             PageSize = request.PageSize,
-            ChangeTypeFilter = request.ChangeTypeFilter,
+            ChangeTypeFilters = request.ChangeTypeFilters,
+            ChangeTypeMatchMode = request.ChangeTypeMatchMode,
             SortBy = request.SortBy,
             SortDirection = request.SortDirection
         };
@@ -140,7 +141,8 @@ public class AnalyticsService : IAnalyticsService
         // Apply database-level sorting by querying holdings with sorting applied
         var sortedAndFilteredChanges = await ApplyDatabaseLevelSortingAsync(
             groupedChanges, 
-            request.ChangeTypeFilter, 
+            request.ChangeTypeFilters, 
+            request.ChangeTypeMatchMode,
             request.SortBy, 
             request.SortDirection);
 
@@ -166,16 +168,53 @@ public class AnalyticsService : IAnalyticsService
     /// </summary>
     private async Task<List<HoldingChangeDto>> ApplyDatabaseLevelSortingAsync(
         List<HoldingChangeDto> changes,
-        string? changeTypeFilter,
+        List<string>? changeTypeFilters,
+        string? changeTypeMatchMode,
         string? sortBy,
         string? sortDirection)
     {
         // Apply filtering first
         var filteredChanges = changes;
-        if (!string.IsNullOrEmpty(changeTypeFilter))
+        if (changeTypeFilters != null && changeTypeFilters.Any())
         {
-            _logger.LogInformation("Applying change type filter: {ChangeTypeFilter}", changeTypeFilter);
-            filteredChanges = changes.Where(c => c.ChangeType == changeTypeFilter).ToList();
+            var set = changeTypeFilters.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            _logger.LogInformation("Applying change type filters: {Filters}", string.Join(",", changeTypeFilters));
+            var mode = (changeTypeMatchMode ?? "any").ToLower();
+            _logger.LogInformation("ChangeTypeMatchMode: {Mode}", mode);
+            if (mode == "only")
+            {
+                filteredChanges = changes.Where(c =>
+                {
+                    // Build the constituent type set for this change
+                    HashSet<string> types;
+                    if (c.ChangeType == "Mixed" && c.FundChangeDetails != null && c.FundChangeDetails.Any())
+                    {
+                        types = c.FundChangeDetails.Select(fd => fd.ChangeType).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    }
+                    else
+                    {
+                        types = new HashSet<string>(new[] { c.ChangeType }, StringComparer.OrdinalIgnoreCase);
+                    }
+
+                    // Exact set equality: include only if constituent types exactly match selected set (no extras)
+                    return types.SetEquals(set);
+                }).ToList();
+                _logger.LogInformation("Only mode filtered count: {Count}", filteredChanges.Count);
+            }
+            else
+            {
+                // 'any' mode (OR): include if direct match or any constituent in Mixed matches
+                filteredChanges = changes.Where(c =>
+                {
+                    if (set.Contains(c.ChangeType)) return true;
+                    if (c.ChangeType == "Mixed" && c.FundChangeDetails != null)
+                    {
+                        return c.FundChangeDetails.Any(fd => set.Contains(fd.ChangeType));
+                    }
+                    return false;
+                }).ToList();
+                _logger.LogInformation("Any mode filtered count: {Count}", filteredChanges.Count);
+            }
         }
 
         // Determine if we can use database sorting or need in-memory sorting

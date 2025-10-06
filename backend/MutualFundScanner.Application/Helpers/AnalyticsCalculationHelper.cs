@@ -372,7 +372,7 @@ public class AnalyticsCalculationHelper
     /// </summary>
     public PagedResult<HoldingChangeDto> ApplyFilteringAndPagination(
         List<HoldingChangeDto> changes,
-        string? changeTypeFilter,
+        List<string>? changeTypeFilters,
         int page,
         int pageSize,
         string? sortBy = null,
@@ -380,26 +380,27 @@ public class AnalyticsCalculationHelper
     {
         // Apply enhanced filtering that includes Mixed changes with constituent types
         var filteredChanges = changes;
-        if (!string.IsNullOrEmpty(changeTypeFilter))
+        if (changeTypeFilters != null && changeTypeFilters.Any())
         {
-            _logger.LogInformation("Applying change type filter: {ChangeTypeFilter}", changeTypeFilter);
+            _logger.LogInformation("Applying change type filters: {Filters}", string.Join(",", changeTypeFilters));
+            var set = changeTypeFilters.ToHashSet(StringComparer.OrdinalIgnoreCase);
             
             filteredChanges = changes.Where(c => 
             {
-                // Direct match
-                if (c.ChangeType == changeTypeFilter) return true;
+                // Direct match with any filter
+                if (set.Contains(c.ChangeType)) return true;
                 
                 // For Mixed changes, check if any fund has the requested change type
                 if (c.ChangeType == "Mixed" && c.FundChangeDetails != null)
                 {
-                    return c.FundChangeDetails.Any(fd => fd.ChangeType == changeTypeFilter);
+                    return c.FundChangeDetails.Any(fd => set.Contains(fd.ChangeType));
                 }
                 
                 return false;
             }).ToList();
             
-            _logger.LogInformation("Enhanced filtered changes count: {FilteredCount} from original count: {OriginalCount} (includes Mixed with {ChangeTypeFilter})", 
-                filteredChanges.Count, changes.Count, changeTypeFilter);
+            _logger.LogInformation("Enhanced filtered changes count: {FilteredCount} from original count: {OriginalCount} (includes Mixed constituents)", 
+                filteredChanges.Count, changes.Count);
         }
 
         // Apply sorting

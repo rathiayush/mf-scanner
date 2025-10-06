@@ -274,7 +274,6 @@ public class MutualFundService : IMutualFundService
 
         var funds = await query
             .OrderBy(f => f.FundName)
-            .Take(50) // Limit for dropdown
             .ToListAsync();
 
         return funds.Select(f => new MutualFundDto
