@@ -125,4 +125,13 @@ using (var scope = app.Services.CreateScope())
     await MutualFundScanner.Infrastructure.Data.Seeders.DatabaseSeeder.SeedAsync(context);
 }
 
-app.Run("http://0.0.0.0:5247");
+// For IIS Express, we'll use the default configuration
+// For local development, we'll use the specified URL
+if (app.Environment.IsDevelopment())
+{
+    app.Run("http://0.0.0.0:5247");
+}
+else
+{
+    app.Run();
+}

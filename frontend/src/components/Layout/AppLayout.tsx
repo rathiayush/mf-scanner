@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Typography, Space, Button, Menu } from 'antd';
-import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, CloudUploadOutlined, UnorderedListOutlined, DollarOutlined, FundOutlined, TableOutlined, PieChartOutlined, RobotOutlined, DatabaseOutlined, StockOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
