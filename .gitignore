@@ -43,10 +43,6 @@ packages/
 .env.test.local
 .env.production.local
 
-# Configuration files with secrets
-*.config
-appsettings*.json
-!appsettings.example.json
 
 # Database files
 *.db

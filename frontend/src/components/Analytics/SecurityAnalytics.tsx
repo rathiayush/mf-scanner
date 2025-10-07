@@ -13,27 +13,24 @@ import {
   Statistic,
   Alert,
   message,
-  Progress,
   Divider,
   Modal,
   Input,
 } from 'antd';
 import {
-  SearchOutlined,
   BarChartOutlined,
   FundOutlined,
   SwapOutlined,
   EyeOutlined,
   StockOutlined,
 } from '@ant-design/icons';
-import { mutualFundService, analyticsService } from '../../services/api';
+import { analyticsService } from '../../services/api';
 import {
   SecurityAnalyticsRequestDto,
   SecurityAnalyticsResponseDto,
   SecurityMonthlyChangeDto,
   MonthlyChangeTypeDto,
   SecurityFundChangeDto,
-  AvailableSecuritiesResponseDto,
   SecurityDropdownDto,
 } from '../../types';
 import dayjs, { Dayjs } from 'dayjs';
