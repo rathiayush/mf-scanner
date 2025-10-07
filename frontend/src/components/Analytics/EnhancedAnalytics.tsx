@@ -162,48 +162,61 @@ const EnhancedAnalytics: React.FC = () => {
         sortDirection: sortingPagination.topSharesSortDirection
       };
 
-      const [analytics, changes, shares, fromHoldings, toHoldings] = await Promise.all([
+      // Old implementation with current holdings API calls
+      // const [analytics, changes, shares, fromHoldings, toHoldings] = await Promise.all([
+      //   analyticsService.getAnalytics(request),
+      //   analyticsService.getHoldingChanges(request),
+      //   analyticsService.getTopShares(topSharesRequest),
+      //   Promise.all(fundsForAnalysis.map(fundId => 
+      //     analyticsService.getCurrentHoldings({
+      //       mutualFundId: fundId,
+      //       targetDate: request.fromDate,
+      //       dateRangeStart: analyticsState.dateRange[0].subtract(30, 'day').format('YYYY-MM-DD'),
+      //       dateRangeEnd: analyticsState.dateRange[0].add(30, 'day').format('YYYY-MM-DD'),
+      //       page: 1,
+      //       pageSize: 100
+      //     })
+      //   )),
+      //   Promise.all(fundsForAnalysis.map(fundId => 
+      //     analyticsService.getCurrentHoldings({
+      //       mutualFundId: fundId,
+      //       targetDate: request.toDate,
+      //       dateRangeStart: analyticsState.dateRange[1].subtract(30, 'day').format('YYYY-MM-DD'),
+      //       dateRangeEnd: analyticsState.dateRange[1].add(30, 'day').format('YYYY-MM-DD'),
+      //       page: 1,
+      //       pageSize: 100
+      //     })
+      //   ))
+      // ]);
+
+      // New implementation without current holdings API calls
+      const [analytics, changes, shares] = await Promise.all([
         analyticsService.getAnalytics(request),
         analyticsService.getHoldingChanges(request),
-        analyticsService.getTopShares(topSharesRequest),
-        Promise.all(fundsForAnalysis.map(fundId => 
-          analyticsService.getCurrentHoldings({
-            mutualFundId: fundId,
-            targetDate: request.fromDate,
-            dateRangeStart: analyticsState.dateRange[0].subtract(30, 'day').format('YYYY-MM-DD'),
-            dateRangeEnd: analyticsState.dateRange[0].add(30, 'day').format('YYYY-MM-DD'),
-            page: 1,
-            pageSize: 100
-          })
-        )),
-        Promise.all(fundsForAnalysis.map(fundId => 
-          analyticsService.getCurrentHoldings({
-            mutualFundId: fundId,
-            targetDate: request.toDate,
-            dateRangeStart: analyticsState.dateRange[1].subtract(30, 'day').format('YYYY-MM-DD'),
-            dateRangeEnd: analyticsState.dateRange[1].add(30, 'day').format('YYYY-MM-DD'),
-            page: 1,
-            pageSize: 100
-          })
-        ))
+        analyticsService.getTopShares(topSharesRequest)
       ]);
 
       analyticsState.setAnalyticsData(analytics);
       analyticsState.setHoldingChanges(changes);
       analyticsState.setTopShares(shares);
       
-      const allHoldings = [...fromHoldings, ...toHoldings].filter(h => h.success);
-      analyticsState.setCurrentHoldings(allHoldings);
+      // Initialize empty snapshots array since we're not fetching current holdings
+      analyticsState.setCurrentHoldings([]);
+      analyticsState.setPortfolioSnapshots([]);
       
-      const snapshots = allHoldings.map(holding => ({
-        fundId: holding.mutualFundId,
-        fundName: holding.mutualFundName,
-        date: holding.date,
-        totalValue: holding.totalValue,
-        holdingsCount: holding.holdingsCount,
-        holdings: holding.holdings
-      }));
-      analyticsState.setPortfolioSnapshots(snapshots);
+      // Old implementation of setting up snapshots from holdings
+      // const allHoldings = [...fromHoldings, ...toHoldings].filter(h => h.success);
+      // analyticsState.setCurrentHoldings(allHoldings);
+      // 
+      // const snapshots = allHoldings.map(holding => ({
+      //   fundId: holding.mutualFundId,
+      //   fundName: holding.mutualFundName,
+      //   date: holding.date,
+      //   totalValue: holding.totalValue,
+      //   holdingsCount: holding.holdingsCount,
+      //   holdings: holding.holdings
+      // }));
+      // analyticsState.setPortfolioSnapshots(snapshots);
     } catch (error: any) {
       message.error(error.message || 'Failed to analyze data');
     } finally {

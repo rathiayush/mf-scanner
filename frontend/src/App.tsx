@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import AppLayout from './components/Layout';
 import { FileUploadPage, AnalysePage, MutualFundListPage } from './pages';
@@ -48,11 +48,12 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 8,
+    <BrowserRouter basename={import.meta.env.REACT_APP_BASE_PATH || ''}>
+      <ConfigProvider
+        theme={{
+          token: {
+            colorPrimary: '#1890ff',
+            borderRadius: 8,
           colorBgContainer: '#ffffff',
           colorText: 'rgba(0, 0, 0, 0.85)',
           colorTextSecondary: 'rgba(0, 0, 0, 0.65)',
@@ -112,10 +113,9 @@ const App: React.FC = () => {
         },
       }}
     >
-      <Router>
         <AppContent />
-      </Router>
-    </ConfigProvider>
+      </ConfigProvider>
+    </BrowserRouter>
   );
 };
 
