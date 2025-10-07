@@ -406,6 +406,7 @@ public class FileProcessingService : IFileProcessingService
                     var isin = ExtractISINFromRow(worksheet, row, colCount);
                     var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
                     var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
+                    var marketValue = ExtractMarketValueFromRow(worksheet, row, columnMapping);
 
                     // Only create portfolio holding if all key validations pass
                     if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
@@ -434,7 +435,7 @@ public class FileProcessingService : IFileProcessingService
                         ISIN = isin,
                         Ticker = ExtractTickerFromCompanyName(companyName),
                         Quantity = quantity,
-                        MarketValue = 0, // Can be calculated from quantity * price if needed
+                        MarketValue = marketValue,
                         Weight = weight,
                         Sector = string.Empty,
                         Industry = industry, // Can be enhanced later
@@ -540,6 +541,7 @@ public class FileProcessingService : IFileProcessingService
                     var isin = ExtractISINFromRow(worksheet, row, colCount);
                     var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
                     var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
+                    var marketValue = ExtractMarketValueFromRow(worksheet, row, columnMapping);
 
                     // Only create portfolio holding if all key validations pass
                     if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
@@ -568,7 +570,7 @@ public class FileProcessingService : IFileProcessingService
                         ISIN = isin,
                         Ticker = ExtractTickerFromCompanyName(companyName),
                         Quantity = quantity,
-                        MarketValue = 0, // Can be calculated from quantity * price if needed
+                        MarketValue = marketValue,
                         Weight = weight,
                         Sector = sector,
                         Industry = string.Empty, // Can be enhanced later
@@ -682,6 +684,7 @@ public class FileProcessingService : IFileProcessingService
                     var isin = ExtractISINFromRow(worksheet, row, colCount);
                     var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
                     var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
+                    var marketValue = ExtractMarketValueFromRow(worksheet, row, columnMapping);
 
                     // Only create portfolio holding if all key validations pass
                     if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
@@ -710,7 +713,7 @@ public class FileProcessingService : IFileProcessingService
                         ISIN = isin,
                         Ticker = ExtractTickerFromCompanyName(companyName),
                         Quantity = quantity,
-                        MarketValue = 0, // Can be calculated from quantity * price if needed
+                        MarketValue = marketValue,
                         Weight = weight,
                         Sector = sector,
                         Industry = string.Empty, // Can be enhanced later
@@ -813,6 +816,7 @@ public class FileProcessingService : IFileProcessingService
     {
         bool weightColumnFound = false;
         bool quantityColumnFound = false;
+        bool marketValueColumnFound = false;
         
         for (int col = 0; col < colCount; col++)
         {
@@ -823,6 +827,14 @@ public class FileProcessingService : IFileProcessingService
             {
                 mapping.QuantityColumn = col;
                 quantityColumnFound = true;
+                continue;
+            }
+
+            // Check for market value column by header text
+            if (!marketValueColumnFound && IsMarketValueColumn(worksheet, col, mapping.DataStartRow))
+            {
+                mapping.MarketValueColumn = col;
+                marketValueColumnFound = true;
                 continue;
             }
 
@@ -840,6 +852,12 @@ public class FileProcessingService : IFileProcessingService
             {
                 mapping.QuantityColumn = col;
                 quantityColumnFound = true;
+            }
+            // Market value column: typically larger numbers with decimals (fallback if header detection failed)
+            else if (!marketValueColumnFound && columnStats.HasDecimals && columnStats.MaxValue > 1000)
+            {
+                mapping.MarketValueColumn = col;
+                marketValueColumnFound = true;
             }
         }
     }
@@ -873,6 +891,27 @@ public class FileProcessingService : IFileProcessingService
 
             // Look for "quantity" text in header
             if (cellValue.Contains("quantity", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool IsMarketValueColumn(ISheet worksheet, int col, int dataStartRow)
+    {
+        // Check header rows (before data starts) for market value related text
+        for (int row = 0; row < dataStartRow; row++)
+        {
+            var headerRow = worksheet.GetRow(row);
+            if (headerRow == null) continue;
+
+            var cellValue = GetCellValue(headerRow, col)?.Trim();
+            if (string.IsNullOrEmpty(cellValue)) continue;
+
+            // Look for market value related text in header
+            if (cellValue.Contains("Market/", StringComparison.OrdinalIgnoreCase) ||
+                cellValue.Contains("Fair Value (Rs. in Lacs.)", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -1007,6 +1046,42 @@ public class FileProcessingService : IFileProcessingService
         return decimal.TryParse(cellValue, out var quantity) ? quantity : 0;
     }
 
+    private decimal ExtractMarketValueFromRow(ISheet worksheet, int row, ColumnMapping mapping)
+    {
+        if (mapping.MarketValueColumn == -1) return 0;
+        
+        var dataRow = worksheet.GetRow(row);
+        if (dataRow == null) return 0;
+
+        var cell = dataRow.GetCell(mapping.MarketValueColumn);
+        if (cell == null) return 0;
+
+        // Handle numeric cells directly to avoid string conversion issues
+        if (cell.CellType == CellType.Numeric)
+        {
+            // Convert to decimal and handle potential conversion from lakhs to units if needed
+            return (decimal)cell.NumericCellValue;
+        }
+        
+        // Handle other cell types using the existing GetCellValue method
+        var cellValue = GetCellValue(dataRow, mapping.MarketValueColumn)?.Trim();
+        if (decimal.TryParse(cellValue, out var marketValue))
+        {
+            return marketValue;
+        }
+        
+        // Try to handle cases where the value might have a comma as thousand separator
+        if (cellValue?.Contains(",") == true)
+        {
+            if (decimal.TryParse(cellValue.Replace(",", ""), out var parsedValue))
+            {
+                return parsedValue;
+            }
+        }
+        
+        return 0;
+    }
+
     private decimal ExtractWeightFromRow(ISheet worksheet, int row, ColumnMapping mapping)
     {
         if (mapping.WeightColumn == -1) return 0;
@@ -1020,7 +1095,11 @@ public class FileProcessingService : IFileProcessingService
         // Handle numeric cells directly to avoid string conversion issues
         if (cell.CellType == CellType.Numeric)
         {
-            return Math.Round(((decimal)cell.NumericCellValue) * 100, 2);
+            var actualWeight =  Math.Round(((decimal)cell.NumericCellValue) * 100, 2);
+            if (actualWeight <= 0m || actualWeight > 100m)
+            {
+                return (actualWeight / 100);
+            }
         }
         
         // Handle other cell types using the existing GetCellValue method
@@ -1246,6 +1325,7 @@ public class FileProcessingService : IFileProcessingService
         public int QuantityColumn { get; set; } = -1;
         public int WeightColumn { get; set; } = -1;
         public int SectorColumn { get; set; } = -1;
+        public int MarketValueColumn { get; set; } = -1;
         public int DataStartRow { get; set; } = 0;
     }
 
