@@ -224,4 +224,49 @@ public class AnalyticsController : ControllerBase
             return StatusCode(500, new { Message = ex.Message });
         }
     }
+
+    [HttpGet("portfolio-holdings")]
+    public async Task<IActionResult> GetPortfolioHoldings(
+        [FromQuery] int mutualFundId,
+        [FromQuery] DateTime targetDate,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] string? sortDirection = "asc")
+    {
+        try
+        {
+            _logger.LogInformation("GetPortfolioHoldings called with fundId: {FundId}, targetDate: {TargetDate}, page: {Page}, pageSize: {PageSize}, sortBy: {SortBy}, sortDirection: {SortDirection}", 
+                mutualFundId, targetDate, page, pageSize, sortBy ?? "default", sortDirection ?? "asc");
+
+            if (mutualFundId <= 0)
+            {
+                return BadRequest(new { Message = "Valid mutual fund ID is required" });
+            }
+
+            if (targetDate == default)
+            {
+                return BadRequest(new { Message = "Valid target date is required" });
+            }
+
+            var request = new CurrentHoldingsRequestDto
+            {
+                MutualFundId = mutualFundId,
+                TargetDate = targetDate,
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                SortDirection = sortDirection
+            };
+
+            var result = await _analyticsService.GetCurrentHoldingsAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting portfolio holdings for fund {FundId} on date {Date}", 
+                mutualFundId, targetDate);
+            return StatusCode(500, new { Message = ex.Message });
+        }
+    }
 }

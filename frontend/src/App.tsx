@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import AppLayout from './components/Layout';
-import { FileUploadPage, AnalysePage, MutualFundListPage } from './pages';
+import { FileUploadPage, AnalysePage, MutualFundListPage, PortfolioHoldingsPage } from './pages';
 import CurrentHoldingsPage from './pages/CurrentHoldingsPage';
 import HoldingsComparison from './components/Holdings/HoldingsComparison';
 import PortfolioSummary from './components/Holdings/PortfolioSummary';
@@ -23,6 +23,7 @@ const AppContent: React.FC = () => {
     if (path === '/current-holdings') return '5-1';
     if (path === '/holdings-comparison') return '5-2';
     if (path === '/portfolio-summary') return '5-3';
+    if (path === '/portfolio-holdings') return '8';
     if (path === '/upload-v2') return '6';
     if (path === '/concrete-funds') return '7';
     return '1';
@@ -38,6 +39,7 @@ const AppContent: React.FC = () => {
         <Route path="/current-holdings" element={<CurrentHoldingsPage />} />
         <Route path="/holdings-comparison" element={<HoldingsComparison />} />
         <Route path="/portfolio-summary" element={<PortfolioSummary />} />
+        <Route path="/portfolio-holdings" element={<PortfolioHoldingsPage />} />
         <Route path="/upload-v2" element={<UploadV2 />} />
         <Route path="/concrete-funds" element={<ConcreteMutualFunds />} />
         <Route path="*" element={<Navigate to="/" replace />} />

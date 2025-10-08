@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Layout, Typography, Space, Button, Menu } from 'antd';
-import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, EyeOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -39,6 +39,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1' }) =>
       key: '7',
       icon: <DatabaseOutlined />,
       label: <Link to="/concrete-funds">Concrete Mutual Funds</Link>,
+    },
+    {
+      key: '8',
+      icon: <EyeOutlined />,
+      label: <Link to="/portfolio-holdings">Portfolio Holdings</Link>,
     },
     {
       key: '6',
