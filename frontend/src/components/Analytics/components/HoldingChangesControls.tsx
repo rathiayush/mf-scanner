@@ -1,5 +1,5 @@
 import React from 'react';
-import { Space, Select, Typography, Radio } from 'antd';
+import { Space, Select, Typography, Radio, InputNumber, Divider } from 'antd';
 
 const { Text } = Typography;
 
@@ -16,6 +16,27 @@ interface HoldingChangesControlsProps {
   onSortDirectionChange: (value: string) => void;
   totalCount: number;
   currentCount: number;
+  // Filters
+  availableSectors: string[];
+  selectedSectors: string[];
+  onSectorsChange: (value: string[]) => void;
+  availableIndustries: string[];
+  selectedIndustries: string[];
+  onIndustriesChange: (value: string[]) => void;
+  weightChangeMin?: number;
+  onWeightChangeMin: (value: number | null) => void;
+  weightChangeMax?: number;
+  onWeightChangeMax: (value: number | null) => void;
+  quantityChangeMin?: number;
+  onQuantityChangeMin: (value: number | null) => void;
+  quantityChangeMax?: number;
+  onQuantityChangeMax: (value: number | null) => void;
+  valueChangeMin?: number;
+  onValueChangeMin: (value: number | null) => void;
+  valueChangeMax?: number;
+  onValueChangeMax: (value: number | null) => void;
+  minFundsCount?: number;
+  onMinFundsCount: (value: number | null) => void;
 }
 
 const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
@@ -28,7 +49,28 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
   sortDirection,
   onSortDirectionChange,
   totalCount,
-  currentCount
+  currentCount,
+  // filters
+  availableSectors,
+  selectedSectors,
+  onSectorsChange,
+  availableIndustries,
+  selectedIndustries,
+  onIndustriesChange,
+  weightChangeMin,
+  onWeightChangeMin,
+  weightChangeMax,
+  onWeightChangeMax,
+  quantityChangeMin,
+  onQuantityChangeMin,
+  quantityChangeMax,
+  onQuantityChangeMax,
+  valueChangeMin,
+  onValueChangeMin,
+  valueChangeMax,
+  onValueChangeMax,
+  minFundsCount,
+  onMinFundsCount
 }) => {
   return (
     <Space wrap>
@@ -81,6 +123,89 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
         <Option value="asc">Asc</Option>
         <Option value="desc">Desc</Option>
       </Select>
+
+      <Divider type="vertical" />
+
+      <Text strong>Sector:</Text>
+      <Select
+        mode="multiple"
+        value={selectedSectors}
+        onChange={onSectorsChange}
+        allowClear
+        placeholder="All sectors"
+        style={{ minWidth: 180 }}
+        maxTagCount={2}
+      >
+        {availableSectors.map((s) => (
+          <Option key={s} value={s}>{s}</Option>
+        ))}
+      </Select>
+
+      <Text strong>Industry:</Text>
+      <Select
+        mode="multiple"
+        value={selectedIndustries}
+        onChange={onIndustriesChange}
+        allowClear
+        placeholder="All industries"
+        style={{ minWidth: 200 }}
+        maxTagCount={2}
+      >
+        {availableIndustries.map((i) => (
+          <Option key={i} value={i}>{i}</Option>
+        ))}
+      </Select>
+
+      <Text strong>Δ Weight (%):</Text>
+      <InputNumber
+        placeholder="Min"
+        value={weightChangeMin}
+        onChange={(v) => onWeightChangeMin(v === null ? null : Number(v))}
+        style={{ width: 90 }}
+      />
+      <InputNumber
+        placeholder="Max"
+        value={weightChangeMax}
+        onChange={(v) => onWeightChangeMax(v === null ? null : Number(v))}
+        style={{ width: 90 }}
+      />
+
+      <Text strong>Δ Qty:</Text>
+      <InputNumber
+        placeholder="Min"
+        value={quantityChangeMin}
+        onChange={(v) => onQuantityChangeMin(v === null ? null : Number(v))}
+        style={{ width: 90 }}
+      />
+      <InputNumber
+        placeholder="Max"
+        value={quantityChangeMax}
+        onChange={(v) => onQuantityChangeMax(v === null ? null : Number(v))}
+        style={{ width: 90 }}
+      />
+
+      <Text strong>Δ Value (₹):</Text>
+      <InputNumber
+        placeholder="Min"
+        value={valueChangeMin}
+        onChange={(v) => onValueChangeMin(v === null ? null : Number(v))}
+        style={{ width: 120 }}
+      />
+      <InputNumber
+        placeholder="Max"
+        value={valueChangeMax}
+        onChange={(v) => onValueChangeMax(v === null ? null : Number(v))}
+        style={{ width: 120 }}
+      />
+
+      <Text strong>Min Funds:</Text>
+      <InputNumber
+        placeholder="e.g. 2"
+        value={minFundsCount}
+        onChange={(v) => onMinFundsCount(v === null ? null : Number(v))}
+        style={{ width: 90 }}
+        min={1}
+      />
       
       <Text type="secondary">
         Showing {currentCount} of {totalCount} holdings

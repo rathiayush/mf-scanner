@@ -129,6 +129,28 @@ export const getHoldingChangesColumns = ({
     ),
   },
   {
+    title: 'Quantity Change',
+    dataIndex: 'quantityChange',
+    key: 'quantityChange',
+    width: 130,
+    render: (change: number) => (
+      <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
+        {change > 0 ? '+' : ''}{change.toLocaleString()}
+      </Text>
+    ),
+  },
+  {
+    title: 'Value Change',
+    dataIndex: 'valueChange',
+    key: 'valueChange',
+    width: 130,
+    render: (change: number) => (
+      <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
+        {change > 0 ? '+' : ''}₹{Math.abs(change).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+      </Text>
+    ),
+  },
+  {
     title: 'Total Funds',
     dataIndex: 'mutualFundNames',
     key: 'totalFunds',
@@ -165,6 +187,12 @@ export const getHoldingChangesColumns = ({
                 previousWeight: record.previousWeight,
                 currentWeight: record.currentWeight,
                 weightChange: record.weightChange,
+                previousQuantity: record.previousQuantity,
+                currentQuantity: record.currentQuantity,
+                quantityChange: record.quantityChange,
+                previousValue: record.previousValue,
+                currentValue: record.currentValue,
+                valueChange: record.valueChange,
                 fundChangeDetails: fundDetails
               });
             }}

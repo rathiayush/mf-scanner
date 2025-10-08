@@ -166,37 +166,50 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
           <Divider />
           
           <Row gutter={[16, 16]}>
-            <Col span={6}>
+            <Col span={4}>
               <Statistic
                 title="Total Funds"
                 value={data.fundChangeDetails?.length || 0}
                 prefix={<FundOutlined />}
               />
             </Col>
-            <Col span={6}>
+            <Col span={5}>
               <Statistic
-                title="Previous Weight"
-                value={data.previousWeight?.toFixed(2) || '0.00'}
-                suffix="%"
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="Current Weight"
-                value={data.currentWeight?.toFixed(2) || '0.00'}
-                suffix="%"
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="Total Change"
+                title="Weight Change"
                 value={data.weightChange?.toFixed(2) || '0.00'}
                 suffix="%"
                 valueStyle={{ 
                   color: (data.weightChange || 0) > 0 ? '#52c41a' : 
                          (data.weightChange || 0) < 0 ? '#ff4d4f' : '#666666'
                 }}
+              />
+            </Col>
+            <Col span={5}>
+              <Statistic
+                title="Quantity Change"
+                value={data.quantityChange?.toLocaleString() || '0'}
+                valueStyle={{ 
+                  color: (data.quantityChange || 0) > 0 ? '#52c41a' : 
+                         (data.quantityChange || 0) < 0 ? '#ff4d4f' : '#666666'
+                }}
+              />
+            </Col>
+            <Col span={5}>
+              <Statistic
+                title="Value Change"
+                value={`₹${Math.abs(data.valueChange || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                valueStyle={{ 
+                  color: (data.valueChange || 0) > 0 ? '#52c41a' : 
+                         (data.valueChange || 0) < 0 ? '#ff4d4f' : '#666666'
+                }}
+              />
+            </Col>
+            <Col span={5}>
+              <Statistic
+                title="Current Weight"
+                value={data.currentWeight?.toFixed(2) || '0.00'}
+                suffix="%"
+                valueStyle={{ color: '#1890ff' }}
               />
             </Col>
           </Row>

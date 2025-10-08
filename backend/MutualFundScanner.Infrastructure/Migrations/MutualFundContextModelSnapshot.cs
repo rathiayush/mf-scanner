@@ -294,6 +294,9 @@ namespace MutualFundScanner.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18, 4)");
 
+                    b.Property<int>("MutualFundId")
+                        .HasColumnType("int");
+
                     b.Property<int>("PortfolioFileId")
                         .HasColumnType("int");
 
@@ -325,6 +328,8 @@ namespace MutualFundScanner.Infrastructure.Migrations
                         .HasColumnType("decimal(18, 4)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MutualFundId");
 
                     b.HasIndex("PortfolioSnapshotId");
 
@@ -420,6 +425,12 @@ namespace MutualFundScanner.Infrastructure.Migrations
 
             modelBuilder.Entity("MutualFundScanner.Domain.Entities.PortfolioHolding", b =>
                 {
+                    b.HasOne("MutualFundScanner.Domain.Entities.MutualFund", "MutualFund")
+                        .WithMany()
+                        .HasForeignKey("MutualFundId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("MutualFundScanner.Domain.Entities.PortfolioFile", "PortfolioFile")
                         .WithMany("Holdings")
                         .HasForeignKey("PortfolioFileId")
@@ -430,6 +441,8 @@ namespace MutualFundScanner.Infrastructure.Migrations
                         .WithMany("Holdings")
                         .HasForeignKey("PortfolioSnapshotId")
                         .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("MutualFund");
 
                     b.Navigation("PortfolioFile");
 

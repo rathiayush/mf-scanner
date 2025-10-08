@@ -9,6 +9,15 @@ public class AnalyticsRequestDto
     public int PageSize { get; set; } = 20;
     public List<string>? ChangeTypeFilters { get; set; } // One or more of: Added, Removed, Increased, Decreased, Mixed, or null/empty for all
     public string? ChangeTypeMatchMode { get; set; } = "any"; // 'any' or 'only'
+    public List<string>? SectorFilters { get; set; } // Filter by specific sectors
+    public List<string>? IndustryFilters { get; set; } // Filter by specific industries
+    public decimal? WeightChangeMin { get; set; } // Minimum weight change percentage
+    public decimal? WeightChangeMax { get; set; } // Maximum weight change percentage
+    public decimal? QuantityChangeMin { get; set; } // Minimum quantity change
+    public decimal? QuantityChangeMax { get; set; } // Maximum quantity change
+    public decimal? ValueChangeMin { get; set; } // Minimum value change in rupees
+    public decimal? ValueChangeMax { get; set; } // Maximum value change in rupees
+    public int? MinFundsCount { get; set; } // Minimum number of funds holding the security
     public string? SortBy { get; set; } // Column to sort by: SecurityName, Sector, Industry, PreviousWeight, CurrentWeight, WeightChange, ChangeType, MutualFundsCount
     public string? SortDirection { get; set; } = "desc"; // asc or desc
 }
@@ -32,6 +41,12 @@ public class HoldingChangeDto
     public decimal? PreviousWeight { get; set; }
     public decimal CurrentWeight { get; set; }
     public decimal WeightChange { get; set; }
+    public decimal? PreviousQuantity { get; set; }
+    public decimal CurrentQuantity { get; set; }
+    public decimal QuantityChange { get; set; }
+    public decimal? PreviousValue { get; set; }
+    public decimal CurrentValue { get; set; }
+    public decimal ValueChange { get; set; }
     public string ChangeType { get; set; } = string.Empty; // Added, Removed, Increased, Decreased, Mixed
     public List<string> MutualFundNames { get; set; } = new();
     public List<FundChangeDetailDto> FundChangeDetails { get; set; } = new(); // Details for each fund's contribution
@@ -48,6 +63,12 @@ public class FundChangeDetailDto
     public decimal? PreviousWeight { get; set; }
     public decimal CurrentWeight { get; set; }
     public decimal WeightChange { get; set; }
+    public decimal? PreviousQuantity { get; set; }
+    public decimal CurrentQuantity { get; set; }
+    public decimal QuantityChange { get; set; }
+    public decimal? PreviousValue { get; set; }
+    public decimal CurrentValue { get; set; }
+    public decimal ValueChange { get; set; }
     public string ChangeType { get; set; } = string.Empty; // Added, Removed, Increased, Decreased
 }
 

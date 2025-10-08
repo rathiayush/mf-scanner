@@ -143,6 +143,15 @@ public class AnalyticsService : IAnalyticsService
             groupedChanges, 
             request.ChangeTypeFilters, 
             request.ChangeTypeMatchMode,
+            request.SectorFilters,
+            request.IndustryFilters,
+            request.WeightChangeMin,
+            request.WeightChangeMax,
+            request.QuantityChangeMin,
+            request.QuantityChangeMax,
+            request.ValueChangeMin,
+            request.ValueChangeMax,
+            request.MinFundsCount,
             request.SortBy, 
             request.SortDirection);
 
@@ -170,11 +179,22 @@ public class AnalyticsService : IAnalyticsService
         List<HoldingChangeDto> changes,
         List<string>? changeTypeFilters,
         string? changeTypeMatchMode,
+        List<string>? sectorFilters,
+        List<string>? industryFilters,
+        decimal? weightChangeMin,
+        decimal? weightChangeMax,
+        decimal? quantityChangeMin,
+        decimal? quantityChangeMax,
+        decimal? valueChangeMin,
+        decimal? valueChangeMax,
+        int? minFundsCount,
         string? sortBy,
         string? sortDirection)
     {
         // Apply filtering first
         var filteredChanges = changes;
+
+        // Apply change type filtering (existing logic)
         if (changeTypeFilters != null && changeTypeFilters.Any())
         {
             var set = changeTypeFilters.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -183,7 +203,7 @@ public class AnalyticsService : IAnalyticsService
             _logger.LogInformation("ChangeTypeMatchMode: {Mode}", mode);
             if (mode == "only")
             {
-                filteredChanges = changes.Where(c =>
+                filteredChanges = filteredChanges.Where(c =>
                 {
                     // Build the constituent type set for this change
                     HashSet<string> types;
@@ -204,7 +224,7 @@ public class AnalyticsService : IAnalyticsService
             else
             {
                 // 'any' mode (OR): include if direct match or any constituent in Mixed matches
-                filteredChanges = changes.Where(c =>
+                filteredChanges = filteredChanges.Where(c =>
                 {
                     if (set.Contains(c.ChangeType)) return true;
                     if (c.ChangeType == "Mixed" && c.FundChangeDetails != null)
@@ -215,6 +235,65 @@ public class AnalyticsService : IAnalyticsService
                 }).ToList();
                 _logger.LogInformation("Any mode filtered count: {Count}", filteredChanges.Count);
             }
+        }
+
+        // Apply sector filtering
+        if (sectorFilters != null && sectorFilters.Any())
+        {
+            var set = sectorFilters.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            filteredChanges = filteredChanges.Where(c => set.Contains(c.Sector)).ToList();
+            _logger.LogInformation("Applied sector filters: {Filters}, remaining count: {Count}", string.Join(",", sectorFilters), filteredChanges.Count);
+        }
+
+        // Apply industry filtering
+        if (industryFilters != null && industryFilters.Any())
+        {
+            var set = industryFilters.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            filteredChanges = filteredChanges.Where(c => set.Contains(c.Industry)).ToList();
+            _logger.LogInformation("Applied industry filters: {Filters}, remaining count: {Count}", string.Join(",", industryFilters), filteredChanges.Count);
+        }
+
+        // Apply weight change range filtering
+        if (weightChangeMin.HasValue)
+        {
+            filteredChanges = filteredChanges.Where(c => c.WeightChange >= weightChangeMin.Value).ToList();
+            _logger.LogInformation("Applied weight change min filter: {Min}, remaining count: {Count}", weightChangeMin.Value, filteredChanges.Count);
+        }
+        if (weightChangeMax.HasValue)
+        {
+            filteredChanges = filteredChanges.Where(c => c.WeightChange <= weightChangeMax.Value).ToList();
+            _logger.LogInformation("Applied weight change max filter: {Max}, remaining count: {Count}", weightChangeMax.Value, filteredChanges.Count);
+        }
+
+        // Apply quantity change range filtering
+        if (quantityChangeMin.HasValue)
+        {
+            filteredChanges = filteredChanges.Where(c => c.QuantityChange >= quantityChangeMin.Value).ToList();
+            _logger.LogInformation("Applied quantity change min filter: {Min}, remaining count: {Count}", quantityChangeMin.Value, filteredChanges.Count);
+        }
+        if (quantityChangeMax.HasValue)
+        {
+            filteredChanges = filteredChanges.Where(c => c.QuantityChange <= quantityChangeMax.Value).ToList();
+            _logger.LogInformation("Applied quantity change max filter: {Max}, remaining count: {Count}", quantityChangeMax.Value, filteredChanges.Count);
+        }
+
+        // Apply value change range filtering
+        if (valueChangeMin.HasValue)
+        {
+            filteredChanges = filteredChanges.Where(c => c.ValueChange >= valueChangeMin.Value).ToList();
+            _logger.LogInformation("Applied value change min filter: {Min}, remaining count: {Count}", valueChangeMin.Value, filteredChanges.Count);
+        }
+        if (valueChangeMax.HasValue)
+        {
+            filteredChanges = filteredChanges.Where(c => c.ValueChange <= valueChangeMax.Value).ToList();
+            _logger.LogInformation("Applied value change max filter: {Max}, remaining count: {Count}", valueChangeMax.Value, filteredChanges.Count);
+        }
+
+        // Apply minimum funds count filtering
+        if (minFundsCount.HasValue)
+        {
+            filteredChanges = filteredChanges.Where(c => c.MutualFundNames.Count >= minFundsCount.Value).ToList();
+            _logger.LogInformation("Applied min funds count filter: {Min}, remaining count: {Count}", minFundsCount.Value, filteredChanges.Count);
         }
 
         // Determine if we can use database sorting or need in-memory sorting

@@ -9,6 +9,17 @@ export const useSortingAndPagination = () => {
   const [holdingChangesSortDirection, setHoldingChangesSortDirection] = useState<string>('desc');
   const [changeTypeMatchMode, setChangeTypeMatchMode] = useState<'any' | 'only'>('any');
   
+  // Client-side filters (applied to currently loaded page)
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+  const [weightChangeMin, setWeightChangeMin] = useState<number | undefined>(undefined);
+  const [weightChangeMax, setWeightChangeMax] = useState<number | undefined>(undefined);
+  const [quantityChangeMin, setQuantityChangeMin] = useState<number | undefined>(undefined);
+  const [quantityChangeMax, setQuantityChangeMax] = useState<number | undefined>(undefined);
+  const [valueChangeMin, setValueChangeMin] = useState<number | undefined>(undefined);
+  const [valueChangeMax, setValueChangeMax] = useState<number | undefined>(undefined);
+  const [minFundsCount, setMinFundsCount] = useState<number | undefined>(undefined);
+  
   // Top Shares pagination and sorting
   const [topSharesPage, setTopSharesPage] = useState<number>(1);
   const [topSharesPageSize, setTopSharesPageSize] = useState<number>(20);
@@ -52,6 +63,25 @@ export const useSortingAndPagination = () => {
     setHoldingChangesSortDirection,
     changeTypeMatchMode,
     setChangeTypeMatchMode,
+    // Filters
+    selectedSectors,
+    setSelectedSectors,
+    selectedIndustries,
+    setSelectedIndustries,
+    weightChangeMin,
+    setWeightChangeMin,
+    weightChangeMax,
+    setWeightChangeMax,
+    quantityChangeMin,
+    setQuantityChangeMin,
+    quantityChangeMax,
+    setQuantityChangeMax,
+    valueChangeMin,
+    setValueChangeMin,
+    valueChangeMax,
+    setValueChangeMax,
+    minFundsCount,
+    setMinFundsCount,
     
     // Top Shares
     topSharesPage,

@@ -31,6 +31,8 @@ public class AnalyticsCalculationHelper
         public string Sector { get; set; } = "";
         public string Industry { get; set; } = "";
         public decimal Weight { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal Value { get; set; }
         public bool Exists { get; set; } // True if security exists in snapshot, regardless of weight
     }
 
@@ -48,6 +50,12 @@ public class AnalyticsCalculationHelper
         public decimal FromWeight { get; set; }
         public decimal ToWeight { get; set; }
         public decimal WeightChange => ToWeight - FromWeight;
+        public decimal FromQuantity { get; set; }
+        public decimal ToQuantity { get; set; }
+        public decimal QuantityChange => ToQuantity - FromQuantity;
+        public decimal FromValue { get; set; }
+        public decimal ToValue { get; set; }
+        public decimal ValueChange => ToValue - FromValue;
         public string ChangeType { get; set; } = "";
     }
 
@@ -130,6 +138,8 @@ public class AnalyticsCalculationHelper
                     Sector = holding.Sector ?? "",
                     Industry = holding.Industry ?? "",
                     Weight = weight,
+                    Quantity = holding.Quantity,
+                    Value = holding.MarketValue,
                     Exists = weight > 0m // Only exists if weight is positive
                 };
             }
@@ -168,9 +178,13 @@ public class AnalyticsCalculationHelper
             // Skip if no meaningful change occurred
             if (fromHolding == null && toHolding == null) continue;
             
-            // Get weights - handle the case where holdings might exist but have 0 weight
+            // Get weights, quantities, and values - handle the case where holdings might exist but have 0 weight
             var fromWeight = fromHolding?.Weight ?? 0;
             var toWeight = toHolding?.Weight ?? 0;
+            var fromQuantity = fromHolding?.Quantity ?? 0;
+            var toQuantity = toHolding?.Quantity ?? 0;
+            var fromValue = fromHolding?.Value ?? 0;
+            var toValue = toHolding?.Value ?? 0;
             
             // Special handling for the case where both holdings exist but toWeight is 0
             // This could indicate a removal OR a data issue
@@ -212,6 +226,10 @@ public class AnalyticsCalculationHelper
                 Industry = securityInfo.Industry,
                 FromWeight = fromWeight,
                 ToWeight = toWeight,
+                FromQuantity = fromQuantity,
+                ToQuantity = toQuantity,
+                FromValue = fromValue,
+                ToValue = toValue,
                 ChangeType = changeType
             });
         }
@@ -233,6 +251,12 @@ public class AnalyticsCalculationHelper
             PreviousWeight = change.FromWeight,
             CurrentWeight = change.ToWeight,
             WeightChange = change.WeightChange,
+            PreviousQuantity = change.FromQuantity,
+            CurrentQuantity = change.ToQuantity,
+            QuantityChange = change.QuantityChange,
+            PreviousValue = change.FromValue,
+            CurrentValue = change.ToValue,
+            ValueChange = change.ValueChange,
             ChangeType = change.ChangeType,
             MutualFundNames = new List<string> { change.FundName },
             FundChangeDetails = new List<FundChangeDetailDto>
@@ -244,6 +268,12 @@ public class AnalyticsCalculationHelper
                     PreviousWeight = change.FromWeight,
                     CurrentWeight = change.ToWeight,
                     WeightChange = change.WeightChange,
+                    PreviousQuantity = change.FromQuantity,
+                    CurrentQuantity = change.ToQuantity,
+                    QuantityChange = change.QuantityChange,
+                    PreviousValue = change.FromValue,
+                    CurrentValue = change.ToValue,
+                    ValueChange = change.ValueChange,
                     ChangeType = change.ChangeType
                 }
             },
@@ -265,6 +295,12 @@ public class AnalyticsCalculationHelper
                 var totalPreviousWeight = changesForIsin.Sum(c => c.FromWeight);
                 var totalCurrentWeight = changesForIsin.Sum(c => c.ToWeight);
                 var totalWeightChange = totalCurrentWeight - totalPreviousWeight;
+                var totalPreviousQuantity = changesForIsin.Sum(c => c.FromQuantity);
+                var totalCurrentQuantity = changesForIsin.Sum(c => c.ToQuantity);
+                var totalQuantityChange = totalCurrentQuantity - totalPreviousQuantity;
+                var totalPreviousValue = changesForIsin.Sum(c => c.FromValue);
+                var totalCurrentValue = changesForIsin.Sum(c => c.ToValue);
+                var totalValueChange = totalCurrentValue - totalPreviousValue;
                 
                 // Get individual change types and determine overall change type
                 var individualChangeTypes = changesForIsin.Select(c => c.ChangeType).ToList();
@@ -278,6 +314,12 @@ public class AnalyticsCalculationHelper
                     PreviousWeight = fc.FromWeight,
                     CurrentWeight = fc.ToWeight,
                     WeightChange = fc.WeightChange,
+                    PreviousQuantity = fc.FromQuantity,
+                    CurrentQuantity = fc.ToQuantity,
+                    QuantityChange = fc.QuantityChange,
+                    PreviousValue = fc.FromValue,
+                    CurrentValue = fc.ToValue,
+                    ValueChange = fc.ValueChange,
                     ChangeType = fc.ChangeType
                 }).ToList();
 
@@ -307,6 +349,12 @@ public class AnalyticsCalculationHelper
                     PreviousWeight = totalPreviousWeight,
                     CurrentWeight = totalCurrentWeight,
                     WeightChange = totalWeightChange,
+                    PreviousQuantity = totalPreviousQuantity,
+                    CurrentQuantity = totalCurrentQuantity,
+                    QuantityChange = totalQuantityChange,
+                    PreviousValue = totalPreviousValue,
+                    CurrentValue = totalCurrentValue,
+                    ValueChange = totalValueChange,
                     ChangeType = overallChangeType,
                     MutualFundNames = changesForIsin.Select(c => c.FundName).Distinct().OrderBy(name => name).ToList(),
                     FundChangeDetails = fundChangeDetails.OrderBy(fd => fd.MutualFundName).ToList(),

@@ -191,6 +191,12 @@ export interface HoldingChangeDto {
   previousWeight?: number;
   currentWeight: number;
   weightChange: number;
+  previousQuantity?: number;
+  currentQuantity: number;
+  quantityChange: number;
+  previousValue?: number;
+  currentValue: number;
+  valueChange: number;
   changeType: string; // Added, Removed, Increased, Decreased, Mixed
   mutualFundNames: string[];
   fundChangeDetails: FundChangeDetailDto[];
@@ -206,6 +212,12 @@ export interface FundChangeDetailDto {
   previousWeight: number;
   currentWeight: number;
   weightChange: number;
+  previousQuantity: number;
+  currentQuantity: number;
+  quantityChange: number;
+  previousValue: number;
+  currentValue: number;
+  valueChange: number;
   changeType: string;
 }
 

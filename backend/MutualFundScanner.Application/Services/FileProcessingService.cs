@@ -11,6 +11,8 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using NPOI.OpenXmlFormats.Dml;
+using MutualFundScanner.Application.Helpers;
+using System;
 
 namespace MutualFundScanner.Application.Services;
 
@@ -196,14 +198,15 @@ public class FileProcessingService : IFileProcessingService
                 await _context.SaveChangesAsync();
             }
 
-            // Process specific sheet from Excel file
-            var holdings = await ProcessExcelContentFromSheet(file, portfolioFile.Id, sheetIndex);
+            // Process the holdings from the specific sheet
+            var holdings = await ProcessExcelContentFromSheet(file, portfolioFile.Id, sheetIndex, mutualFundId);
             
             portfolioFile.Status = ProcessingStatus.Completed;
+            portfolioFile.RecordCount = holdings.Count;
             result.Holdings = holdings;
             result.ProcessedRecords = holdings.Count;
             result.Success = true;
-            result.Message = $"Successfully processed {holdings.Count} holdings from sheet {sheetIndex + 1}";
+            result.Message = $"Successfully processed {holdings.Count} holdings";
             result.PortfolioFile = portfolioFile;
 
             await _context.SaveChangesAsync();
@@ -400,47 +403,47 @@ public class FileProcessingService : IFileProcessingService
                     if (dataRow == null) continue;
 
                     var companyName = GetCellValue(dataRow, columnMapping.CompanyNameColumn)?.Trim();
-                    if (string.IsNullOrEmpty(companyName) || !IsCompanyName(companyName))
+                    if (string.IsNullOrEmpty(companyName) || !SecurityExtractionHelper.IsCompanyName(companyName))
                         continue;
 
-                    var isin = ExtractISINFromRow(worksheet, row, colCount);
-                    var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
-                    var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
-                    var marketValue = ExtractMarketValueFromRow(worksheet, row, columnMapping);
+                    var isin = SecurityExtractionHelper.ExtractISINFromRow(worksheet, row, colCount);
+                    var quantity = SecurityExtractionHelper.ExtractQuantity(worksheet, row, columnMapping.QuantityColumn);
+                    var weight = SecurityExtractionHelper.ExtractWeight(worksheet, row, columnMapping.WeightColumn);
+                    var marketValue = SecurityExtractionHelper.ExtractMarketValue(worksheet, row, columnMapping.MarketValueColumn);
 
                     // Only create portfolio holding if all key validations pass
-                    if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
+                    if (string.IsNullOrEmpty(isin) || !SecurityExtractionHelper.IsValidISIN(isin))
                         continue;
                     
                     if (weight <= 0m || weight > 100m)
                         continue;
 
-                    var industry = ExtractSectorFromRow(worksheet, row, columnMapping);
+                    var industry = SecurityExtractionHelper.ExtractSector(worksheet, row, columnMapping.SectorColumn);
                     
                     // Skip holdings where industry contains credit ratings
-                    if (IsCreditRating(industry))
+                    if (SecurityExtractionHelper.IsCreditRating(industry))
                         continue;
                         
                     // Skip securities with parentheses in their names
-                    if (ContainsParentheses(companyName))
+                    if (SecurityExtractionHelper.ContainsParentheses(companyName))
                     {
                         _logger.LogDebug("Skipping security with parentheses: {Company}", companyName);
                         continue;
                     }
 
-                    var holding = new PortfolioHolding
-                    {
-                        PortfolioFileId = portfolioFileId,
-                        SecurityName = companyName,
-                        ISIN = isin,
-                        Ticker = ExtractTickerFromCompanyName(companyName),
-                        Quantity = quantity,
-                        MarketValue = marketValue,
-                        Weight = weight,
-                        Sector = string.Empty,
-                        Industry = industry, // Can be enhanced later
-                        AsOfDate = DateTime.UtcNow.Date
-                    };
+                    // Get portfolioFile to access MutualFundId
+                    var portfolioFile = await _context.PortfolioFiles.FindAsync(portfolioFileId);
+                    if (portfolioFile == null) continue;
+
+                    var holding = SecurityExtractionHelper.CreateHolding(
+                        portfolioFileId,
+                        portfolioFile.MutualFundId,
+                        companyName,
+                        isin,
+                        quantity,
+                        marketValue,
+                        weight,
+                        industry);
 
                     holdings.Add(holding);
                     _logger.LogDebug("Processed holding: {Company} - ISIN: {ISIN}, Weight: {Weight}%", 
@@ -535,47 +538,47 @@ public class FileProcessingService : IFileProcessingService
                     if (dataRow == null) continue;
 
                     var companyName = GetCellValue(dataRow, columnMapping.CompanyNameColumn)?.Trim();
-                    if (string.IsNullOrEmpty(companyName) || !IsCompanyName(companyName))
+                    if (string.IsNullOrEmpty(companyName) || !SecurityExtractionHelper.IsCompanyName(companyName))
                         continue;
 
-                    var isin = ExtractISINFromRow(worksheet, row, colCount);
-                    var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
-                    var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
-                    var marketValue = ExtractMarketValueFromRow(worksheet, row, columnMapping);
+                    var isin = SecurityExtractionHelper.ExtractISINFromRow(worksheet, row, colCount);
+                    var quantity = SecurityExtractionHelper.ExtractQuantity(worksheet, row, columnMapping.QuantityColumn);
+                    var weight = SecurityExtractionHelper.ExtractWeight(worksheet, row, columnMapping.WeightColumn);
+                    var marketValue = SecurityExtractionHelper.ExtractMarketValue(worksheet, row, columnMapping.MarketValueColumn);
 
                     // Only create portfolio holding if all key validations pass
-                    if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
+                    if (string.IsNullOrEmpty(isin) || !SecurityExtractionHelper.IsValidISIN(isin))
                         continue;
                     
                     if (weight <= 0m || weight > 100m)
                         continue;
 
-                    var sector = ExtractSectorFromRow(worksheet, row, columnMapping);
+                    var sector = SecurityExtractionHelper.ExtractSector(worksheet, row, columnMapping.SectorColumn);
                     
                     // Skip holdings where sector contains credit ratings
-                    if (IsCreditRating(sector))
+                    if (SecurityExtractionHelper.IsCreditRating(sector))
                         continue;
                         
                     // Skip securities with parentheses in their names
-                    if (ContainsParentheses(companyName))
+                    if (SecurityExtractionHelper.ContainsParentheses(companyName))
                     {
                         _logger.LogDebug("Skipping security with parentheses: {Company}", companyName);
                         continue;
                     }
 
-                    var holding = new PortfolioHolding
-                    {
-                        PortfolioFileId = portfolioFileId,
-                        SecurityName = companyName,
-                        ISIN = isin,
-                        Ticker = ExtractTickerFromCompanyName(companyName),
-                        Quantity = quantity,
-                        MarketValue = marketValue,
-                        Weight = weight,
-                        Sector = sector,
-                        Industry = string.Empty, // Can be enhanced later
-                        AsOfDate = DateTime.UtcNow.Date
-                    };
+                    // Get portfolioFile to access MutualFundId
+                    var portfolioFile = await _context.PortfolioFiles.FindAsync(portfolioFileId);
+                    if (portfolioFile == null) continue;
+
+                    var holding = SecurityExtractionHelper.CreateHolding(
+                        portfolioFileId,
+                        portfolioFile.MutualFundId,
+                        companyName,
+                        isin,
+                        quantity,
+                        marketValue,
+                        weight,
+                        sector);
 
                     holdings.Add(holding);
                     _logger.LogDebug("Processed holding: {Company} - ISIN: {ISIN}, Weight: {Weight}%", 
@@ -597,7 +600,7 @@ public class FileProcessingService : IFileProcessingService
         return holdings;
     }
 
-    private async Task<List<PortfolioHolding>> ProcessExcelContentFromSheet(IFormFile file, int portfolioFileId, int sheetIndex)
+    private async Task<List<PortfolioHolding>> ProcessExcelContentFromSheet(IFormFile file, int portfolioFileId, int sheetIndex, int mutualFundId)
     {
         var holdings = new List<PortfolioHolding>();
 
@@ -678,47 +681,43 @@ public class FileProcessingService : IFileProcessingService
                     if (dataRow == null) continue;
 
                     var companyName = GetCellValue(dataRow, columnMapping.CompanyNameColumn)?.Trim();
-                    if (string.IsNullOrEmpty(companyName) || !IsCompanyName(companyName))
+                    if (string.IsNullOrEmpty(companyName) || !SecurityExtractionHelper.IsCompanyName(companyName))
                         continue;
 
-                    var isin = ExtractISINFromRow(worksheet, row, colCount);
-                    var quantity = ExtractQuantityFromRow(worksheet, row, columnMapping);
-                    var weight = ExtractWeightFromRow(worksheet, row, columnMapping);
-                    var marketValue = ExtractMarketValueFromRow(worksheet, row, columnMapping);
+                    var isin = SecurityExtractionHelper.ExtractISINFromRow(worksheet, row, colCount);
+                    var quantity = SecurityExtractionHelper.ExtractQuantity(worksheet, row, columnMapping.QuantityColumn);
+                    var weight = SecurityExtractionHelper.ExtractWeight(worksheet, row, columnMapping.WeightColumn);
+                    var marketValue = SecurityExtractionHelper.ExtractMarketValue(worksheet, row, columnMapping.MarketValueColumn);
 
                     // Only create portfolio holding if all key validations pass
-                    if (string.IsNullOrEmpty(isin) || !IsValidISIN(isin))
+                    if (string.IsNullOrEmpty(isin) || !SecurityExtractionHelper.IsValidISIN(isin))
                         continue;
                     
                     if (weight <= 0m || weight > 100m)
                         continue;
 
-                    var sector = ExtractSectorFromRow(worksheet, row, columnMapping);
+                    var sector = SecurityExtractionHelper.ExtractSector(worksheet, row, columnMapping.SectorColumn);
                     
                     // Skip holdings where sector contains credit ratings
-                    if (IsCreditRating(sector))
+                    if (SecurityExtractionHelper.IsCreditRating(sector))
                         continue;
                         
                     // Skip securities with parentheses in their names
-                    if (ContainsParentheses(companyName))
+                    if (SecurityExtractionHelper.ContainsParentheses(companyName))
                     {
                         _logger.LogDebug("Skipping security with parentheses: {Company}", companyName);
                         continue;
                     }
                         
-                    var holding = new PortfolioHolding
-                    {
-                        PortfolioFileId = portfolioFileId,
-                        SecurityName = companyName,
-                        ISIN = isin,
-                        Ticker = ExtractTickerFromCompanyName(companyName),
-                        Quantity = quantity,
-                        MarketValue = marketValue,
-                        Weight = weight,
-                        Sector = sector,
-                        Industry = string.Empty, // Can be enhanced later
-                        AsOfDate = DateTime.UtcNow.Date
-                    };
+                    var holding = SecurityExtractionHelper.CreateHolding(
+                        portfolioFileId,
+                        mutualFundId,
+                        companyName,
+                        isin,
+                        quantity,
+                        marketValue,
+                        weight,
+                        sector);
 
                     holdings.Add(holding);
                     _logger.LogDebug("Processed holding from sheet {SheetIndex}: {Company} - ISIN: {ISIN}, Weight: {Weight}%", 
@@ -754,376 +753,20 @@ public class FileProcessingService : IFileProcessingService
 
     private async Task<ColumnMapping> DetectColumnMappings(ISheet worksheet, int rowCount, int colCount)
     {
-        var mapping = new ColumnMapping();
-        
-        // Scan through rows to detect company name column
-        for (int row = 0; row < Math.Min(rowCount, 20); row++) // Check first 20 rows
+        var detected = SecurityExtractionHelper.DetectColumnMappings(worksheet, rowCount, colCount);
+        var mapping = new ColumnMapping
         {
-            var dataRow = worksheet.GetRow(row);
-            if (dataRow == null) continue;
-
-            for (int col = 0; col < colCount; col++)
-            {
-                var cellValue = GetCellValue(dataRow, col)?.Trim();
-                if (string.IsNullOrEmpty(cellValue)) continue;
-
-                if (IsCompanyName(cellValue))
-                {
-                    // Verify this column has company names by checking next few cells
-                    if (await VerifyCompanyNameColumn(worksheet, row, col, rowCount))
-                    {
-                        mapping.CompanyNameColumn = col;
-                        mapping.DataStartRow = row;
-                        break;
-                    }
-                }
-            }
-            
-            if (mapping.CompanyNameColumn != -1) break;
-        }
-
-        // Detect numeric columns for quantity and weight, and text-based columns for sector
-        if (mapping.CompanyNameColumn != -1)
-        {
-            DetectNumericColumns(worksheet, mapping, rowCount, colCount);
-            DetectTextBasedColumns(worksheet, mapping, rowCount, colCount);
-        }
-
-        return mapping;
-    }
-
-    private Task<bool> VerifyCompanyNameColumn(ISheet worksheet, int startRow, int col, int rowCount)
-    {
-        int companyNameCount = 0;
-        int checkRows = Math.Min(5, rowCount - startRow + 1); // Check next 5 rows or remaining rows
-
-        for (int row = startRow; row < startRow + checkRows; row++)
-        {
-            var dataRow = worksheet.GetRow(row);
-            if (dataRow == null) continue;
-
-            var cellValue = GetCellValue(dataRow, col)?.Trim();
-            if (!string.IsNullOrEmpty(cellValue) && IsCompanyName(cellValue))
-            {
-                companyNameCount++;
-            }
-        }
-
-        return Task.FromResult(companyNameCount >= 2); // At least 3 company names found
-    }
-
-    private void DetectNumericColumns(ISheet worksheet, ColumnMapping mapping, int rowCount, int colCount)
-    {
-        bool weightColumnFound = false;
-        bool quantityColumnFound = false;
-        bool marketValueColumnFound = false;
-        
-        for (int col = 0; col < colCount; col++)
-        {
-            if (col == mapping.CompanyNameColumn) continue;
-
-            // First check for header text patterns for quantity
-            if (!quantityColumnFound && IsQuantityColumn(worksheet, col, mapping.DataStartRow))
-            {
-                mapping.QuantityColumn = col;
-                quantityColumnFound = true;
-                continue;
-            }
-
-            // Check for market value column by header text
-            if (!marketValueColumnFound && IsMarketValueColumn(worksheet, col, mapping.DataStartRow))
-            {
-                mapping.MarketValueColumn = col;
-                marketValueColumnFound = true;
-                continue;
-            }
-
-            var columnStats = AnalyzeNumericColumn(worksheet, mapping.DataStartRow, col, rowCount);
-            
-            // Weight column: decimal values typically < 100 (percentages)
-            if (columnStats.HasDecimals && columnStats.MaxValue < 100 && columnStats.MinValue >= 0)
-            {
-                if (weightColumnFound) continue; // Only one weight column expected
-                mapping.WeightColumn = col;
-                weightColumnFound = true;
-            }
-            // Quantity column: integer values, typically larger numbers (fallback if header detection failed)
-            else if (!quantityColumnFound && !columnStats.HasDecimals && columnStats.MaxValue > 100)
-            {
-                mapping.QuantityColumn = col;
-                quantityColumnFound = true;
-            }
-            // Market value column: typically larger numbers with decimals (fallback if header detection failed)
-            else if (!marketValueColumnFound && columnStats.HasDecimals && columnStats.MaxValue > 1000)
-            {
-                mapping.MarketValueColumn = col;
-                marketValueColumnFound = true;
-            }
-        }
-    }
-
-    private void DetectTextBasedColumns(ISheet worksheet, ColumnMapping mapping, int rowCount, int colCount)
-    {
-        for (int col = 0; col < colCount; col++)
-        {
-            if (col == mapping.CompanyNameColumn || col == mapping.WeightColumn || col == mapping.QuantityColumn) 
-                continue;
-
-            // Check for sector/industry column based on header text
-            if (IsSectorColumn(worksheet, col, mapping.DataStartRow))
-            {
-                mapping.SectorColumn = col;
-                break; // Only one sector column expected
-            }
-        }
-    }
-
-    private bool IsQuantityColumn(ISheet worksheet, int col, int dataStartRow)
-    {
-        // Check header rows (before data starts) for quantity-related text
-        for (int row = 0; row < dataStartRow; row++)
-        {
-            var headerRow = worksheet.GetRow(row);
-            if (headerRow == null) continue;
-
-            var cellValue = GetCellValue(headerRow, col)?.Trim();
-            if (string.IsNullOrEmpty(cellValue)) continue;
-
-            // Look for "quantity" text in header
-            if (cellValue.Contains("quantity", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private bool IsMarketValueColumn(ISheet worksheet, int col, int dataStartRow)
-    {
-        // Check header rows (before data starts) for market value related text
-        for (int row = 0; row < dataStartRow; row++)
-        {
-            var headerRow = worksheet.GetRow(row);
-            if (headerRow == null) continue;
-
-            var cellValue = GetCellValue(headerRow, col)?.Trim();
-            if (string.IsNullOrEmpty(cellValue)) continue;
-
-            // Look for market value related text in header
-            if (cellValue.Contains("Market/", StringComparison.OrdinalIgnoreCase) ||
-                cellValue.Contains("Fair Value (Rs. in Lacs.)", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private bool IsSectorColumn(ISheet worksheet, int col, int dataStartRow)
-    {
-        // Check header rows (before data starts) for sector/industry-related text
-        for (int row = 0; row < dataStartRow; row++)
-        {
-            var headerRow = worksheet.GetRow(row);
-            if (headerRow == null) continue;
-
-            var cellValue = GetCellValue(headerRow, col)?.Trim();
-            if (string.IsNullOrEmpty(cellValue)) continue;
-
-            // Look for "Industry", "Rating", or "Sector" text in header
-            if (cellValue.Contains("industry", StringComparison.OrdinalIgnoreCase) ||
-                cellValue.Contains("Industry / Rating", StringComparison.OrdinalIgnoreCase) ||
-                cellValue.Contains("Industry+", StringComparison.OrdinalIgnoreCase) ||
-                cellValue.Contains("sector", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private NumericColumnStats AnalyzeNumericColumn(ISheet worksheet, int startRow, int col, int rowCount)
-    {
-        var stats = new NumericColumnStats();
-        var values = new List<decimal>();
-
-        for (int row = startRow; row < Math.Min(startRow + 10, rowCount); row++) // Analyze first 10 data rows
-        {
-            var dataRow = worksheet.GetRow(row);
-            if (dataRow == null) continue;
-
-            var cellValue = GetCellValue(dataRow, col)?.Trim();
-            if (decimal.TryParse(cellValue, out var numValue))
-            {
-                values.Add(numValue);
-                stats.HasDecimals = stats.HasDecimals || (numValue % 1 != 0);
-            }
-        }
-
-        if (values.Any())
-        {
-            stats.MinValue = values.Min();
-            stats.MaxValue = values.Max();
-            stats.NumericCount = values.Count;
-        }
-
-        return stats;
-    }
-
-    private bool IsCompanyName(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return false;
-
-        var companyKeywords = new[] { "Ltd", "Limited", "LLP", "Pvt", "PLC", "Inc", "Corp", "Corporation" };
-        return companyKeywords.Any(keyword => text.Contains(keyword, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private string ExtractISINFromRow(ISheet worksheet, int row, int colCount)
-    {
-        var dataRow = worksheet.GetRow(row);
-        if (dataRow == null) return string.Empty;
-
-        for (int col = 0; col < colCount; col++)
-        {
-            var cellValue = GetCellValue(dataRow, col)?.Trim();
-            if (IsValidISIN(cellValue))
-            {
-                return cellValue!;
-            }
-        }
-        return string.Empty;
-    }
-
-    private bool IsValidISIN(string isin)
-    {
-        if (string.IsNullOrWhiteSpace(isin) || isin.Length != 12)
-            return false;
-
-        // Basic ISIN format check: 2 letters + 10 alphanumeric
-        return char.IsLetter(isin[0]) && char.IsLetter(isin[1]) && 
-               isin.Skip(2).All(c => char.IsLetterOrDigit(c));
-    }
-
-    private bool IsCreditRating(string sector)
-    {
-        if (string.IsNullOrWhiteSpace(sector))
-            return false;
-
-        var creditRatingPatterns = new[]
-        {
-            "IND A1+", "CRISIL A1+", "CARE A1+", "ICRA A1+",
-            "IND A1", "CRISIL A1", "CARE A1", "ICRA A1",
-            "A1+", "A1", "AA+", "AA", "AAA"
+            CompanyNameColumn = detected.CompanyNameColumn,
+            QuantityColumn = detected.QuantityColumn,
+            WeightColumn = detected.WeightColumn,
+            SectorColumn = detected.SectorColumn,
+            MarketValueColumn = detected.MarketValueColumn,
+            DataStartRow = detected.DataStartRow
         };
-
-        return creditRatingPatterns.Any(pattern => 
-            sector.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+        return await Task.FromResult(mapping);
     }
 
-    private decimal ExtractQuantityFromRow(ISheet worksheet, int row, ColumnMapping mapping)
-    {
-        if (mapping.QuantityColumn == -1) return 0;
-        
-        var dataRow = worksheet.GetRow(row);
-        if (dataRow == null) return 0;
 
-        var cell = dataRow.GetCell(mapping.QuantityColumn);
-        if (cell == null) return 0;
-
-        // Handle numeric cells directly to avoid string conversion issues
-        if (cell.CellType == CellType.Numeric)
-        {
-            // Convert to int first since quantity should be whole numbers, then cast to decimal for entity compatibility
-            return (int)cell.NumericCellValue;
-        }
-        
-        // Handle other cell types using the existing GetCellValue method
-        var cellValue = GetCellValue(dataRow, mapping.QuantityColumn)?.Trim();
-        if (int.TryParse(cellValue, out var intQuantity))
-        {
-            return intQuantity;
-        }
-        return decimal.TryParse(cellValue, out var quantity) ? quantity : 0;
-    }
-
-    private decimal ExtractMarketValueFromRow(ISheet worksheet, int row, ColumnMapping mapping)
-    {
-        if (mapping.MarketValueColumn == -1) return 0;
-        
-        var dataRow = worksheet.GetRow(row);
-        if (dataRow == null) return 0;
-
-        var cell = dataRow.GetCell(mapping.MarketValueColumn);
-        if (cell == null) return 0;
-
-        // Handle numeric cells directly to avoid string conversion issues
-        if (cell.CellType == CellType.Numeric)
-        {
-            // Convert to decimal and handle potential conversion from lakhs to units if needed
-            return (decimal)cell.NumericCellValue;
-        }
-        
-        // Handle other cell types using the existing GetCellValue method
-        var cellValue = GetCellValue(dataRow, mapping.MarketValueColumn)?.Trim();
-        if (decimal.TryParse(cellValue, out var marketValue))
-        {
-            return marketValue;
-        }
-        
-        // Try to handle cases where the value might have a comma as thousand separator
-        if (cellValue?.Contains(",") == true)
-        {
-            if (decimal.TryParse(cellValue.Replace(",", ""), out var parsedValue))
-            {
-                return parsedValue;
-            }
-        }
-        
-        return 0;
-    }
-
-    private decimal ExtractWeightFromRow(ISheet worksheet, int row, ColumnMapping mapping)
-    {
-        if (mapping.WeightColumn == -1) return 0;
-        
-        var dataRow = worksheet.GetRow(row);
-        if (dataRow == null) return 0;
-
-        var cell = dataRow.GetCell(mapping.WeightColumn);
-        if (cell == null) return 0;
-
-        // Handle numeric cells directly to avoid string conversion issues
-        if (cell.CellType == CellType.Numeric)
-        {
-            var actualWeight =  Math.Round(((decimal)cell.NumericCellValue) * 100, 2);
-            if (actualWeight <= 0m || actualWeight > 100m)
-            {
-                return (actualWeight / 100);
-            }
-        }
-        
-        // Handle other cell types using the existing GetCellValue method
-        var cellValue = GetCellValue(dataRow, mapping.WeightColumn)?.Trim();
-        return decimal.TryParse(cellValue, out var weight) ? weight : 0;
-    }
-
-    private string ExtractSectorFromRow(ISheet worksheet, int row, ColumnMapping mapping)
-    {
-        if (mapping.SectorColumn == -1) return string.Empty;
-        
-        var dataRow = worksheet.GetRow(row);
-        if (dataRow == null) return string.Empty;
-
-        var cellValue = GetCellValue(dataRow, mapping.SectorColumn)?.Trim();
-        return string.IsNullOrEmpty(cellValue) ? string.Empty : cellValue;
-    }
-
-    private string ExtractTickerFromCompanyName(string companyName)
-    {
-        // Simple ticker extraction - take first word before "Ltd", "Limited", etc.
-        var parts = companyName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 0 ? parts[0].ToUpperInvariant() : string.Empty;
-    }
 
     private DateTime ExtractReportDateFromFileName(string fileName)
     {
@@ -1226,6 +869,12 @@ public class FileProcessingService : IFileProcessingService
             _logger.LogError(ex, "Error extracting date from filename {FileName}", fileName);
             return DateTime.UtcNow.Date;
         }
+    }
+
+    // Compare decimals with a tolerance to avoid false positives (e.g., 4.440000 vs 4.44)
+    private static bool Different(decimal a, decimal b, decimal tolerance)
+    {
+        return Math.Abs(a - b) > tolerance;
     }
 
 
@@ -1482,10 +1131,10 @@ public class FileProcessingService : IFileProcessingService
                 }
                 else
                 {
-                    // Check for changes
+                    // Check for changes (use tolerance for decimals to avoid false positives)
                     var quantityChanged = previousHolding!.Quantity != currentHolding.Quantity;
-                    var weightChanged = previousHolding!.Weight != currentHolding.Weight;
-                    var valueChanged = previousHolding!.MarketValue != currentHolding.MarketValue;
+                    var weightChanged = Different(previousHolding!.Weight, currentHolding.Weight, 0.01m);
+                    var valueChanged = Different(previousHolding!.MarketValue, currentHolding.MarketValue, 0.01m);
 
                     if (quantityChanged || weightChanged || valueChanged)
                     {
@@ -1626,6 +1275,11 @@ public class FileProcessingService : IFileProcessingService
                            h.PortfolioFile.ReportDate == subsequentSnapshot.SnapshotDate)
                 .ToListAsync();
 
+            // Update snapshot totals based on current holdings
+            subsequentSnapshot.TotalValue = currentHoldings.Sum(h => h.MarketValue);
+            subsequentSnapshot.TotalHoldings = currentHoldings.Count;
+            await _context.SaveChangesAsync();
+
             // Remove existing holding changes for this snapshot
             var existingChanges = await _context.HoldingChanges
                 .Where(c => c.MutualFundId == mutualFundId && c.ToDate == subsequentSnapshot.SnapshotDate)
@@ -1701,24 +1355,24 @@ public class FileProcessingService : IFileProcessingService
                 }
                 else
                 {
-                    // Check for changes
+                    // Check for changes (use tolerance for decimals to avoid false positives)
                     var quantityChanged = previousHolding!.Quantity != currentHolding.Quantity;
-                    var weightChanged = previousHolding!.Weight != currentHolding.Weight;
-                    var valueChanged = previousHolding!.MarketValue != currentHolding.MarketValue;
+                    var weightChanged = Different(previousHolding!.Weight, currentHolding.Weight, 0.01m);
+                    var valueChanged = Different(previousHolding!.MarketValue, currentHolding.MarketValue, 0.01m);
 
                     if (quantityChanged || weightChanged || valueChanged)
                     {
                         var changeType = HoldingChangeType.Unchanged;
                         if (quantityChanged)
                         {
-                            changeType = currentHolding.Quantity > previousHolding!.Quantity 
-                                ? HoldingChangeType.Increased 
+                            changeType = currentHolding.Quantity > previousHolding!.Quantity
+                                ? HoldingChangeType.Increased
                                 : HoldingChangeType.Decreased;
                         }
                         else if (weightChanged)
                         {
-                            changeType = currentHolding.Weight > previousHolding!.Weight 
-                                ? HoldingChangeType.Increased 
+                            changeType = currentHolding.Weight > previousHolding!.Weight
+                                ? HoldingChangeType.Increased
                                 : HoldingChangeType.Decreased;
                         }
 
@@ -1790,16 +1444,4 @@ public class FileProcessingService : IFileProcessingService
         }
     }
 
-    /// <summary>
-    /// Checks if a security or company name contains parentheses and should be ignored
-    /// </summary>
-    /// <param name="securityName">The security or company name to check</param>
-    /// <returns>True if the name contains parentheses and should be ignored, false otherwise</returns>
-    private bool ContainsParentheses(string securityName)
-    {
-        if (string.IsNullOrEmpty(securityName))
-            return false;
-            
-        return securityName.Contains('(') || securityName.Contains(')');
-    }
 }

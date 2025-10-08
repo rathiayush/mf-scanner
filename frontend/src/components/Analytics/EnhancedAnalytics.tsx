@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Card,
   Select,
@@ -145,7 +145,18 @@ const EnhancedAnalytics: React.FC = () => {
         page: sortingPagination.currentPage,
         pageSize: sortingPagination.pageSize,
         sortBy: sortingPagination.holdingChangesSortBy,
-        sortDirection: sortingPagination.holdingChangesSortDirection
+        sortDirection: sortingPagination.holdingChangesSortDirection,
+        changeTypeFilters: sortingPagination.selectedStatusFilters.length > 0 ? sortingPagination.selectedStatusFilters : undefined,
+        changeTypeMatchMode: sortingPagination.changeTypeMatchMode,
+        sectorFilters: sortingPagination.selectedSectors.length > 0 ? sortingPagination.selectedSectors : undefined,
+        industryFilters: sortingPagination.selectedIndustries.length > 0 ? sortingPagination.selectedIndustries : undefined,
+        weightChangeMin: sortingPagination.weightChangeMin,
+        weightChangeMax: sortingPagination.weightChangeMax,
+        quantityChangeMin: sortingPagination.quantityChangeMin,
+        quantityChangeMax: sortingPagination.quantityChangeMax,
+        valueChangeMin: sortingPagination.valueChangeMin,
+        valueChangeMax: sortingPagination.valueChangeMax,
+        minFundsCount: sortingPagination.minFundsCount
       };
 
       const fundsForAnalysis = analyticsState.isAllFundsSelected 
@@ -282,6 +293,15 @@ const EnhancedAnalytics: React.FC = () => {
         pageSize: size,
         changeTypeFilters: currentFilters && currentFilters.length > 0 ? currentFilters : undefined,
         changeTypeMatchMode: matchModeOverride ?? sortingPagination.changeTypeMatchMode,
+        sectorFilters: sortingPagination.selectedSectors.length > 0 ? sortingPagination.selectedSectors : undefined,
+        industryFilters: sortingPagination.selectedIndustries.length > 0 ? sortingPagination.selectedIndustries : undefined,
+        weightChangeMin: sortingPagination.weightChangeMin,
+        weightChangeMax: sortingPagination.weightChangeMax,
+        quantityChangeMin: sortingPagination.quantityChangeMin,
+        quantityChangeMax: sortingPagination.quantityChangeMax,
+        valueChangeMin: sortingPagination.valueChangeMin,
+        valueChangeMax: sortingPagination.valueChangeMax,
+        minFundsCount: sortingPagination.minFundsCount,
         sortBy: sortBy || sortingPagination.holdingChangesSortBy,
         sortDirection: sortDirection || sortingPagination.holdingChangesSortDirection
       };
@@ -313,6 +333,23 @@ const EnhancedAnalytics: React.FC = () => {
   const topSharesColumns = getTopSharesColumns({
     onViewFundHoldings: modalState.openFundsModal
   });
+
+  // Build available filter values from current page data for dropdown options
+  const availableSectors = useMemo(() => {
+    const set = new Set<string>();
+    (analyticsState.holdingChanges?.data || []).forEach(h => {
+      if (h.sector) set.add(h.sector);
+    });
+    return Array.from(set).sort();
+  }, [analyticsState.holdingChanges]);
+
+  const availableIndustries = useMemo(() => {
+    const set = new Set<string>();
+    (analyticsState.holdingChanges?.data || []).forEach(h => {
+      if (h.industry) set.add(h.industry);
+    });
+    return Array.from(set).sort();
+  }, [analyticsState.holdingChanges]);
 
   return (
     <div>
@@ -490,6 +527,27 @@ const EnhancedAnalytics: React.FC = () => {
                           }}
                           totalCount={analyticsState.holdingChanges?.totalCount || 0}
                           currentCount={analyticsState.holdingChanges?.data.length || 0}
+                          // filters
+                          availableSectors={availableSectors}
+                          selectedSectors={sortingPagination.selectedSectors}
+                          onSectorsChange={(v) => sortingPagination.setSelectedSectors(v)}
+                          availableIndustries={availableIndustries}
+                          selectedIndustries={sortingPagination.selectedIndustries}
+                          onIndustriesChange={(v) => sortingPagination.setSelectedIndustries(v)}
+                          weightChangeMin={sortingPagination.weightChangeMin}
+                          onWeightChangeMin={(v) => sortingPagination.setWeightChangeMin(v === null ? undefined : v)}
+                          weightChangeMax={sortingPagination.weightChangeMax}
+                          onWeightChangeMax={(v) => sortingPagination.setWeightChangeMax(v === null ? undefined : v)}
+                          quantityChangeMin={sortingPagination.quantityChangeMin}
+                          onQuantityChangeMin={(v) => sortingPagination.setQuantityChangeMin(v === null ? undefined : v)}
+                          quantityChangeMax={sortingPagination.quantityChangeMax}
+                          onQuantityChangeMax={(v) => sortingPagination.setQuantityChangeMax(v === null ? undefined : v)}
+                          valueChangeMin={sortingPagination.valueChangeMin}
+                          onValueChangeMin={(v) => sortingPagination.setValueChangeMin(v === null ? undefined : v)}
+                          valueChangeMax={sortingPagination.valueChangeMax}
+                          onValueChangeMax={(v) => sortingPagination.setValueChangeMax(v === null ? undefined : v)}
+                          minFundsCount={sortingPagination.minFundsCount}
+                          onMinFundsCount={(v) => sortingPagination.setMinFundsCount(v === null ? undefined : v)}
                         />
                       </div>
                       <Table
@@ -542,9 +600,8 @@ const EnhancedAnalytics: React.FC = () => {
                     </div>
                     
                     <Table
-                      dataSource={analyticsState.topShares?.data || []}
                       columns={topSharesColumns}
-                      rowKey="isin"
+                      dataSource={analyticsState.topShares?.data || []}
                       pagination={{
                         current: analyticsState.topShares?.page || 1,
                         pageSize: analyticsState.topShares?.pageSize || 20,
@@ -566,6 +623,7 @@ const EnhancedAnalytics: React.FC = () => {
                           loadTopShares(1, size, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
                         },
                       }}
+                      rowKey="isin"
                       scroll={{ x: 1000 }}
                     />
                   </div>
