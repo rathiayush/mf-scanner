@@ -115,17 +115,41 @@ public class AnalyticsService : IAnalyticsService
         // Get individual snapshots for from and to dates in a single optimized call
         var (fromSnapshots, toSnapshots) = await _snapshotFetchingHelper.GetFromAndToSnapshots(fundIds, request.FromDate, request.ToDate);
         
-        // Filter fund IDs to only include those present in both snapshots
+        // Filter fund IDs to only include those present in both snapshots AND have different snapshot dates
+        // This ensures funds have data for both time periods, not just one snapshot in the range
         var fromFundIds = fromSnapshots.Select(s => s.MutualFundId).ToHashSet();
         var toFundIds = toSnapshots.Select(s => s.MutualFundId).ToHashSet();
         var commonFundIds = fromFundIds.Intersect(toFundIds).ToList();
         
-        // Filter snapshots to only include common fund IDs
-        fromSnapshots = fromSnapshots.Where(s => commonFundIds.Contains(s.MutualFundId)).ToList();
-        toSnapshots = toSnapshots.Where(s => commonFundIds.Contains(s.MutualFundId)).ToList();
+        // Additional validation: Ensure from and to snapshots are actually different dates
+        // This prevents including funds that only have one snapshot in the entire range
+        var validFundIds = new List<int>();
+        foreach (var fundId in commonFundIds)
+        {
+            var fromSnapshot = fromSnapshots.First(s => s.MutualFundId == fundId);
+            var toSnapshot = toSnapshots.First(s => s.MutualFundId == fundId);
+            
+            // Only include if snapshots are from different dates (indicating data in multiple periods)
+            if (fromSnapshot.SnapshotDate.Date != toSnapshot.SnapshotDate.Date)
+            {
+                validFundIds.Add(fundId);
+            }
+            else
+            {
+                _logger.LogWarning("Excluding fund {FundId} - only has single snapshot on {Date} within range {FromDate} to {ToDate}",
+                    fundId, fromSnapshot.SnapshotDate.Date, request.FromDate, request.ToDate);
+            }
+        }
+        
+        // Filter snapshots to only include valid fund IDs
+        fromSnapshots = fromSnapshots.Where(s => validFundIds.Contains(s.MutualFundId)).ToList();
+        toSnapshots = toSnapshots.Where(s => validFundIds.Contains(s.MutualFundId)).ToList();
+        
+        _logger.LogInformation("Filtered to {ValidCount} funds with data in both time periods (from {CommonCount} funds with snapshots in range)",
+            validFundIds.Count, commonFundIds.Count);
         
         // Get fund names for the calculation
-        var fundNames = await _snapshotFetchingHelper.GetMutualFundNames(commonFundIds);
+        var fundNames = await _snapshotFetchingHelper.GetMutualFundNames(validFundIds);
 
         // Calculate holding changes from individual snapshots
         var changes = _analyticsCalculationHelper.CalculateHoldingChangesFromSnapshots(
