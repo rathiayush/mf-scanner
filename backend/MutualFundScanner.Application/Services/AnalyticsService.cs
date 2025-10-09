@@ -321,7 +321,7 @@ public class AnalyticsService : IAnalyticsService
         }
 
         // Determine if we can use database sorting or need in-memory sorting
-        var calculatedFields = new[] { "weightchange", "mutualfundscount", "previousweight", "currentweight", "changetype" };
+        var calculatedFields = new[] { "weightchange", "quantitychange", "valuechange", "mutualfundscount", "previousweight", "currentweight", "changetype" };
         var useInMemorySorting = string.IsNullOrEmpty(sortBy) || calculatedFields.Contains(sortBy.ToLower());
 
         if (useInMemorySorting)
@@ -390,6 +390,14 @@ public class AnalyticsService : IAnalyticsService
             "weightchange" => isAscending 
                 ? changes.OrderBy(c => c.WeightChange).ToList()
                 : changes.OrderByDescending(c => c.WeightChange).ToList(),
+            
+            "quantitychange" => isAscending 
+                ? changes.OrderBy(c => c.QuantityChange).ToList()
+                : changes.OrderByDescending(c => c.QuantityChange).ToList(),
+            
+            "valuechange" => isAscending 
+                ? changes.OrderBy(c => c.ValueChange).ToList()
+                : changes.OrderByDescending(c => c.ValueChange).ToList(),
             
             "changetype" => isAscending 
                 ? changes.OrderBy(c => c.ChangeType).ToList()

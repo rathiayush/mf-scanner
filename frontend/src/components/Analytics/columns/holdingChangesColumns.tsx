@@ -140,15 +140,18 @@ export const getHoldingChangesColumns = ({
     ),
   },
   {
-    title: 'Value Change',
+    title: 'Value Change (Cr)',
     dataIndex: 'valueChange',
     key: 'valueChange',
     width: 130,
-    render: (change: number) => (
-      <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
-        {change > 0 ? '+' : ''}₹{Math.abs(change).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-      </Text>
-    ),
+    render: (change: number) => {
+      const valueInCr = change / 100;
+      return (
+        <Text type={valueInCr > 0 ? 'success' : valueInCr < 0 ? 'danger' : undefined}>
+          {valueInCr > 0 ? '+' : ''}₹{Math.abs(valueInCr).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+        </Text>
+      );
+    },
   },
   {
     title: 'Total Funds',

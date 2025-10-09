@@ -103,7 +103,7 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
       <Select
         value={sortBy}
         onChange={onSortByChange}
-        style={{ width: 150 }}
+        style={{ width: 180 }}
       >
         <Option value="securityName">Security Name</Option>
         <Option value="sector">Sector</Option>
@@ -111,6 +111,8 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
         <Option value="previousWeight">Previous Weight</Option>
         <Option value="currentWeight">Current Weight</Option>
         <Option value="weightChange">Weight Change</Option>
+        <Option value="quantityChange">Quantity Change</Option>
+        <Option value="valueChange">Value Change</Option>
         <Option value="changeType">Change Type</Option>
         <Option value="mutualFundsCount">Mutual Funds Count</Option>
       </Select>
