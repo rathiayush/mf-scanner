@@ -11,13 +11,9 @@ export const useSortingAndPagination = () => {
   
   // Client-side filters (applied to currently loaded page)
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+  const [securityNameSearch, setSecurityNameSearch] = useState<string>('');
   const [weightChangeMin, setWeightChangeMin] = useState<number | undefined>(undefined);
   const [weightChangeMax, setWeightChangeMax] = useState<number | undefined>(undefined);
-  const [quantityChangeMin, setQuantityChangeMin] = useState<number | undefined>(undefined);
-  const [quantityChangeMax, setQuantityChangeMax] = useState<number | undefined>(undefined);
-  const [valueChangeMin, setValueChangeMin] = useState<number | undefined>(undefined);
-  const [valueChangeMax, setValueChangeMax] = useState<number | undefined>(undefined);
   const [minFundsCount, setMinFundsCount] = useState<number | undefined>(undefined);
   
   // Top Shares pagination and sorting
@@ -66,20 +62,12 @@ export const useSortingAndPagination = () => {
     // Filters
     selectedSectors,
     setSelectedSectors,
-    selectedIndustries,
-    setSelectedIndustries,
+    securityNameSearch,
+    setSecurityNameSearch,
     weightChangeMin,
     setWeightChangeMin,
     weightChangeMax,
     setWeightChangeMax,
-    quantityChangeMin,
-    setQuantityChangeMin,
-    quantityChangeMax,
-    setQuantityChangeMax,
-    valueChangeMin,
-    setValueChangeMin,
-    valueChangeMax,
-    setValueChangeMax,
     minFundsCount,
     setMinFundsCount,
     

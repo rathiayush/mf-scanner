@@ -170,6 +170,11 @@ export interface AnalyticsRequestDto {
   pageSize: number;
   changeTypeFilters?: string[]; // One or more of: Added, Removed, Increased, Decreased, Mixed. Omit or empty for all
   changeTypeMatchMode?: 'any' | 'only'; // any: OR; only: exact match of constituent types set
+  sectorFilters?: string[];
+  securityNameSearch?: string; // Search by security name (partial match)
+  weightChangeMin?: number;
+  weightChangeMax?: number;
+  minFundsCount?: number;
   sortBy?: string;
   sortDirection?: string;
 }

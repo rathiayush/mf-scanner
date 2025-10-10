@@ -1,5 +1,5 @@
 import React from 'react';
-import { Space, Select, Typography, Radio, InputNumber, Divider } from 'antd';
+import { Space, Select, Typography, Radio, InputNumber, Divider, Input } from 'antd';
 
 const { Text } = Typography;
 
@@ -20,21 +20,12 @@ interface HoldingChangesControlsProps {
   availableSectors: string[];
   selectedSectors: string[];
   onSectorsChange: (value: string[]) => void;
-  availableIndustries: string[];
-  selectedIndustries: string[];
-  onIndustriesChange: (value: string[]) => void;
+  securityNameSearch: string;
+  onSecurityNameSearch: (value: string) => void;
   weightChangeMin?: number;
   onWeightChangeMin: (value: number | null) => void;
   weightChangeMax?: number;
   onWeightChangeMax: (value: number | null) => void;
-  quantityChangeMin?: number;
-  onQuantityChangeMin: (value: number | null) => void;
-  quantityChangeMax?: number;
-  onQuantityChangeMax: (value: number | null) => void;
-  valueChangeMin?: number;
-  onValueChangeMin: (value: number | null) => void;
-  valueChangeMax?: number;
-  onValueChangeMax: (value: number | null) => void;
   minFundsCount?: number;
   onMinFundsCount: (value: number | null) => void;
 }
@@ -54,21 +45,12 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
   availableSectors,
   selectedSectors,
   onSectorsChange,
-  availableIndustries,
-  selectedIndustries,
-  onIndustriesChange,
+  securityNameSearch,
+  onSecurityNameSearch,
   weightChangeMin,
   onWeightChangeMin,
   weightChangeMax,
   onWeightChangeMax,
-  quantityChangeMin,
-  onQuantityChangeMin,
-  quantityChangeMax,
-  onQuantityChangeMax,
-  valueChangeMin,
-  onValueChangeMin,
-  valueChangeMax,
-  onValueChangeMax,
   minFundsCount,
   onMinFundsCount
 }) => {
@@ -143,20 +125,14 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
         ))}
       </Select>
 
-      <Text strong>Industry:</Text>
-      <Select
-        mode="multiple"
-        value={selectedIndustries}
-        onChange={onIndustriesChange}
+      <Text strong>Search Security:</Text>
+      <Input
+        placeholder="Search by name or ISIN"
+        value={securityNameSearch}
+        onChange={(e) => onSecurityNameSearch(e.target.value)}
         allowClear
-        placeholder="All industries"
-        style={{ minWidth: 200 }}
-        maxTagCount={2}
-      >
-        {availableIndustries.map((i) => (
-          <Option key={i} value={i}>{i}</Option>
-        ))}
-      </Select>
+        style={{ width: 220 }}
+      />
 
       <Text strong>Δ Weight (%):</Text>
       <InputNumber
@@ -170,34 +146,6 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
         value={weightChangeMax}
         onChange={(v) => onWeightChangeMax(v === null ? null : Number(v))}
         style={{ width: 90 }}
-      />
-
-      <Text strong>Δ Qty:</Text>
-      <InputNumber
-        placeholder="Min"
-        value={quantityChangeMin}
-        onChange={(v) => onQuantityChangeMin(v === null ? null : Number(v))}
-        style={{ width: 90 }}
-      />
-      <InputNumber
-        placeholder="Max"
-        value={quantityChangeMax}
-        onChange={(v) => onQuantityChangeMax(v === null ? null : Number(v))}
-        style={{ width: 90 }}
-      />
-
-      <Text strong>Δ Value (₹):</Text>
-      <InputNumber
-        placeholder="Min"
-        value={valueChangeMin}
-        onChange={(v) => onValueChangeMin(v === null ? null : Number(v))}
-        style={{ width: 120 }}
-      />
-      <InputNumber
-        placeholder="Max"
-        value={valueChangeMax}
-        onChange={(v) => onValueChangeMax(v === null ? null : Number(v))}
-        style={{ width: 120 }}
       />
 
       <Text strong>Min Funds:</Text>

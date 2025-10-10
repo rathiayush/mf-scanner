@@ -84,7 +84,8 @@ public class AnalyticsService : IAnalyticsService
             ChangeTypeFilters = request.ChangeTypeFilters,
             ChangeTypeMatchMode = request.ChangeTypeMatchMode,
             SortBy = request.SortBy,
-            SortDirection = request.SortDirection
+            SortDirection = request.SortDirection,
+            SecurityNameSearch = request.SecurityNameSearch
         };
 
         // Validate request
@@ -168,13 +169,9 @@ public class AnalyticsService : IAnalyticsService
             request.ChangeTypeFilters, 
             request.ChangeTypeMatchMode,
             request.SectorFilters,
-            request.IndustryFilters,
+            request.SecurityNameSearch,
             request.WeightChangeMin,
             request.WeightChangeMax,
-            request.QuantityChangeMin,
-            request.QuantityChangeMax,
-            request.ValueChangeMin,
-            request.ValueChangeMax,
             request.MinFundsCount,
             request.SortBy, 
             request.SortDirection);
@@ -204,13 +201,9 @@ public class AnalyticsService : IAnalyticsService
         List<string>? changeTypeFilters,
         string? changeTypeMatchMode,
         List<string>? sectorFilters,
-        List<string>? industryFilters,
+        string? securityNameSearch,
         decimal? weightChangeMin,
         decimal? weightChangeMax,
-        decimal? quantityChangeMin,
-        decimal? quantityChangeMax,
-        decimal? valueChangeMin,
-        decimal? valueChangeMax,
         int? minFundsCount,
         string? sortBy,
         string? sortDirection)
@@ -269,12 +262,14 @@ public class AnalyticsService : IAnalyticsService
             _logger.LogInformation("Applied sector filters: {Filters}, remaining count: {Count}", string.Join(",", sectorFilters), filteredChanges.Count);
         }
 
-        // Apply industry filtering
-        if (industryFilters != null && industryFilters.Any())
+        // Apply security name search filtering
+        if (!string.IsNullOrWhiteSpace(securityNameSearch))
         {
-            var set = industryFilters.ToHashSet(StringComparer.OrdinalIgnoreCase);
-            filteredChanges = filteredChanges.Where(c => set.Contains(c.Industry)).ToList();
-            _logger.LogInformation("Applied industry filters: {Filters}, remaining count: {Count}", string.Join(",", industryFilters), filteredChanges.Count);
+            filteredChanges = filteredChanges.Where(c => 
+                (!string.IsNullOrEmpty(c.SecurityName) && c.SecurityName.Contains(securityNameSearch, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.ISIN) && c.ISIN.Contains(securityNameSearch, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+            _logger.LogInformation("Applied security name search: '{Search}', remaining count: {Count}", securityNameSearch, filteredChanges.Count);
         }
 
         // Apply weight change range filtering
@@ -287,30 +282,6 @@ public class AnalyticsService : IAnalyticsService
         {
             filteredChanges = filteredChanges.Where(c => c.WeightChange <= weightChangeMax.Value).ToList();
             _logger.LogInformation("Applied weight change max filter: {Max}, remaining count: {Count}", weightChangeMax.Value, filteredChanges.Count);
-        }
-
-        // Apply quantity change range filtering
-        if (quantityChangeMin.HasValue)
-        {
-            filteredChanges = filteredChanges.Where(c => c.QuantityChange >= quantityChangeMin.Value).ToList();
-            _logger.LogInformation("Applied quantity change min filter: {Min}, remaining count: {Count}", quantityChangeMin.Value, filteredChanges.Count);
-        }
-        if (quantityChangeMax.HasValue)
-        {
-            filteredChanges = filteredChanges.Where(c => c.QuantityChange <= quantityChangeMax.Value).ToList();
-            _logger.LogInformation("Applied quantity change max filter: {Max}, remaining count: {Count}", quantityChangeMax.Value, filteredChanges.Count);
-        }
-
-        // Apply value change range filtering
-        if (valueChangeMin.HasValue)
-        {
-            filteredChanges = filteredChanges.Where(c => c.ValueChange >= valueChangeMin.Value).ToList();
-            _logger.LogInformation("Applied value change min filter: {Min}, remaining count: {Count}", valueChangeMin.Value, filteredChanges.Count);
-        }
-        if (valueChangeMax.HasValue)
-        {
-            filteredChanges = filteredChanges.Where(c => c.ValueChange <= valueChangeMax.Value).ToList();
-            _logger.LogInformation("Applied value change max filter: {Max}, remaining count: {Count}", valueChangeMax.Value, filteredChanges.Count);
         }
 
         // Apply minimum funds count filtering

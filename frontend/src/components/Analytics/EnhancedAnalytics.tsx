@@ -92,6 +92,20 @@ const EnhancedAnalytics: React.FC = () => {
     }
   };
 
+  // Debounce security name search to avoid refreshing on every keystroke
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      // Only trigger when we have a valid analysis context
+      if (!analyticsState.dateRange || (analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected)) return;
+      // Always reset to first page on search change
+      sortingPagination.setCurrentPage(1);
+      loadHoldingChanges(1, sortingPagination.pageSize);
+    }, 300);
+
+    return () => clearTimeout(handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortingPagination.securityNameSearch]);
+
   const loadAvailableDates = async (fundIds?: number[]) => {
     try {
       const dates = await analyticsService.getAvailableDates(fundIds);
@@ -149,13 +163,9 @@ const EnhancedAnalytics: React.FC = () => {
         changeTypeFilters: sortingPagination.selectedStatusFilters.length > 0 ? sortingPagination.selectedStatusFilters : undefined,
         changeTypeMatchMode: sortingPagination.changeTypeMatchMode,
         sectorFilters: sortingPagination.selectedSectors.length > 0 ? sortingPagination.selectedSectors : undefined,
-        industryFilters: sortingPagination.selectedIndustries.length > 0 ? sortingPagination.selectedIndustries : undefined,
+        securityNameSearch: sortingPagination.securityNameSearch ? sortingPagination.securityNameSearch : undefined,
         weightChangeMin: sortingPagination.weightChangeMin,
         weightChangeMax: sortingPagination.weightChangeMax,
-        quantityChangeMin: sortingPagination.quantityChangeMin,
-        quantityChangeMax: sortingPagination.quantityChangeMax,
-        valueChangeMin: sortingPagination.valueChangeMin,
-        valueChangeMax: sortingPagination.valueChangeMax,
         minFundsCount: sortingPagination.minFundsCount
       };
 
@@ -294,13 +304,9 @@ const EnhancedAnalytics: React.FC = () => {
         changeTypeFilters: currentFilters && currentFilters.length > 0 ? currentFilters : undefined,
         changeTypeMatchMode: matchModeOverride ?? sortingPagination.changeTypeMatchMode,
         sectorFilters: sortingPagination.selectedSectors.length > 0 ? sortingPagination.selectedSectors : undefined,
-        industryFilters: sortingPagination.selectedIndustries.length > 0 ? sortingPagination.selectedIndustries : undefined,
+        securityNameSearch: sortingPagination.securityNameSearch ? sortingPagination.securityNameSearch : undefined,
         weightChangeMin: sortingPagination.weightChangeMin,
         weightChangeMax: sortingPagination.weightChangeMax,
-        quantityChangeMin: sortingPagination.quantityChangeMin,
-        quantityChangeMax: sortingPagination.quantityChangeMax,
-        valueChangeMin: sortingPagination.valueChangeMin,
-        valueChangeMax: sortingPagination.valueChangeMax,
         minFundsCount: sortingPagination.minFundsCount,
         sortBy: sortBy || sortingPagination.holdingChangesSortBy,
         sortDirection: sortDirection || sortingPagination.holdingChangesSortDirection
@@ -339,14 +345,6 @@ const EnhancedAnalytics: React.FC = () => {
     const set = new Set<string>();
     (analyticsState.holdingChanges?.data || []).forEach(h => {
       if (h.sector) set.add(h.sector);
-    });
-    return Array.from(set).sort();
-  }, [analyticsState.holdingChanges]);
-
-  const availableIndustries = useMemo(() => {
-    const set = new Set<string>();
-    (analyticsState.holdingChanges?.data || []).forEach(h => {
-      if (h.industry) set.add(h.industry);
     });
     return Array.from(set).sort();
   }, [analyticsState.holdingChanges]);
@@ -531,21 +529,16 @@ const EnhancedAnalytics: React.FC = () => {
                           availableSectors={availableSectors}
                           selectedSectors={sortingPagination.selectedSectors}
                           onSectorsChange={(v) => sortingPagination.setSelectedSectors(v)}
-                          availableIndustries={availableIndustries}
-                          selectedIndustries={sortingPagination.selectedIndustries}
-                          onIndustriesChange={(v) => sortingPagination.setSelectedIndustries(v)}
+                          securityNameSearch={sortingPagination.securityNameSearch}
+                          onSecurityNameSearch={(v: string) => {
+                            // Update state only; debounced effect below will trigger API call
+                            sortingPagination.setSecurityNameSearch(v);
+                            sortingPagination.setCurrentPage(1);
+                          }}
                           weightChangeMin={sortingPagination.weightChangeMin}
                           onWeightChangeMin={(v) => sortingPagination.setWeightChangeMin(v === null ? undefined : v)}
                           weightChangeMax={sortingPagination.weightChangeMax}
                           onWeightChangeMax={(v) => sortingPagination.setWeightChangeMax(v === null ? undefined : v)}
-                          quantityChangeMin={sortingPagination.quantityChangeMin}
-                          onQuantityChangeMin={(v) => sortingPagination.setQuantityChangeMin(v === null ? undefined : v)}
-                          quantityChangeMax={sortingPagination.quantityChangeMax}
-                          onQuantityChangeMax={(v) => sortingPagination.setQuantityChangeMax(v === null ? undefined : v)}
-                          valueChangeMin={sortingPagination.valueChangeMin}
-                          onValueChangeMin={(v) => sortingPagination.setValueChangeMin(v === null ? undefined : v)}
-                          valueChangeMax={sortingPagination.valueChangeMax}
-                          onValueChangeMax={(v) => sortingPagination.setValueChangeMax(v === null ? undefined : v)}
                           minFundsCount={sortingPagination.minFundsCount}
                           onMinFundsCount={(v) => sortingPagination.setMinFundsCount(v === null ? undefined : v)}
                         />

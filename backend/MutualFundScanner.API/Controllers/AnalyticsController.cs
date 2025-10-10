@@ -53,8 +53,8 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("GetHoldingChanges called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}, page: {Page}, pageSize: {PageSize}, sortBy: {SortBy}, sortDirection: {SortDirection}", 
-                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate, request.Page, request.PageSize, request.SortBy ?? "default", request.SortDirection ?? "desc");
+            _logger.LogInformation("GetHoldingChanges called with fundIds: {FundIds}, fromDate: {FromDate}, toDate: {ToDate}, page: {Page}, pageSize: {PageSize}, sortBy: {SortBy}, sortDirection: {SortDirection}, securityNameSearch: {SecurityNameSearch}", 
+                string.Join(",", request.MutualFundIds ?? new List<int>()), request.FromDate, request.ToDate, request.Page, request.PageSize, request.SortBy ?? "default", request.SortDirection ?? "desc", request.SecurityNameSearch ?? "none");
 
             // Allow empty MutualFundIds for "All Funds" analysis
             // if (request.MutualFundIds == null || !request.MutualFundIds.Any())
