@@ -300,7 +300,7 @@ namespace MutualFundScanner.Infrastructure.Migrations
                     b.Property<int>("PortfolioFileId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("PortfolioSnapshotId")
+                    b.Property<int>("PortfolioSnapshotId")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("PreviousWeight")
