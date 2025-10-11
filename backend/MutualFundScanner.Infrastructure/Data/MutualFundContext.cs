@@ -64,10 +64,6 @@ public class MutualFundContext : DbContext
                   .WithMany(e => e.Holdings)
                   .HasForeignKey(e => e.PortfolioFileId)
                   .OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(e => e.PortfolioSnapshot)
-                  .WithMany(e => e.Holdings)
-                  .HasForeignKey(e => e.PortfolioSnapshotId)
-                  .OnDelete(DeleteBehavior.NoAction);
         });
 
         // ProcessingLog configuration

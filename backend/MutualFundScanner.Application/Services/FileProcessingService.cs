@@ -1064,7 +1064,7 @@ public class FileProcessingService : IFileProcessingService
     /// Tracks holding changes by comparing current holdings with previous snapshot
     /// and recalculates subsequent snapshots if needed
     /// </summary>
-    private async Task TrackHoldingChangesAsync(int mutualFundId, DateTime currentDate, ICollection<PortfolioHolding> currentHoldings, long portfolioSnapshotId)
+    private async Task TrackHoldingChangesAsync(int mutualFundId, DateTime currentDate, ICollection<PortfolioHolding> currentHoldings, int portfolioSnapshotId)
     {
         try
         {
@@ -1094,7 +1094,6 @@ public class FileProcessingService : IFileProcessingService
                     var change = new HoldingChange
                     {
                         MutualFundId = mutualFundId,
-                        PortfolioSnapshotId = portfolioSnapshotId,
                         ISIN = holding.ISIN,
                         Ticker = holding.Ticker,
                         SecurityName = holding.SecurityName,
@@ -1148,7 +1147,6 @@ public class FileProcessingService : IFileProcessingService
                     changes.Add(new HoldingChange
                     {
                         MutualFundId = mutualFundId,
-                        PortfolioSnapshotId = portfolioSnapshotId,
                         ISIN = currentHolding.ISIN,
                         Ticker = currentHolding.Ticker,
                         SecurityName = currentHolding.SecurityName,
@@ -1190,7 +1188,6 @@ public class FileProcessingService : IFileProcessingService
                         changes.Add(new HoldingChange
                         {
                             MutualFundId = mutualFundId,
-                            PortfolioSnapshotId = portfolioSnapshotId,
                             ISIN = currentHolding.ISIN,
                             Ticker = currentHolding.Ticker,
                             SecurityName = currentHolding.SecurityName,
@@ -1220,7 +1217,6 @@ public class FileProcessingService : IFileProcessingService
                     changes.Add(new HoldingChange
                     {
                         MutualFundId = mutualFundId,
-                        PortfolioSnapshotId = portfolioSnapshotId,
                         ISIN = previousHolding.ISIN,
                         Ticker = previousHolding.Ticker,
                         SecurityName = previousHolding.SecurityName,
