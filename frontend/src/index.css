@@ -1,3 +1,26 @@
+/* Sticky table headers for Ant Design tables */
+.sticky-table .ant-table-container {
+  /* Ensure thead sticky works over the scrolling area */
+  position: relative;
+}
+
+.sticky-table .ant-table-thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff; /* match table background */
+}
+
+/* When tables are inside a modal or card with overflow, make header shadow subtle */
+.sticky-table .ant-table-thead > tr > th::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: #f0f0f0;
+}
 * {
   margin: 0;
   padding: 0;

@@ -8,7 +8,7 @@ public class PortfolioHolding
     public long Id { get; set; }
     public int PortfolioFileId { get; set; }
     public int MutualFundId { get; set; }
-    public int? PortfolioSnapshotId { get; set; }
+    public long PortfolioSnapshotId { get; set; }
     public string? ISIN { get; set; }
     public string? Ticker { get; set; }
     public string? SecurityName { get; set; }
@@ -27,5 +27,5 @@ public class PortfolioHolding
     
     public virtual PortfolioFile PortfolioFile { get; set; } = null!;
     public virtual MutualFund MutualFund { get; set; } = null!;
-    public virtual PortfolioSnapshot? PortfolioSnapshot { get; set; }
+    public virtual PortfolioSnapshot PortfolioSnapshot { get; set; } = null!;
 }

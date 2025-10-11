@@ -993,12 +993,15 @@ public class FileProcessingService : IFileProcessingService
     {
         try
         {
-            PortfolioSnapshot snapshot = null;
-            var existingsapshot = await _context.PortfolioSnapshots.FirstOrDefaultAsync(x => x.MutualFund == portfolioFile.MutualFund && x.SnapshotDate == portfolioFile.ReportDate);
-            if (existingsapshot == null)
+            var existingSnapshot = await _context.PortfolioSnapshots
+                .Include(s => s.Holdings)
+                .FirstOrDefaultAsync(x => x.MutualFundId == portfolioFile.MutualFundId && x.SnapshotDate == portfolioFile.ReportDate);
+
+            PortfolioSnapshot snapshot;
+            if (existingSnapshot == null)
             {
-                // Create portfolio snapshot
-                 snapshot = new PortfolioSnapshot
+                // Create new portfolio snapshot
+                snapshot = new PortfolioSnapshot
                 {
                     MutualFundId = portfolioFile.MutualFundId,
                     SnapshotDate = portfolioFile.ReportDate,
@@ -1007,35 +1010,53 @@ public class FileProcessingService : IFileProcessingService
                     CreatedDate = DateTime.UtcNow
                 };
                 _context.PortfolioSnapshots.Add(snapshot);
-                await _context.SaveChangesAsync();
-            }
-            else {
-                // Create portfolio snapshot
-                snapshot = existingsapshot;
-                existingsapshot.Holdings = new List<PortfolioHolding>();
+                await _context.SaveChangesAsync(); // Save to get the ID
                 
-                await _context.SaveChangesAsync();
-                existingsapshot.Holdings = holdings;
+                _logger.LogInformation("Created new portfolio snapshot for fund {FundId} on {Date}", 
+                    portfolioFile.MutualFundId, portfolioFile.ReportDate);
+            }
+            else
+            {
+                // Update existing snapshot
+                snapshot = existingSnapshot;
+                snapshot.TotalValue = holdings.Sum(h => h.MarketValue);
+                snapshot.TotalHoldings = holdings.Count;
+                
+                // Remove existing holdings to avoid duplicates
+                if (snapshot.Holdings.Any())
+                {
+                    _context.PortfolioHoldings.RemoveRange(snapshot.Holdings);
+                    await _context.SaveChangesAsync();
+                }
+                
+                _logger.LogInformation("Updated existing portfolio snapshot for fund {FundId} on {Date}", 
+                    portfolioFile.MutualFundId, portfolioFile.ReportDate);
             }
 
-
-            // Update PortfolioHolding entities with the PortfolioSnapshotId
+            // Assign PortfolioSnapshotId to all holdings before adding them
             foreach (var holding in holdings)
             {
                 holding.PortfolioSnapshotId = snapshot.Id;
             }
+            
+            // Add the new holdings
+            _context.PortfolioHoldings.AddRange(holdings);
             await _context.SaveChangesAsync();
 
             // Track holding changes by comparing with previous snapshot
-            await TrackHoldingChangesAsync(portfolioFile.MutualFundId, snapshot.SnapshotDate, holdings);
+            await TrackHoldingChangesAsync(portfolioFile.MutualFundId, snapshot.SnapshotDate, holdings, snapshot.Id);
 
-            _logger.LogInformation("Created portfolio snapshot for fund {FundId} on {Date} with {Holdings} holdings",
+            // After tracking changes, recalculate subsequent snapshots if needed
+            await RecalculateSubsequentHoldingChangesAsync(portfolioFile.MutualFundId, portfolioFile.ReportDate);
+
+            _logger.LogInformation("Successfully processed portfolio snapshot for fund {FundId} on {Date} with {Holdings} holdings",
                 portfolioFile.MutualFundId, portfolioFile.ReportDate, holdings.Count);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating portfolio snapshot and tracking changes for file {FileName}",
                 portfolioFile.FileName);
+            throw;
         }
     }
 
@@ -1043,10 +1064,22 @@ public class FileProcessingService : IFileProcessingService
     /// Tracks holding changes by comparing current holdings with previous snapshot
     /// and recalculates subsequent snapshots if needed
     /// </summary>
-    private async Task TrackHoldingChangesAsync(int mutualFundId, DateTime currentDate, ICollection<PortfolioHolding> currentHoldings)
+    private async Task TrackHoldingChangesAsync(int mutualFundId, DateTime currentDate, ICollection<PortfolioHolding> currentHoldings, long portfolioSnapshotId)
     {
         try
         {
+            // First, delete any existing holding changes for this mutual fund and date to prevent duplicates
+            var existingChanges = _context.HoldingChanges
+                .Where(hc => hc.MutualFundId == mutualFundId && hc.ToDate.Date == currentDate.Date);
+
+            if (await existingChanges.AnyAsync())
+            {
+                _logger.LogInformation("Deleting {Count} existing holding changes for fund {FundId} on date {Date}",
+                    await existingChanges.CountAsync(), mutualFundId, currentDate.ToShortDateString());
+                _context.HoldingChanges.RemoveRange(existingChanges);
+                await _context.SaveChangesAsync();
+            }
+
             // Get the most recent snapshot before the current date
             var previousSnapshot = await _context.PortfolioSnapshots
                 .Where(s => s.MutualFundId == mutualFundId && s.SnapshotDate < currentDate)
@@ -1061,6 +1094,7 @@ public class FileProcessingService : IFileProcessingService
                     var change = new HoldingChange
                     {
                         MutualFundId = mutualFundId,
+                        PortfolioSnapshotId = portfolioSnapshotId,
                         ISIN = holding.ISIN,
                         Ticker = holding.Ticker,
                         SecurityName = holding.SecurityName,
@@ -1114,6 +1148,7 @@ public class FileProcessingService : IFileProcessingService
                     changes.Add(new HoldingChange
                     {
                         MutualFundId = mutualFundId,
+                        PortfolioSnapshotId = portfolioSnapshotId,
                         ISIN = currentHolding.ISIN,
                         Ticker = currentHolding.Ticker,
                         SecurityName = currentHolding.SecurityName,
@@ -1155,6 +1190,7 @@ public class FileProcessingService : IFileProcessingService
                         changes.Add(new HoldingChange
                         {
                             MutualFundId = mutualFundId,
+                            PortfolioSnapshotId = portfolioSnapshotId,
                             ISIN = currentHolding.ISIN,
                             Ticker = currentHolding.Ticker,
                             SecurityName = currentHolding.SecurityName,
@@ -1184,6 +1220,7 @@ public class FileProcessingService : IFileProcessingService
                     changes.Add(new HoldingChange
                     {
                         MutualFundId = mutualFundId,
+                        PortfolioSnapshotId = portfolioSnapshotId,
                         ISIN = previousHolding.ISIN,
                         Ticker = previousHolding.Ticker,
                         SecurityName = previousHolding.SecurityName,

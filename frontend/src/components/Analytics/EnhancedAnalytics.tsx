@@ -548,6 +548,7 @@ const EnhancedAnalytics: React.FC = () => {
                         columns={holdingChangesColumns}
                         rowKey="isin"
                         loading={analyticsState.loading}
+                        className="sticky-table"
                         pagination={{
                           current: analyticsState.holdingChanges?.page || 1,
                           pageSize: analyticsState.holdingChanges?.pageSize || 20,
@@ -595,6 +596,7 @@ const EnhancedAnalytics: React.FC = () => {
                     <Table
                       columns={topSharesColumns}
                       dataSource={analyticsState.topShares?.data || []}
+                      className="sticky-table"
                       pagination={{
                         current: analyticsState.topShares?.page || 1,
                         pageSize: analyticsState.topShares?.pageSize || 20,

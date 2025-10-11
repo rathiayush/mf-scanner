@@ -224,6 +224,8 @@ export interface FundChangeDetailDto {
   currentValue: number;
   valueChange: number;
   changeType: string;
+  previousSnapshotTotalValue?: number; // Total AUM of the mutual fund at previous snapshot
+  currentSnapshotTotalValue: number; // Total AUM of the mutual fund at current snapshot
 }
 
 export interface TopShareDto {
@@ -359,6 +361,8 @@ export interface SecurityMonthlyChangeDto {
   changeTypes: MonthlyChangeTypeDto[];
   totalMutualFundsCount: number;
   totalAbsoluteWeightChange: number;
+  totalQuantityChange: number;
+  totalValueChange: number;
   allFundChanges: SecurityFundChangeDto[];
 }
 
@@ -374,6 +378,12 @@ export interface SecurityFundChangeDto {
   previousWeight: number;
   currentWeight: number;
   weightChange: number;
+  previousQuantity?: number;
+  currentQuantity: number;
+  quantityChange: number;
+  previousValue?: number;
+  currentValue: number;
+  valueChange: number;
   changeType: string;
 }
 

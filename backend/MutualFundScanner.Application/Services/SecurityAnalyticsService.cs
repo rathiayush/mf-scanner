@@ -253,6 +253,12 @@ public class SecurityAnalyticsService : ISecurityAnalyticsService
                             PreviousWeight = 0,
                             CurrentWeight = currentHolding.Weight,
                             WeightChange = currentHolding.Weight,
+                            PreviousQuantity = 0,
+                            CurrentQuantity = currentHolding.Quantity,
+                            QuantityChange = currentHolding.Quantity,
+                            PreviousValue = 0,
+                            CurrentValue = currentHolding.MarketValue,
+                            ValueChange = currentHolding.MarketValue,
                             ChangeType = "Added"
                         });
                     }
@@ -261,6 +267,8 @@ public class SecurityAnalyticsService : ISecurityAnalyticsService
                 {
                     // Compare with previous month
                     var weightChange = currentHolding.Weight - previousHolding.Weight;
+                    var quantityChange = currentHolding.Quantity - previousHolding.Quantity;
+                    var valueChange = currentHolding.MarketValue - previousHolding.MarketValue;
                     var changeType = DetermineChangeType(previousHolding.Weight, currentHolding.Weight);
 
                     fundChanges.Add(new SecurityFundChangeDto
@@ -270,31 +278,54 @@ public class SecurityAnalyticsService : ISecurityAnalyticsService
                         PreviousWeight = previousHolding.Weight,
                         CurrentWeight = currentHolding.Weight,
                         WeightChange = weightChange,
+                        PreviousQuantity = previousHolding.Quantity,
+                        CurrentQuantity = currentHolding.Quantity,
+                        QuantityChange = quantityChange,
+                        PreviousValue = previousHolding.MarketValue,
+                        CurrentValue = currentHolding.MarketValue,
+                        ValueChange = valueChange,
                         ChangeType = changeType
                     });
                 }
             }
 
-            // Check for removed funds - funds that had this security last month but don't have it this month
+            // Check for funds that had the security last month
             var previousMonth = currentMonth.AddMonths(-1);
             var previousMonthKeyPattern = $"{previousMonth.Year}-{previousMonth.Month:D2}";
-            var removedFunds = fundMonthHoldings
-                .Where(fh => fh.Key.StartsWith(previousMonthKeyPattern))
-                .Where(fh => !currentMonthHoldings.Any(cmh => cmh.Key.EndsWith($"-{fh.Value.PortfolioFile!.MutualFundId}")))
-                .Where(fh => fh.Value.Weight > 0) // Only consider funds that actually had the security
+            var fundsWithPreviousHolding = fundMonthHoldings
+                .Where(fh => fh.Key.StartsWith(previousMonthKeyPattern) && fh.Value.Weight > 0)
                 .ToList();
 
-            foreach (var removedFund in removedFunds)
+            foreach (var prevFundHolding in fundsWithPreviousHolding)
             {
-                fundChanges.Add(new SecurityFundChangeDto
+                var fundId = prevFundHolding.Value.PortfolioFile!.MutualFundId;
+                var currentMonthFundKey = $"{currentMonth.Year}-{currentMonth.Month:D2}-{fundId}";
+
+                // Check if this fund has a holding (of any kind) in the current month
+                var hasCurrentMonthHoldingForFund = fundMonthHoldings.ContainsKey(currentMonthFundKey);
+
+                // Check if the security is present in the current month for this fund
+                var securityInCurrentMonth = currentMonthHoldings.Any(cmh => cmh.Key.EndsWith($"-{fundId}"));
+
+                if (!securityInCurrentMonth)
                 {
-                    MutualFundId = removedFund.Value.PortfolioFile!.MutualFundId,
-                    MutualFundName = removedFund.Value.PortfolioFile.MutualFund!.FundName,
-                    PreviousWeight = removedFund.Value.Weight,
-                    CurrentWeight = 0,
-                    WeightChange = -removedFund.Value.Weight,
-                    ChangeType = "Removed"
-                });
+                    var changeType = hasCurrentMonthHoldingForFund ? "Removed" : "DataNotPresent";
+                    fundChanges.Add(new SecurityFundChangeDto
+                    {
+                        MutualFundId = fundId,
+                        MutualFundName = prevFundHolding.Value.PortfolioFile.MutualFund!.FundName,
+                        PreviousWeight = prevFundHolding.Value.Weight,
+                        CurrentWeight = 0,
+                        WeightChange = -prevFundHolding.Value.Weight,
+                        PreviousQuantity = prevFundHolding.Value.Quantity,
+                        CurrentQuantity = 0,
+                        QuantityChange = -prevFundHolding.Value.Quantity,
+                        PreviousValue = prevFundHolding.Value.MarketValue,
+                        CurrentValue = 0,
+                        ValueChange = -prevFundHolding.Value.MarketValue,
+                        ChangeType = changeType
+                    });
+                }
             }
 
             // Group changes by type for this month
@@ -316,6 +347,8 @@ public class SecurityAnalyticsService : ISecurityAnalyticsService
                     ChangeTypes = changeTypeSummaries,
                     TotalMutualFundsCount = fundChanges.Count,
                     TotalAbsoluteWeightChange = fundChanges.Sum(fc => Math.Abs(fc.WeightChange)),
+                    TotalQuantityChange = fundChanges.Sum(fc => fc.QuantityChange),
+                    TotalValueChange = fundChanges.Sum(fc => fc.ValueChange),
                     AllFundChanges = fundChanges.OrderBy(fc => fc.MutualFundName).ToList()
                 });
             }

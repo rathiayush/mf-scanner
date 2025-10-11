@@ -57,6 +57,8 @@ public class AnalyticsCalculationHelper
         public decimal ToValue { get; set; }
         public decimal ValueChange => ToValue - FromValue;
         public string ChangeType { get; set; } = "";
+        public decimal? FromSnapshotTotalValue { get; set; }
+        public decimal ToSnapshotTotalValue { get; set; }
     }
 
     #endregion
@@ -160,6 +162,10 @@ public class AnalyticsCalculationHelper
         DateTime fromDate,
         DateTime toDate)
     {
+        // Extract snapshot total values for each fund
+        var fromSnapshotTotalValues = fromSnapshots.ToDictionary(s => s.MutualFundId, s => s.TotalValue);
+        var toSnapshotTotalValues = toSnapshots.ToDictionary(s => s.MutualFundId, s => s.TotalValue);
+        
         // Extract holdings from snapshots
         var fromHoldings = ExtractFundHoldings(fromSnapshots, fundNames);
         var toHoldings = ExtractFundHoldings(toSnapshots, fundNames);
@@ -186,31 +192,8 @@ public class AnalyticsCalculationHelper
             var fromValue = fromHolding?.Value ?? 0;
             var toValue = toHolding?.Value ?? 0;
             
-            // Special handling for the case where both holdings exist but toWeight is 0
-            // This could indicate a removal OR a data issue
-            string changeType;
-            if (fromHolding != null && toHolding != null && fromWeight > 0 && toWeight == 0)
-            {
-                // Check if this is truly a removal or a data issue
-                // For now, we'll treat it as unchanged if both holdings exist
-                // This prevents false "Removed" detections
-                _logger.LogWarning("Potential data issue: Fund {FundId} ({FundName}) has holding in both snapshots but toWeight is 0. ISIN: {ISIN}", 
-                    fundId, fundNames[fundId], isin);
-                
-                // Treat as unchanged rather than removed to avoid false positives
-                changeType = "Unchanged";
-            }
-            else
-            {
-                // Log for debugging INOX Wind Limited
-                if (isin == "INE066P01011")
-                {
-                    _logger.LogInformation("Fund {FundId} ({FundName}): FromWeight={FromWeight}, ToWeight={ToWeight}", 
-                        fundId, fundNames[fundId], fromWeight, toWeight);
-                }
-                
-                changeType = DetermineChangeType(fromWeight, toWeight);
-            }
+            
+            var changeType = DetermineChangeType(fromWeight, toWeight);
             
             // Include all changes, even unchanged ones, for proper aggregation
             // Get security details from whichever holding exists
@@ -230,7 +213,9 @@ public class AnalyticsCalculationHelper
                 ToQuantity = toQuantity,
                 FromValue = fromValue,
                 ToValue = toValue,
-                ChangeType = changeType
+                ChangeType = changeType,
+                FromSnapshotTotalValue = fromSnapshotTotalValues.GetValueOrDefault(fundId),
+                ToSnapshotTotalValue = toSnapshotTotalValues.GetValueOrDefault(fundId)
             });
         }
         
@@ -274,7 +259,9 @@ public class AnalyticsCalculationHelper
                     PreviousValue = change.FromValue,
                     CurrentValue = change.ToValue,
                     ValueChange = change.ValueChange,
-                    ChangeType = change.ChangeType
+                    ChangeType = change.ChangeType,
+                    PreviousSnapshotTotalValue = change.FromSnapshotTotalValue,
+                    CurrentSnapshotTotalValue = change.ToSnapshotTotalValue
                 }
             },
             ConstituentChangeTypes = new List<string> { change.ChangeType }, // Single fund, single change type
@@ -320,7 +307,9 @@ public class AnalyticsCalculationHelper
                     PreviousValue = fc.FromValue,
                     CurrentValue = fc.ToValue,
                     ValueChange = fc.ValueChange,
-                    ChangeType = fc.ChangeType
+                    ChangeType = fc.ChangeType,
+                    PreviousSnapshotTotalValue = fc.FromSnapshotTotalValue,
+                    CurrentSnapshotTotalValue = fc.ToSnapshotTotalValue
                 }).ToList();
 
                 // For Mixed changes, collect all constituent change types

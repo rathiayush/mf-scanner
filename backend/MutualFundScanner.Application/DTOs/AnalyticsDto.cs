@@ -66,6 +66,8 @@ public class FundChangeDetailDto
     public decimal CurrentValue { get; set; }
     public decimal ValueChange { get; set; }
     public string ChangeType { get; set; } = string.Empty; // Added, Removed, Increased, Decreased
+    public decimal? PreviousSnapshotTotalValue { get; set; } // Total AUM of the mutual fund at previous snapshot
+    public decimal CurrentSnapshotTotalValue { get; set; } // Total AUM of the mutual fund at current snapshot
 }
 
 public class TopShareDto
@@ -152,6 +154,8 @@ public class SecurityMonthlyChangeDto
     public List<MonthlyChangeTypeDto> ChangeTypes { get; set; } = new();
     public int TotalMutualFundsCount { get; set; }
     public decimal TotalAbsoluteWeightChange { get; set; }
+    public decimal TotalQuantityChange { get; set; }
+    public decimal TotalValueChange { get; set; }
     public List<SecurityFundChangeDto> AllFundChanges { get; set; } = new();
 }
 
@@ -169,6 +173,12 @@ public class SecurityFundChangeDto
     public decimal PreviousWeight { get; set; }
     public decimal CurrentWeight { get; set; }
     public decimal WeightChange { get; set; }
+    public decimal? PreviousQuantity { get; set; }
+    public decimal CurrentQuantity { get; set; }
+    public decimal QuantityChange { get; set; }
+    public decimal? PreviousValue { get; set; }
+    public decimal CurrentValue { get; set; }
+    public decimal ValueChange { get; set; }
     public string ChangeType { get; set; } = string.Empty;
 }
 
