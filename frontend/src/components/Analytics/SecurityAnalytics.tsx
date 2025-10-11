@@ -14,7 +14,6 @@ import {
   Alert,
   message,
   Divider,
-  Modal,
   Input,
 } from 'antd';
 import {
@@ -25,12 +24,12 @@ import {
   StockOutlined,
 } from '@ant-design/icons';
 import { analyticsService } from '../../services/api';
+import SecurityChangeDetailsModal from './modals/SecurityChangeDetailsModal';
 import {
   SecurityAnalyticsRequestDto,
   SecurityAnalyticsResponseDto,
   SecurityMonthlyChangeDto,
   MonthlyChangeTypeDto,
-  SecurityFundChangeDto,
   SecurityDropdownDto,
 } from '../../types';
 import dayjs, { Dayjs } from 'dayjs';
@@ -53,7 +52,6 @@ const SecurityAnalytics: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [showFundDetailsModal, setShowFundDetailsModal] = useState(false);
   const [selectedMonthData, setSelectedMonthData] = useState<SecurityMonthlyChangeDto | null>(null);
-  const [fundChangeFilter, setFundChangeFilter] = useState<string>('all');
 
   // Sorting state
   const [sortBy, setSortBy] = useState<string>('monthYear');
@@ -143,15 +141,6 @@ const SecurityAnalytics: React.FC = () => {
 
   const filteredSecurities = availableSecurities;
 
-  const getFilteredFundChanges = () => {
-    if (!selectedMonthData) return [];
-
-    if (fundChangeFilter === 'all') {
-      return selectedMonthData.allFundChanges;
-    }
-
-    return selectedMonthData.allFundChanges.filter(fund => fund.changeType === fundChangeFilter);
-  };
 
   const monthlyChangesColumns = [
     {
@@ -175,7 +164,8 @@ const SecurityAnalytics: React.FC = () => {
               Removed: 'red',
               Increased: 'blue',
               Decreased: 'orange',
-              Mixed: 'purple'
+              Mixed: 'purple',
+              DataNotPresent: 'default'
             };
             return (
               <Tag key={index} color={colors[ct.changeType as keyof typeof colors]}>
@@ -205,6 +195,30 @@ const SecurityAnalytics: React.FC = () => {
       render: (change: number) => (
         <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
           {change > 0 ? '+' : ''}{change?.toFixed(2) ?? '0.00'}%
+        </Text>
+      ),
+      sorter: true,
+    },
+    {
+      title: 'Quantity Change',
+      dataIndex: 'totalQuantityChange',
+      key: 'totalQuantityChange',
+      width: 140,
+      render: (change: number) => (
+        <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
+          {change > 0 ? '+' : ''}{change?.toLocaleString('en-IN') ?? '0'}
+        </Text>
+      ),
+      sorter: true,
+    },
+    {
+      title: 'Value Change (Cr)',
+      dataIndex: 'totalValueChange',
+      key: 'totalValueChange',
+      width: 140,
+      render: (change: number) => (
+        <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
+          {change > 0 ? '+' : ''}{(change / 100)?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) ?? '0.00'}
         </Text>
       ),
       sorter: true,
@@ -472,187 +486,14 @@ const SecurityAnalytics: React.FC = () => {
         )}
       </Row>
 
-      {/* Fund Details Modal */}
-      <Modal
-        title={
-          <Space>
-            <FundOutlined />
-            <Text strong>Monthly Change Details</Text>
-          </Space>
-        }
-        open={showFundDetailsModal}
-        onCancel={() => {
+      <SecurityChangeDetailsModal 
+        visible={showFundDetailsModal} 
+        data={selectedMonthData} 
+        onClose={() => {
           setShowFundDetailsModal(false);
           setSelectedMonthData(null);
         }}
-        footer={[
-          <Button key="close" onClick={() => {
-            setShowFundDetailsModal(false);
-            setSelectedMonthData(null);
-          }}>
-            Close
-          </Button>
-        ]}
-        width={900}
-        style={{ top: 20 }}
-      >
-        {selectedMonthData && (
-          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            <div style={{ marginBottom: 16 }}>
-              <Space>
-                <Text strong>Filter by Change Type:</Text>
-                <Select
-                  value={fundChangeFilter}
-                  onChange={setFundChangeFilter}
-                  style={{ width: 150 }}
-                >
-                  <Option value="all">All Changes</Option>
-                  <Option value="Added">Added</Option>
-                  <Option value="Removed">Removed</Option>
-                  <Option value="Increased">Increased</Option>
-                  <Option value="Decreased">Decreased</Option>
-                </Select>
-                <Text type="secondary">
-                  Showing {getFilteredFundChanges().length} of {selectedMonthData.allFundChanges.length} funds
-                </Text>
-              </Space>
-            </div>
-
-            <Alert
-              message={`${dayjs(selectedMonthData.monthYear).format('MMMM YYYY')} - Multiple Change Types`}
-              description={
-                <Space direction="vertical" size={2}>
-                  <Text>{selectedMonthData.totalMutualFundsCount} mutual funds made changes</Text>
-                  <Text type={selectedMonthData.totalAbsoluteWeightChange > 0 ? 'success' : 'danger'}>
-                    Total absolute weight change: {selectedMonthData.totalAbsoluteWeightChange.toFixed(2)}%
-                  </Text>
-                  <Space wrap>
-                    {selectedMonthData.changeTypes.map((ct, idx) => (
-                      <Tag key={idx} color={
-                        ct.changeType === 'Added' ? 'green' :
-                        ct.changeType === 'Removed' ? 'red' :
-                        ct.changeType === 'Increased' ? 'blue' :
-                        ct.changeType === 'Decreased' ? 'orange' :
-                        'purple'
-                      }>
-                        {ct.changeType} ({ct.mutualFundsCount})
-                      </Tag>
-                    ))}
-                  </Space>
-                </Space>
-              }
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              {getFilteredFundChanges()
-                .map((fund: SecurityFundChangeDto, index: number) => (
-                <Card
-                  key={fund.mutualFundId}
-                  size="small"
-                  style={{
-                    border: '1px solid #f0f0f0',
-                    borderRadius: 8,
-                    backgroundColor: index % 2 === 0 ? '#fafafa' : '#ffffff'
-                  }}
-                >
-                  <Row align="middle" gutter={[16, 8]}>
-                    <Col span={2}>
-                      <Tag color="blue" style={{ margin: 0 }}>
-                        #{index + 1}
-                      </Tag>
-                    </Col>
-                    <Col span={10}>
-                      <Space direction="vertical" size={2}>
-                        <Text strong style={{ fontSize: '14px' }}>
-                          {fund.mutualFundName}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          Fund ID: {fund.mutualFundId}
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col span={4}>
-                      <Space direction="vertical" size={2} align="center">
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Previous</Text>
-                        <Text style={{ fontSize: '14px' }}>
-                          {fund.previousWeight.toFixed(2)}%
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col span={4}>
-                      <Space direction="vertical" size={2} align="center">
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Current</Text>
-                        <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
-                          {fund.currentWeight.toFixed(2)}%
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col span={4}>
-                      <Space direction="vertical" size={2} align="center">
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Change</Text>
-                        <Text
-                          strong
-                          style={{
-                            fontSize: '14px',
-                            color: fund.weightChange > 0 ? '#52c41a' : fund.weightChange < 0 ? '#ff4d4f' : '#666666'
-                          }}
-                        >
-                          {fund.weightChange > 0 ? '+' : ''}{fund.weightChange.toFixed(2)}%
-                        </Text>
-                        <Tag
-                          color={
-                            fund.changeType === 'Added' ? 'green' :
-                            fund.changeType === 'Removed' ? 'red' :
-                            fund.changeType === 'Increased' ? 'blue' :
-                            fund.changeType === 'Decreased' ? 'orange' :
-                            'purple'
-                          }
-                          style={{ fontSize: '11px' }}
-                        >
-                          {fund.changeType}
-                        </Tag>
-                      </Space>
-                    </Col>
-                  </Row>
-                </Card>
-              ))}
-            </Space>
-
-            <Divider />
-
-            <Row gutter={[16, 16]}>
-              <Col span={6}>
-                <Statistic
-                  title="Mutual Funds"
-                  value={selectedMonthData.totalMutualFundsCount}
-                  prefix={<FundOutlined />}
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Average Change"
-                  value={(selectedMonthData.totalAbsoluteWeightChange / selectedMonthData.totalMutualFundsCount).toFixed(2)}
-                  suffix="%"
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Total Weight Change"
-                  value={selectedMonthData.totalAbsoluteWeightChange.toFixed(2)}
-                  suffix="%"
-                  valueStyle={{
-                    color: selectedMonthData.totalAbsoluteWeightChange > 0 ? '#52c41a' :
-                           selectedMonthData.totalAbsoluteWeightChange < 0 ? '#ff4d4f' : '#666666'
-                  }}
-                />
-              </Col>
-            </Row>
-          </div>
-        )}
-      </Modal>
+      />
     </div>
   );
 };

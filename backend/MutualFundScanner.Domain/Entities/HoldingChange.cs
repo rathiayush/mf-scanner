@@ -10,6 +10,7 @@ public class HoldingChange
 {
     public long Id { get; set; }
     public int MutualFundId { get; set; }
+    public long PortfolioSnapshotId { get; set; }
     public string? ISIN { get; set; }
     public string? Ticker { get; set; }
     public string? SecurityName { get; set; }
@@ -31,4 +32,5 @@ public class HoldingChange
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     
     public virtual MutualFund MutualFund { get; set; } = null!;
+    public virtual PortfolioSnapshot PortfolioSnapshot { get; set; } = null!;
 }

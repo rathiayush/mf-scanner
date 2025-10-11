@@ -4,7 +4,7 @@ import { Space, Tag, Button, Typography } from 'antd';
 const { Text } = Typography;
 import { EyeOutlined } from '@ant-design/icons';
 import { HoldingChangeDto } from '../../../types';
-import { calculateTrendScore, getChangeTypeColor } from '../utils/trendCalculator';
+import { calculateConvictionTrend, getChangeTypeColor } from '../utils/trendCalculator';
 
 interface HoldingChangesColumnsProps {
   requestSort: (key: string) => void;
@@ -84,23 +84,15 @@ export const getHoldingChangesColumns = ({
     ),
     key: 'trend',
     width: 140,
-    sorter: (a: any, b: any) => (a.score || 0) - (b.score || 0),
+    sorter: (a: any, b: any) => {
+      const trendA = calculateConvictionTrend(a).score;
+      const trendB = calculateConvictionTrend(b).score;
+      return trendA - trendB;
+    },
     sortOrder: getSortOrder('score') as any,
-    render: (_: any, record: HoldingChangeDto) => {
-      const hasMultipleChangeTypes = record.changeTypeCounts && 
-        Object.keys(record.changeTypeCounts).length > 1;
-      
-      const trend = calculateTrendScore(record, hasMultipleChangeTypes);
-      
-      if (!record.score) {
-        record.score = trend.score;
-      }
-      
-      return trend.style ? (
-        <Tag style={trend.style}>{trend.label}</Tag>
-      ) : (
-        <Tag color={trend.color} style={trend.style}>{trend.label}</Tag>
-      );
+    render: (_: any, record: any) => {
+      const trend = calculateConvictionTrend(record);
+      return <Tag color={trend.color}>{trend.label}</Tag>;
     },
   },
   {
@@ -108,6 +100,7 @@ export const getHoldingChangesColumns = ({
     dataIndex: 'previousWeight',
     key: 'previousWeight',
     width: 120,
+    sorter: (a: any, b: any) => (a.previousWeight ?? -Infinity) - (b.previousWeight ?? -Infinity),
     render: (weight: number) => weight ? `${weight.toFixed(2)}%` : '-',
   },
   {
@@ -115,6 +108,7 @@ export const getHoldingChangesColumns = ({
     dataIndex: 'currentWeight',
     key: 'currentWeight',
     width: 120,
+    sorter: (a: any, b: any) => (a.currentWeight ?? 0) - (b.currentWeight ?? 0),
     render: (weight: number) => `${weight.toFixed(2)}%`,
   },
   {
@@ -122,6 +116,7 @@ export const getHoldingChangesColumns = ({
     dataIndex: 'weightChange',
     key: 'weightChange',
     width: 120,
+    sorter: (a: any, b: any) => (a.weightChange ?? 0) - (b.weightChange ?? 0),
     render: (change: number) => (
       <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
         {change > 0 ? '+' : ''}{change.toFixed(2)}%
@@ -133,6 +128,7 @@ export const getHoldingChangesColumns = ({
     dataIndex: 'quantityChange',
     key: 'quantityChange',
     width: 130,
+    sorter: (a: any, b: any) => (a.quantityChange ?? 0) - (b.quantityChange ?? 0),
     render: (change: number) => (
       <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
         {change > 0 ? '+' : ''}{change.toLocaleString()}
@@ -144,6 +140,7 @@ export const getHoldingChangesColumns = ({
     dataIndex: 'valueChange',
     key: 'valueChange',
     width: 130,
+    sorter: (a: any, b: any) => (a.valueChange ?? 0) - (b.valueChange ?? 0),
     render: (change: number) => {
       const valueInCr = change / 100;
       return (
@@ -164,46 +161,45 @@ export const getHoldingChangesColumns = ({
         <Tag color="blue" style={{ fontSize: '12px', fontWeight: 'bold' }}>
           {names.length}
         </Tag>
-        {names.length > 2 && (
-          <Button 
-            type="link" 
-            size="small" 
-            icon={<EyeOutlined />}
-            onClick={() => {
-              const fundDetails = record.fundChangeDetails || [];
-              const hasIncreased = fundDetails.some((f: any) => f.changeType === 'Increased');
-              const hasDecreased = fundDetails.some((f: any) => f.changeType === 'Decreased');
-              const hasAdded = fundDetails.some((f: any) => f.changeType === 'Added');
-              const hasRemoved = fundDetails.some((f: any) => f.changeType === 'Removed');
-              
-              let finalChangeType = record.changeType;
-              if ((hasIncreased && hasDecreased) || (hasAdded && hasRemoved) || 
-                  (hasIncreased && hasRemoved) || (hasDecreased && hasAdded)) {
-                finalChangeType = 'Mixed';
-              }
-              
-              onViewFundDetails({
-                securityName: record.securityName,
-                isin: record.isin,
-                sector: record.sector,
-                changeType: finalChangeType,
-                previousWeight: record.previousWeight,
-                currentWeight: record.currentWeight,
-                weightChange: record.weightChange,
-                previousQuantity: record.previousQuantity,
-                currentQuantity: record.currentQuantity,
-                quantityChange: record.quantityChange,
-                previousValue: record.previousValue,
-                currentValue: record.currentValue,
-                valueChange: record.valueChange,
-                fundChangeDetails: fundDetails
-              });
-            }}
-            style={{ padding: 0, fontSize: '10px' }}
-          >
-            Details
-          </Button>
-        )}
+        <Button 
+          type="link" 
+          size="small" 
+          icon={<EyeOutlined />}
+          onClick={() => {
+            const fundDetails = record.fundChangeDetails || [];
+            const hasIncreased = fundDetails.some((f: any) => f.changeType === 'Increased');
+            const hasDecreased = fundDetails.some((f: any) => f.changeType === 'Decreased');
+            const hasAdded = fundDetails.some((f: any) => f.changeType === 'Added');
+            const hasRemoved = fundDetails.some((f: any) => f.changeType === 'Removed');
+            
+            let finalChangeType = record.changeType;
+            if ((hasIncreased && hasDecreased) || (hasAdded && hasRemoved) || 
+                (hasIncreased && hasRemoved) || (hasDecreased && hasAdded)) {
+              finalChangeType = 'Mixed';
+            }
+            
+            onViewFundDetails({
+              securityName: record.securityName,
+              isin: record.isin,
+              sector: record.sector,
+              changeType: finalChangeType,
+              previousWeight: record.previousWeight,
+              currentWeight: record.currentWeight,
+              weightChange: record.weightChange,
+              previousQuantity: record.previousQuantity,
+              currentQuantity: record.currentQuantity,
+              quantityChange: record.quantityChange,
+              previousValue: record.previousValue,
+              currentValue: record.currentValue,
+              valueChange: record.valueChange,
+              fundChangeDetails: fundDetails,
+              constituentChangeTypes: record.constituentChangeTypes
+            });
+          }}
+          style={{ padding: 0, fontSize: '10px' }}
+        >
+          Details
+        </Button>
       </Space>
     ),
   },
