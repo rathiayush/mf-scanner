@@ -353,7 +353,6 @@ public class AnalyticsCalculationHelper
                     ToDate = toDate
                 };
             })
-            .Where(c => c.ChangeType != "Unchanged")
             .OrderByDescending(c => Math.Abs(c.QuantityChange))
             .ToList();
     }
