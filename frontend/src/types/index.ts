@@ -131,10 +131,73 @@ export interface FileUploadRequestDto {
 export interface UploadV2ResponseDto {
   success: boolean;
   message: string;
-  detectionResults: MutualFundDetectionResult[];
-  processedFileIds: number[];
-  createdMutualFunds: number;
-  processedFiles: number;
+  errors: StreamlinedFileError[];
+  processedFiles: ProcessedFileInfo[];
+  sheetResults: SheetProcessingResult[];
+  statistics: UploadStatistics;
+}
+
+export interface StreamlinedFileError {
+  fileName: string;
+  errorCode: number;
+  errorMessage: string;
+  detailedError?: string;
+  sheetIndex?: number;
+  processingStage: string;
+}
+
+export interface ProcessedFileInfo {
+  fileName: string;
+  sheetIndex?: number;
+  mutualFundId: number;
+  mutualFundName: string;
+  wasNewFundCreated: boolean;
+  portfolioFileId: number;
+  snapshotId: number;
+  holdingsCount: number;
+  holdingChangesCount: number;
+  status: number;
+}
+
+export interface UploadStatistics {
+  totalFilesSubmitted: number;
+  filesProcessedSuccessfully: number;
+  filesFailed: number;
+  sheetsProcessedSuccessfully: number;
+  sheetsFailed: number;
+  newMutualFundsCreated: number;
+  existingMutualFundsUpdated: number;
+  totalHoldingsProcessed: number;
+  totalHoldingChangesTracked: number;
+  processingStartTime: string;
+  processingEndTime: string;
+  processingDuration: string;
+}
+
+export interface SheetProcessingResult {
+  fileName: string;
+  sheetIndex: number;
+  sheetName: string;
+  status: number;
+  errorMessage?: string;
+  detectionInfo?: MutualFundDetectionInfo;
+  holdingsExtracted: number;
+  holdingChangesTracked: number;
+  processingStartTime: string;
+  processingEndTime: string;
+  processingDuration: string;
+}
+
+export interface MutualFundDetectionInfo {
+  wasDetected: boolean;
+  detectedFundName?: string;
+  mutualFundId?: number;
+  wasNewFundCreated: boolean;
+  matchConfidence: number;
+  matchedText?: string;
+  rowFound?: number;
+  columnFound?: number;
+  detectionMethod?: string;
 }
 
 export interface FileUploadResponseDto {
