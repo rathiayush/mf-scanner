@@ -342,8 +342,8 @@ public class AnalyticsService : IAnalyticsService
     {
         if (string.IsNullOrEmpty(sortBy))
         {
-            // Default sorting by absolute weight change descending
-            return changes.OrderByDescending(c => Math.Abs(c.WeightChange)).ToList();
+            // Default sorting by absolute quantity change descending
+            return changes.OrderByDescending(c => Math.Abs(c.QuantityChange)).ToList();
         }
 
         var isAscending = sortDirection?.ToLower() == "asc";
@@ -378,7 +378,7 @@ public class AnalyticsService : IAnalyticsService
                 ? changes.OrderBy(c => c.MutualFundNames.Count).ToList()
                 : changes.OrderByDescending(c => c.MutualFundNames.Count).ToList(),
             
-            _ => changes.OrderByDescending(c => Math.Abs(c.WeightChange)).ToList() // Default fallback
+            _ => changes.OrderByDescending(c => Math.Abs(c.QuantityChange)).ToList() // Default fallback
         };
     }
 

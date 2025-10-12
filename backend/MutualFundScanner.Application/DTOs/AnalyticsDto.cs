@@ -43,6 +43,7 @@ public class HoldingChangeDto
     public decimal? PreviousValue { get; set; }
     public decimal CurrentValue { get; set; }
     public decimal ValueChange { get; set; }
+    public decimal TotalMarketValue { get; set; }
     public string ChangeType { get; set; } = string.Empty; // Added, Removed, Increased, Decreased, Mixed
     public List<string> MutualFundNames { get; set; } = new();
     public List<FundChangeDetailDto> FundChangeDetails { get; set; } = new(); // Details for each fund's contribution
@@ -77,6 +78,7 @@ public class TopShareDto
     public string Sector { get; set; } = string.Empty;
     public string Industry { get; set; } = string.Empty;
     public decimal TotalWeight { get; set; }
+    public decimal TotalValue { get; set; }
     public int HoldingFundsCount { get; set; }
     public List<FundHoldingDto> FundHoldings { get; set; } = new();
 }
@@ -88,6 +90,7 @@ public class FundHoldingDto
     public decimal Weight { get; set; }
     public decimal? PreviousWeight { get; set; }
     public decimal WeightChange { get; set; }
+
 }
 
 public class AnalyticsSummaryDto

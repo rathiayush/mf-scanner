@@ -202,6 +202,7 @@ export interface HoldingChangeDto {
   previousValue?: number;
   currentValue: number;
   valueChange: number;
+  totalMarketValue: number;
   changeType: string; // Added, Removed, Increased, Decreased, Mixed
   mutualFundNames: string[];
   fundChangeDetails: FundChangeDetailDto[];

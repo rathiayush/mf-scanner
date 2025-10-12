@@ -151,6 +151,22 @@ export const getHoldingChangesColumns = ({
     },
   },
   {
+    title: 'Total Value (Cr)',
+    dataIndex: 'totalMarketValue',
+    key: 'totalMarketValue',
+    width: 130,
+    sorter: (a: HoldingChangeDto, b: HoldingChangeDto) => (a.totalMarketValue ?? 0) - (b.totalMarketValue ?? 0),
+    render: (value: number) => {
+      if (value === undefined || value === null) return '-';
+      const valueInCr = value / 100;
+      return (
+        <Text>
+          ₹{valueInCr.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+        </Text>
+      );
+    },
+  },
+  {
     title: 'Total Funds',
     dataIndex: 'mutualFundNames',
     key: 'totalFunds',

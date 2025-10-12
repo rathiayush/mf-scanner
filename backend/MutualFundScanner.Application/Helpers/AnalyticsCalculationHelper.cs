@@ -66,44 +66,44 @@ public class AnalyticsCalculationHelper
     #region Unified Change Detection Logic
 
     /// <summary>
-    /// Determines change type based on weight values with consistent logic
+    /// Determines change type based on quantity values with consistent logic
     /// </summary>
-    private string DetermineChangeType(decimal fromWeight, decimal toWeight)
+    private string DetermineChangeTypeFromQuantity(decimal fromQuantity, decimal toQuantity)
     {
-        // If from weight is 0 and to weight is positive, it's added
-        if (fromWeight == 0 && toWeight > 0) return "Added";
-        
-        // If from weight is positive and to weight is 0, it's removed
-        if (fromWeight > 0 && toWeight == 0) return "Removed";
-        
-        // If both weights are 0, it's unchanged
-        if (fromWeight == 0 && toWeight == 0) return "Unchanged";
-        
-        // Both weights are positive, check for significant change
-        var weightDiff = toWeight - fromWeight;
-        if (Math.Abs(weightDiff) < WEIGHT_THRESHOLD) return "Unchanged";
-        
-        return weightDiff > 0 ? "Increased" : "Decreased";
+        // If from quantity is 0 and to quantity is positive, it's added
+        if (fromQuantity == 0 && toQuantity > 0) return "Added";
+
+        // If from quantity is positive and to quantity is 0, it's removed
+        if (fromQuantity > 0 && toQuantity == 0) return "Removed";
+
+        // If both quantities are 0, it's unchanged
+        if (fromQuantity == 0 && toQuantity == 0) return "Unchanged";
+
+        // Both quantities are positive, check for change
+        var quantityDiff = toQuantity - fromQuantity;
+        if (quantityDiff == 0) return "Unchanged";
+
+        return quantityDiff > 0 ? "Increased" : "Decreased";
     }
 
     /// <summary>
     /// Determines overall change type when multiple funds have different changes for same security
     /// </summary>
-    private string DetermineOverallChangeType(List<string> individualChangeTypes, decimal totalFromWeight, decimal totalToWeight)
+    private string DetermineOverallChangeType(List<string> individualChangeTypes, decimal totalFromQuantity, decimal totalToQuantity)
     {
         var uniqueTypes = individualChangeTypes.Distinct().ToList();
         
         // If multiple different change types exist, it's mixed
         if (uniqueTypes.Count > 1) return "Mixed";
         
-        // If all funds have same change type, verify against total weights
+        // If all funds have same change type, verify against total quantities
         var singleType = uniqueTypes.FirstOrDefault() ?? "Unchanged";
-        var weightBasedType = DetermineChangeType(totalFromWeight, totalToWeight);
+        var quantityBasedType = DetermineChangeTypeFromQuantity(totalFromQuantity, totalToQuantity);
         
-        // If weight-based determination differs from individual types, it's mixed
-        if (weightBasedType == "Unchanged" && singleType != "Unchanged") return "Mixed";
+        // If quantity-based determination differs from individual types, it's mixed
+        if (quantityBasedType == "Unchanged" && singleType != "Unchanged") return "Mixed";
         
-        return weightBasedType;
+        return quantityBasedType;
     }
 
     #endregion
@@ -191,9 +191,8 @@ public class AnalyticsCalculationHelper
             var toQuantity = toHolding?.Quantity ?? 0;
             var fromValue = fromHolding?.Value ?? 0;
             var toValue = toHolding?.Value ?? 0;
-            
-            
-            var changeType = DetermineChangeType(fromWeight, toWeight);
+
+            var changeType = DetermineChangeTypeFromQuantity(fromQuantity, toQuantity);
             
             // Include all changes, even unchanged ones, for proper aggregation
             // Get security details from whichever holding exists
@@ -291,7 +290,7 @@ public class AnalyticsCalculationHelper
                 
                 // Get individual change types and determine overall change type
                 var individualChangeTypes = changesForIsin.Select(c => c.ChangeType).ToList();
-                var overallChangeType = DetermineOverallChangeType(individualChangeTypes, totalPreviousWeight, totalCurrentWeight);
+                var overallChangeType = DetermineOverallChangeType(individualChangeTypes, totalPreviousQuantity, totalCurrentQuantity);
                 
                 // Create fund change details
                 var fundChangeDetails = changesForIsin.Select(fc => new FundChangeDetailDto
@@ -344,6 +343,7 @@ public class AnalyticsCalculationHelper
                     PreviousValue = totalPreviousValue,
                     CurrentValue = totalCurrentValue,
                     ValueChange = totalValueChange,
+                    TotalMarketValue = totalCurrentValue,
                     ChangeType = overallChangeType,
                     MutualFundNames = changesForIsin.Select(c => c.FundName).Distinct().OrderBy(name => name).ToList(),
                     FundChangeDetails = fundChangeDetails.OrderBy(fd => fd.MutualFundName).ToList(),
@@ -354,7 +354,7 @@ public class AnalyticsCalculationHelper
                 };
             })
             .Where(c => c.ChangeType != "Unchanged")
-            .OrderByDescending(c => Math.Abs(c.WeightChange))
+            .OrderByDescending(c => Math.Abs(c.QuantityChange))
             .ToList();
     }
 
@@ -378,9 +378,9 @@ public class AnalyticsCalculationHelper
             fromHoldings.TryGetValue(isin, out var fromHolding);
             toHoldings.TryGetValue(isin, out var toHolding);
 
-            var fromWeight = fromHolding?.Weight ?? 0;
-            var toWeight = toHolding?.Weight ?? 0;
-            var changeType = DetermineChangeType(fromWeight, toWeight);
+            var fromQuantity = fromHolding?.Quantity ?? 0;
+            var toQuantity = toHolding?.Quantity ?? 0;
+            var changeType = DetermineChangeTypeFromQuantity(fromQuantity, toQuantity);
 
             if (changeType == "Unchanged") continue;
 
@@ -391,9 +391,9 @@ public class AnalyticsCalculationHelper
                 SecurityName = securityInfo.SecurityName ?? "",
                 Sector = securityInfo.Sector ?? "",
                 Industry = securityInfo.Industry ?? "",
-                PreviousWeight = fromWeight,
-                CurrentWeight = toWeight,
-                WeightChange = toWeight - fromWeight,
+                PreviousQuantity = fromQuantity,
+                CurrentQuantity = toQuantity,
+                QuantityChange = toQuantity - fromQuantity,
                 ChangeType = changeType,
                 MutualFundNames = fundNames,
                 FromDate = fromDate,
@@ -462,8 +462,8 @@ public class AnalyticsCalculationHelper
     {
         if (string.IsNullOrEmpty(sortBy))
         {
-            // Default sorting by absolute weight change descending
-            return changes.OrderByDescending(c => Math.Abs(c.WeightChange)).ToList();
+            // Default sorting by absolute quantity change descending
+            return changes.OrderByDescending(c => Math.Abs(c.QuantityChange)).ToList();
         }
 
         var isAscending = sortDirection?.ToLower() == "asc";
@@ -490,6 +490,10 @@ public class AnalyticsCalculationHelper
                 ? changes.OrderBy(c => c.CurrentWeight).ToList()
                 : changes.OrderByDescending(c => c.CurrentWeight).ToList(),
             
+            "quantitychange" => isAscending
+                ? changes.OrderBy(c => c.QuantityChange).ToList()
+                : changes.OrderByDescending(c => c.QuantityChange).ToList(),
+
             "weightchange" => isAscending 
                 ? changes.OrderBy(c => c.WeightChange).ToList()
                 : changes.OrderByDescending(c => c.WeightChange).ToList(),
@@ -506,7 +510,7 @@ public class AnalyticsCalculationHelper
                 ? changes.OrderBy(c => c.ISIN).ToList()
                 : changes.OrderByDescending(c => c.ISIN).ToList(),
             
-            _ => changes.OrderByDescending(c => Math.Abs(c.WeightChange)).ToList() // Default fallback
+            _ => changes.OrderByDescending(c => Math.Abs(c.QuantityChange)).ToList() // Default fallback
         };
     }
 
@@ -551,6 +555,7 @@ public class AnalyticsCalculationHelper
                         Sector = holding.Sector ?? "",
                         Industry = holding.Industry ?? "",
                         TotalWeight = 0,
+                        TotalValue = 0,
                         HoldingFundsCount = 0,
                         FundHoldings = new List<FundHoldingDto>()
                     };
@@ -565,6 +570,7 @@ public class AnalyticsCalculationHelper
                 });
 
                 allHoldings[isin].TotalWeight += holding.Weight;
+                allHoldings[isin].TotalValue += holding.MarketValue;
                 allHoldings[isin].HoldingFundsCount = allHoldings[isin].FundHoldings.Count;
             }
         }
@@ -587,12 +593,14 @@ public class AnalyticsCalculationHelper
             Sector = kvp.Value.Sector ?? "",
             Industry = kvp.Value.Industry ?? "",
             TotalWeight = kvp.Value.Weight,
+            TotalValue = kvp.Value.MarketValue,
             HoldingFundsCount = fundNames.Count,
             FundHoldings = fundNames.Select(fn => new FundHoldingDto
             {
                 MutualFundId = fn.Key,
                 MutualFundName = fn.Value,
-                Weight = kvp.Value.Weight / fundNames.Count
+                Weight = kvp.Value.Weight / fundNames.Count // This is an approximation
+              
             }).ToList()
         }).OrderByDescending(s => s.TotalWeight).Take(15).ToList();
     }
