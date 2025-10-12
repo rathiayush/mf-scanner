@@ -2,10 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import AppLayout from './components/Layout';
-import { FileUploadPage, AnalysePage, MutualFundListPage, PortfolioHoldingsPage } from './pages';
-import CurrentHoldingsPage from './pages/CurrentHoldingsPage';
-import HoldingsComparison from './components/Holdings/HoldingsComparison';
-import PortfolioSummary from './components/Holdings/PortfolioSummary';
+import { AnalysePage, MutualFundListPage, PortfolioHoldingsPage } from './pages';
 import UploadV2 from './components/Upload/UploadV2';
 import ConcreteMutualFunds from './pages/ConcreteMutualFunds';
 import { SecurityAnalytics } from './components/Analytics';
@@ -16,33 +13,26 @@ const AppContent: React.FC = () => {
   // Map routes to menu keys
   const getSelectedKey = () => {
     const path = location.pathname;
-    if (path === '/') return '1';
-    if (path === '/analyze') return '2';
+    if (path === '/' || path === '/analyze') return '2';
     if (path === '/security-analytics') return '3';
     if (path === '/mutual-funds') return '4';
-    if (path === '/current-holdings') return '5-1';
-    if (path === '/holdings-comparison') return '5-2';
-    if (path === '/portfolio-summary') return '5-3';
     if (path === '/portfolio-holdings') return '8';
     if (path === '/upload-v2') return '6';
     if (path === '/concrete-funds') return '7';
-    return '1';
+    return '2';
   };
 
   return (
     <AppLayout selectedKey={getSelectedKey()}>
       <Routes>
-        <Route path="/" element={<FileUploadPage />} />
+        <Route path="/" element={<Navigate to="/analyze" replace />} />
         <Route path="/analyze" element={<AnalysePage />} />
         <Route path="/security-analytics" element={<SecurityAnalytics />} />
         <Route path="/mutual-funds" element={<MutualFundListPage />} />
-        <Route path="/current-holdings" element={<CurrentHoldingsPage />} />
-        <Route path="/holdings-comparison" element={<HoldingsComparison />} />
-        <Route path="/portfolio-summary" element={<PortfolioSummary />} />
         <Route path="/portfolio-holdings" element={<PortfolioHoldingsPage />} />
         <Route path="/upload-v2" element={<UploadV2 />} />
         <Route path="/concrete-funds" element={<ConcreteMutualFunds />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/analyze" replace />} />
       </Routes>
     </AppLayout>
   );

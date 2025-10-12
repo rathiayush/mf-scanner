@@ -3,6 +3,7 @@ using MutualFundScanner.Infrastructure.Data;
 using MutualFundScanner.Application.Interfaces;
 using MutualFundScanner.Application.Services;
 using MutualFundScanner.Infrastructure.UnitOfWork;
+using UnitOfWork = MutualFundScanner.Infrastructure.UnitOfWork.UnitOfWork;
 using MutualFundScanner.Infrastructure.Repositories;
 using Serilog;
 using Serilog.Events;
@@ -48,23 +49,17 @@ builder.Services.AddDbContext<MutualFundContext>(options =>
 
 // Register Application Services
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
-builder.Services.AddScoped<IFileProcessingService, FileProcessingService>();
-builder.Services.AddScoped<IUploadV2Service, UploadV2Service>();
-builder.Services.AddScoped<IPdfProcessingService, PdfProcessingService>();
+builder.Services.AddScoped<IStreamlinedUploadService, StreamlinedUploadService>();
 builder.Services.AddScoped<MutualFundDetectionService>();
 builder.Services.AddScoped<IMutualFundService, MutualFundScanner.Application.Services.MutualFundService>();
-builder.Services.AddScoped<IAnalyticsService, MutualFundScanner.Application.Services.AnalyticsService>();
-builder.Services.AddScoped<IFileUploadService, MutualFundScanner.Application.Services.FileUploadService>();
 builder.Services.AddScoped<IConcreteMutualFundService, MutualFundScanner.Application.Services.ConcreteMutualFundService>();
 builder.Services.AddScoped<ISecurityAnalyticsService, SecurityAnalyticsService>();
 
 // Register Repository Services
 builder.Services.AddScoped<IConcreteMutualFundRepository, ConcreteMutualFundRepository>();
 
-// Register Unit of Work
+// Register Unit of Work (using the new simplified pattern)
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<Func<IUnitOfWork>>(provider => () => provider.GetService<IUnitOfWork>()!);
-builder.Services.AddScoped<IUnitOfWorkWrapper, UnitOfWorkWrapper>();
 
 // Register Helper Classes
 builder.Services.AddScoped<MutualFundScanner.Application.Helpers.AnalyticsCalculationHelper>();

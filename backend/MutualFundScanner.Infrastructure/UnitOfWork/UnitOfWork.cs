@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using MutualFundScanner.Infrastructure.Data;
 
 namespace MutualFundScanner.Infrastructure.UnitOfWork
@@ -7,74 +8,77 @@ namespace MutualFundScanner.Infrastructure.UnitOfWork
     public class UnitOfWork : IUnitOfWork
     {
         private readonly MutualFundContext _context;
-        private IDbContextTransaction? _transaction;
+        private readonly ILogger<UnitOfWork> _logger;
         private bool _disposed = false;
 
-        public UnitOfWork(MutualFundContext context)
+        public MutualFundContext Context => _context;
+
+        public UnitOfWork(MutualFundContext context, ILogger<UnitOfWork> logger)
         {
-            _context = context;
-        }
-
-        public async Task<IDbContextTransaction> BeginTransactionAsync()
-        {
-            if (_transaction != null)
-            {
-                throw new InvalidOperationException("A transaction is already in progress.");
-            }
-
-            _transaction = await _context.Database.BeginTransactionAsync();
-            return _transaction;
-        }
-
-        public async Task CommitAsync()
-        {
-            try
-            {
-                if (_transaction == null)
-                {
-                    throw new InvalidOperationException("No transaction to commit.");
-                }
-
-                await _context.SaveChangesAsync();
-                await _transaction.CommitAsync();
-            }
-            catch
-            {
-                await RollbackAsync();
-                throw;
-            }
-            finally
-            {
-                if (_transaction != null)
-                {
-                    await _transaction.DisposeAsync();
-                    _transaction = null;
-                }
-            }
-        }
-
-        public async Task RollbackAsync()
-        {
-            try
-            {
-                if (_transaction != null)
-                {
-                    await _transaction.RollbackAsync();
-                }
-            }
-            finally
-            {
-                if (_transaction != null)
-                {
-                    await _transaction.DisposeAsync();
-                    _transaction = null;
-                }
-            }
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<int> SaveChangesAsync()
         {
-            return await _context.SaveChangesAsync();
+            try
+            {
+                var trackedEntities = _context.ChangeTracker.Entries()
+                    .Where(e => e.State != EntityState.Unchanged)
+                    .ToList();
+                
+                _logger.LogDebug("Saving {ChangedCount} changed entities", trackedEntities.Count);
+                
+                var savedCount = await _context.SaveChangesAsync();
+                _logger.LogDebug("SaveChangesAsync completed: {SavedCount} entities persisted", savedCount);
+                
+                return savedCount;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during SaveChangesAsync");
+                throw;
+            }
+        }
+
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<MutualFundContext, Task<T>> operation)
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            
+            return await strategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    _logger.LogDebug("Starting transaction with Context ID: {ContextId}", _context.ContextId);
+                    
+                    var result = await operation(_context);
+                    
+                    // CRITICAL: Save all changes before committing the transaction
+                    var savedCount = await _context.SaveChangesAsync();
+                    _logger.LogDebug("Saved {SavedCount} entities before transaction commit", savedCount);
+                    
+                    await transaction.CommitAsync();
+                    _logger.LogDebug("Transaction committed successfully");
+                    
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Transaction failed, rolling back");
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+
+        public async Task ExecuteInTransactionAsync(Func<MutualFundContext, Task> operation)
+        {
+            await ExecuteInTransactionAsync(async (context) =>
+            {
+                await operation(context);
+                return 0; // Dummy return value
+            });
         }
 
         public void Dispose()
@@ -87,11 +91,7 @@ namespace MutualFundScanner.Infrastructure.UnitOfWork
         {
             if (!_disposed && disposing)
             {
-                // Dispose only the transaction here. The DbContext is managed by the DI container
-                // (typically registered as Scoped) and should not be manually disposed here.
-                // Disposing the context here can cause ObjectDisposedException when other services
-                // that share the same scoped context try to use it after this UnitOfWork completes.
-                _transaction?.Dispose();
+                // Context is managed by DI container, don't dispose it here
                 _disposed = true;
             }
         }

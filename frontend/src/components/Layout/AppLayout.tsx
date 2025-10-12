@@ -12,14 +12,9 @@ interface AppLayoutProps {
   onMenuSelect?: (key: string) => void;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1' }) => {
+const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) => {
   const navigate = useNavigate();
   const menuItems = [
-    {
-      key: '1',
-      icon: <UploadOutlined />,
-      label: <Link to="/">Upload File</Link>,
-    },
     {
       key: '2',
       icon: <BarChartOutlined />,
@@ -49,22 +44,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1' }) =>
       key: '6',
       icon: <RobotOutlined />,
       label: <Link to="/upload-v2">Smart Upload V2</Link>,
-    },
-  ];
-  
-  // Submenu items for Holdings
-  const holdingsSubMenuItems = [
-    {
-      key: '5-1',
-      label: <Link to="/current-holdings">Current Holdings</Link>,
-    },
-    {
-      key: '5-2',
-      label: <Link to="/holdings-comparison">Holdings Comparison</Link>,
-    },
-    {
-      key: '5-3',
-      label: <Link to="/portfolio-summary">Portfolio Summary</Link>,
     },
   ];
 
@@ -105,21 +84,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '1' }) =>
               borderRight: '1px solid #f0f0f0',
               background: '#fff'
             }}
-            items={[
-              ...menuItems,
-              {
-                key: '5',
-                icon: <FileTextOutlined />,
-                label: 'Holdings',
-                children: holdingsSubMenuItems,
-              },
-            ]}
-            onClick={({ key }) => {
-              // Handle direct navigation for submenu items
-              if (key === '5-1') navigate('/current-holdings');
-              if (key === '5-2') navigate('/holdings-comparison');
-              if (key === '5-3') navigate('/portfolio-summary');
-            }}
+            items={menuItems}
           />
         </Sider>
         
