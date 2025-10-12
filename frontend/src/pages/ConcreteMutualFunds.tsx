@@ -323,15 +323,16 @@ const ConcreteMutualFunds: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-          <Col>
-            <h2>Concrete Mutual Funds Management</h2>
+    <div id="concrete-mutual-funds-page" style={{ padding: '24px' }}>
+      <Card id="concrete-mutual-funds-card">
+        <Row id="concrete-mutual-funds-header" justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+          <Col id="concrete-mutual-funds-title-col">
+            <h2 id="concrete-mutual-funds-title">Concrete Mutual Funds Management</h2>
           </Col>
-          <Col>
-            <Space>
+          <Col id="concrete-mutual-funds-actions-col">
+            <Space id="concrete-mutual-funds-actions-space">
               <Button
+                id="add-fund-btn"
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => showModal()}
@@ -339,6 +340,7 @@ const ConcreteMutualFunds: React.FC = () => {
                 Add Fund
               </Button>
               <Button
+                id="bulk-seed-btn"
                 icon={<UploadOutlined />}
                 onClick={handleBulkSeed}
                 loading={loading}
@@ -346,6 +348,7 @@ const ConcreteMutualFunds: React.FC = () => {
                 Bulk Seed
               </Button>
               <Button
+                id="refresh-funds-btn"
                 icon={<ReloadOutlined />}
                 onClick={fetchFunds}
                 loading={loading}
@@ -357,9 +360,10 @@ const ConcreteMutualFunds: React.FC = () => {
         </Row>
 
         {/* Search Filters */}
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={8}>
+        <Row id="search-filters-row" gutter={16} style={{ marginBottom: 16 }}>
+          <Col id="search-term-col" span={8}>
             <Input
+              id="search-fund-names-input"
               placeholder="Search fund names..."
               prefix={<SearchOutlined />}
               value={searchFilters.searchTerm}
@@ -367,8 +371,9 @@ const ConcreteMutualFunds: React.FC = () => {
               allowClear
             />
           </Col>
-          <Col span={4}>
+          <Col id="amc-filter-col" span={4}>
             <Select
+              id="amc-filter-select"
               placeholder="AMC"
               value={searchFilters.amcName}
               onChange={(value) => handleSearch({ amcName: value })}
@@ -380,8 +385,9 @@ const ConcreteMutualFunds: React.FC = () => {
               ))}
             </Select>
           </Col>
-          <Col span={4}>
+          <Col id="category-filter-col" span={4}>
             <Select
+              id="category-filter-select"
               placeholder="Category"
               value={searchFilters.category}
               onChange={(value) => handleSearch({ category: value })}
@@ -393,8 +399,9 @@ const ConcreteMutualFunds: React.FC = () => {
               ))}
             </Select>
           </Col>
-          <Col span={4}>
+          <Col id="status-filter-col" span={4}>
             <Select
+              id="status-filter-select"
               placeholder="Status"
               value={searchFilters.isActive}
               onChange={(value) => handleSearch({ isActive: value })}
@@ -408,6 +415,7 @@ const ConcreteMutualFunds: React.FC = () => {
         </Row>
 
         <Table
+          id="concrete-mutual-funds-table"
           columns={columns}
           dataSource={funds}
           rowKey="id"
@@ -427,6 +435,7 @@ const ConcreteMutualFunds: React.FC = () => {
       </Card>
 
       <Modal
+        id="fund-edit-modal"
         title={editingFund ? 'Edit Mutual Fund' : 'Add New Mutual Fund'}
         open={isModalVisible}
         onOk={handleOk}
@@ -435,6 +444,7 @@ const ConcreteMutualFunds: React.FC = () => {
         destroyOnClose
       >
         <Form
+          id="fund-edit-form"
           form={form}
           layout="vertical"
           initialValues={{
@@ -443,6 +453,7 @@ const ConcreteMutualFunds: React.FC = () => {
           }}
         >
           <Form.Item
+            id="fund-name-form-item"
             name="fundName"
             label="Fund Name"
             rules={[
@@ -450,23 +461,25 @@ const ConcreteMutualFunds: React.FC = () => {
               { max: 500, message: 'Fund name cannot exceed 500 characters' }
             ]}
           >
-            <Input placeholder="Enter fund name" />
+            <Input id="fund-name-input" placeholder="Enter fund name" />
           </Form.Item>
 
-          <Row gutter={16}>
-            <Col span={12}>
+          <Row id="form-row-1" gutter={16}>
+            <Col id="amc-name-col" span={12}>
               <Form.Item
+                id="amc-name-form-item"
                 name="amcName"
                 label="AMC Name"
                 rules={[
                   { max: 100, message: 'AMC name cannot exceed 100 characters' }
                 ]}
               >
-                <Input placeholder="Enter AMC name" />
+                <Input id="amc-name-input" placeholder="Enter AMC name" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col id="match-priority-col" span={12}>
               <Form.Item
+                id="match-priority-form-item"
                 name="matchPriority"
                 label="Match Priority"
                 rules={[
@@ -474,45 +487,49 @@ const ConcreteMutualFunds: React.FC = () => {
                   { type: 'number', min: 1, max: 1000, message: 'Priority must be between 1 and 1000' }
                 ]}
               >
-                <Input type="number" placeholder="100" />
+                <Input id="match-priority-input" type="number" placeholder="100" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col span={12}>
+          <Row id="form-row-2" gutter={16}>
+            <Col id="category-col" span={12}>
               <Form.Item
+                id="category-form-item"
                 name="category"
                 label="Category"
                 rules={[
                   { max: 100, message: 'Category cannot exceed 100 characters' }
                 ]}
               >
-                <Input placeholder="e.g., Equity, Hybrid, Debt" />
+                <Input id="category-input" placeholder="e.g., Equity, Hybrid, Debt" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col id="sub-category-col" span={12}>
               <Form.Item
+                id="sub-category-form-item"
                 name="subCategory"
                 label="Sub Category"
                 rules={[
                   { max: 100, message: 'Sub category cannot exceed 100 characters' }
                 ]}
               >
-                <Input placeholder="e.g., Large Cap, Mid Cap" />
+                <Input id="sub-category-input" placeholder="e.g., Large Cap, Mid Cap" />
               </Form.Item>
             </Col>
           </Row>
 
           <Form.Item
+            id="is-active-form-item"
             name="isActive"
             label="Status"
             valuePropName="checked"
           >
-            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+            <Switch id="is-active-switch" checkedChildren="Active" unCheckedChildren="Inactive" />
           </Form.Item>
 
           <Form.Item
+            id="notes-form-item"
             name="notes"
             label="Notes"
             rules={[
@@ -520,6 +537,7 @@ const ConcreteMutualFunds: React.FC = () => {
             ]}
           >
             <TextArea 
+              id="notes-textarea"
               rows={3} 
               placeholder="Optional notes about this mutual fund"
               showCount

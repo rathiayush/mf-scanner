@@ -75,22 +75,23 @@ const SecurityChangeDetailsModal: React.FC<SecurityChangeDetailsModalProps> = ({
 
   return (
     <Modal
+      id="security-change-details-modal-container"
       title={`Monthly Change Details - ${data ? dayjs(data.monthYear).format('MMMM YYYY') : ''}`}
       open={visible}
       onCancel={onClose}
       footer={[
-        <Button key="close" onClick={onClose}>Close</Button>
+        <Button id="security-change-details-modal-close-btn" key="close" onClick={onClose}>Close</Button>
       ]}
       width={1200}
       style={{ top: 20 }}
     >
       {data && (
-        <div>
-          <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-            <Col>
-                <Space>
-                    <Text strong>Filter by Change Type:</Text>
-                    <Select value={filterType} onChange={setFilterType} style={{ width: 150 }}>
+        <div id="security-change-details-modal-content">
+          <Row id="security-change-details-modal-controls-row" justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+            <Col id="security-change-details-modal-filter-col">
+                <Space id="security-change-details-modal-filter-space">
+                    <Text id="security-change-details-modal-filter-label" strong>Filter by Change Type:</Text>
+                    <Select id="security-change-details-modal-filter-select" value={filterType} onChange={setFilterType} style={{ width: 150 }}>
                         <Select.Option value="all">All</Select.Option>
                         <Select.Option value="Added">Added</Select.Option>
                         <Select.Option value="Removed">Removed</Select.Option>
@@ -100,8 +101,9 @@ const SecurityChangeDetailsModal: React.FC<SecurityChangeDetailsModalProps> = ({
                     </Select>
                 </Space>
             </Col>
-            <Col>
+            <Col id="security-change-details-modal-pagination-col">
                 <Pagination
+                    id="security-change-details-modal-pagination"
                     current={page}
                     pageSize={pageSize}
                     total={filteredData.length}
@@ -112,6 +114,7 @@ const SecurityChangeDetailsModal: React.FC<SecurityChangeDetailsModalProps> = ({
             </Col>
           </Row>
           <Table
+            id="security-change-details-modal-table"
             columns={columns}
             dataSource={pagedData}
             rowKey="mutualFundId"

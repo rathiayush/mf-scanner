@@ -263,22 +263,23 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Title level={2}>
-          <UploadOutlined /> Upload V2 - Auto Mutual Fund Detection
+    <div id="upload-v2-container" style={{ padding: '24px' }}>
+      <Card id="upload-v2-main-card">
+        <Title id="upload-v2-title" level={2}>
+          <UploadOutlined id="upload-v2-title-icon" /> Upload V2 - Auto Mutual Fund Detection
         </Title>
-        <Text type="secondary">UploadFilesTriggerPage
+        <Text id="upload-v2-description" type="secondary">UploadFilesTriggerPage
           Upload Excel files and the system will automatically detect mutual funds using exact name matching, 
           create missing funds, and process the files.
         </Text>
 
-        <div style={{ marginTop: '24px' }}>
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <div id="upload-v2-form-container" style={{ marginTop: '24px' }}>
+          <Space id="upload-v2-form-space" direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Date Selection */}
-            <div>
-              <Title level={4}>Select Report Date</Title>
+            <div id="date-selection-section">
+              <Title id="date-selection-title" level={4}>Select Report Date</Title>
               <DatePicker
+                id="report-date-picker"
                 value={reportDate}
                 onChange={setReportDate}
                 format="YYYY-MM-DD"
@@ -289,17 +290,18 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
             </div>
 
             {/* Date Validation Toggle */}
-            <div>
-              <Title level={4}>Date Validation</Title>
-              <Space>
+            <div id="date-validation-section">
+              <Title id="date-validation-title" level={4}>Date Validation</Title>
+              <Space id="date-validation-space">
                 <Switch
+                  id="date-validation-switch"
                   checked={performDateCheck}
                   onChange={setPerformDateCheck}
                   disabled={uploading}
                   checkedChildren="Enabled"
                   unCheckedChildren="Disabled"
                 />
-                <Text>
+                <Text id="date-validation-description">
                   {performDateCheck 
                     ? 'Date validation enabled - filename dates must match report date'
                     : 'Date validation disabled - files will be processed regardless of filename dates'}
@@ -308,16 +310,16 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
             </div>
 
             {/* File Upload */}
-            <div>
-              <Title level={4}>Upload Files</Title>
-              <Dragger {...uploadProps} disabled={uploading}>
-                <p className="ant-upload-drag-icon">
+            <div id="file-upload-section">
+              <Title id="file-upload-title" level={4}>Upload Files</Title>
+              <Dragger id="file-upload-dragger" {...uploadProps} disabled={uploading}>
+                <p id="upload-drag-icon" className="ant-upload-drag-icon">
                   <InboxOutlined />
                 </p>
-                <p className="ant-upload-text">
+                <p id="upload-drag-text" className="ant-upload-text">
                   Click or drag Excel files to this area to upload
                 </p>
-                <p className="ant-upload-hint">
+                <p id="upload-drag-hint" className="ant-upload-hint">
                   Supports .xlsx and .xls files. Multiple files can be uploaded at once.
                   The system will scan the first 50 rows for exact mutual fund name matches.
                 </p>
@@ -325,9 +327,10 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
             </div>
 
             {/* Upload Actions */}
-            <div>
-              <Space>
+            <div id="upload-actions-section">
+              <Space id="upload-actions-space">
                 <Button
+                  id="upload-process-button"
                   type="primary"
                   onClick={handleUpload}
                   loading={uploading}
@@ -336,7 +339,7 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
                 >
                   {uploading ? 'Processing...' : 'Upload & Process'}
                 </Button>
-                <Button onClick={handleReset} disabled={uploading}>
+                <Button id="upload-reset-button" onClick={handleReset} disabled={uploading}>
                   Reset
                 </Button>
               </Space>
@@ -344,8 +347,8 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
 
             {/* Upload Summary */}
             {files.length > 0 && (
-              <Card size="small" style={{ backgroundColor: '#f6ffed' }}>
-                <Text>
+              <Card id="upload-summary-card" size="small" style={{ backgroundColor: '#f6ffed' }}>
+                <Text id="upload-summary-text">
                   <strong>Ready to upload:</strong> {files.length} file(s) for {reportDate?.format('YYYY-MM-DD')}
                 </Text>
               </Card>
@@ -356,74 +359,82 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
 
       {/* Results */}
       {uploadResponse && (
-        <Card style={{ marginTop: '24px' }}>
-          <Title level={3}>
+        <Card id="upload-results-card" style={{ marginTop: '24px' }}>
+          <Title id="upload-results-title" level={3}>
             {uploadResponse.success ? (
-              <><CheckCircleOutlined style={{ color: '#52c41a' }} /> Upload Results</>
+              <><CheckCircleOutlined id="upload-success-icon" style={{ color: '#52c41a' }} /> Upload Results</>
             ) : (
-              <><ExclamationCircleOutlined style={{ color: '#ff4d4f' }} /> Upload Results</>
+              <><ExclamationCircleOutlined id="upload-error-icon" style={{ color: '#ff4d4f' }} /> Upload Results</>
             )}
           </Title>
 
           {/* Statistics */}
           {uploadResponse.statistics && (
-            <Card style={{ marginBottom: '24px', backgroundColor: '#f6ffed' }}>
-              <Row gutter={16}>
-                <Col span={6}>
+            <Card id="upload-statistics-card" style={{ marginBottom: '24px', backgroundColor: '#f6ffed' }}>
+              <Row id="upload-stats-row-1" gutter={16}>
+                <Col id="files-submitted-col" span={6}>
                   <Statistic
+                    id="files-submitted-stat"
                     title="Files Submitted"
                     value={uploadResponse.statistics.totalFilesSubmitted}
                     prefix={<FileOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="files-processed-col" span={6}>
                   <Statistic
+                    id="files-processed-stat"
                     title="Successfully Processed"
                     value={uploadResponse.statistics.filesProcessedSuccessfully}
                     valueStyle={{ color: '#3f8600' }}
                     prefix={<CheckCircleOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="files-failed-col" span={6}>
                   <Statistic
+                    id="files-failed-stat"
                     title="Failed"
                     value={uploadResponse.statistics.filesFailed}
                     valueStyle={{ color: '#cf1322' }}
                     prefix={<ExclamationCircleOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="new-funds-col" span={6}>
                   <Statistic
+                    id="new-funds-stat"
                     title="New Funds Created"
                     value={uploadResponse.statistics.newMutualFundsCreated}
                     prefix={<FundOutlined />}
                   />
                 </Col>
               </Row>
-              <Row gutter={16} style={{ marginTop: '16px' }}>
-                <Col span={6}>
+              <Row id="upload-stats-row-2" gutter={16} style={{ marginTop: '16px' }}>
+                <Col id="existing-funds-col" span={6}>
                   <Statistic
+                    id="existing-funds-stat"
                     title="Existing Funds Updated"
                     value={uploadResponse.statistics.existingMutualFundsUpdated}
                     prefix={<FundOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="total-holdings-col" span={6}>
                   <Statistic
+                    id="total-holdings-stat"
                     title="Total Holdings"
                     value={uploadResponse.statistics.totalHoldingsProcessed}
                     prefix={<LineChartOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="holding-changes-col" span={6}>
                   <Statistic
+                    id="holding-changes-stat"
                     title="Holding Changes"
                     value={uploadResponse.statistics.totalHoldingChangesTracked}
                     prefix={<LineChartOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="processing-time-col" span={6}>
                   <Statistic
+                    id="processing-time-stat"
                     title="Processing Time"
                     value={uploadResponse.statistics.processingDuration}
                     valueStyle={{ fontSize: '16px' }}
@@ -435,12 +446,12 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
 
           {/* Errors */}
           {uploadResponse.errors && uploadResponse.errors.length > 0 && (
-            <Card style={{ marginBottom: '24px', backgroundColor: '#fff2e8', borderColor: '#ffbb96' }}>
-              <Title level={4}>
-                <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} /> Errors
+            <Card id="upload-errors-card" style={{ marginBottom: '24px', backgroundColor: '#fff2e8', borderColor: '#ffbb96' }}>
+              <Title id="upload-errors-title" level={4}>
+                <ExclamationCircleOutlined id="upload-errors-icon" style={{ color: '#ff4d4f' }} /> Errors
               </Title>
               {uploadResponse.errors.map((error, index) => (
-                <div key={index} style={{ marginBottom: '8px' }}>
+                <div id={`upload-error-${index}`} key={index} style={{ marginBottom: '8px' }}>
                   <Text strong>{error.fileName}</Text>
                   <Text type="danger"> - {error.errorMessage}</Text>
                   {error.detailedError && (
@@ -455,9 +466,10 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
 
           {/* Sheet Processing Results Table */}
           {uploadResponse.sheetResults && uploadResponse.sheetResults.length > 0 && (
-            <>
-              <Title level={4}>Sheet Processing Details</Title>
+            <div id="sheet-results-section">
+              <Title id="sheet-results-title" level={4}>Sheet Processing Details</Title>
               <Table
+                id="sheet-results-table"
                 columns={sheetResultsColumns}
                 dataSource={uploadResponse.sheetResults}
                 rowKey={(record) => `${record.fileName}-${record.sheetIndex}`}
@@ -488,14 +500,15 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
                   rowExpandable: (record) => !!record.detectionInfo?.matchedText || !!record.processingStartTime,
                 }}
               />
-            </>
+            </div>
           )}
 
           {/* Processed Files Summary Table */}
           {uploadResponse.processedFiles && uploadResponse.processedFiles.length > 0 && (
-            <>
-              <Title level={4} style={{ marginTop: '24px' }}>File Processing Summary</Title>
+            <div id="processed-files-section">
+              <Title id="processed-files-title" level={4} style={{ marginTop: '24px' }}>File Processing Summary</Title>
               <Table
+                id="processed-files-table"
                 columns={processedFilesColumns}
                 dataSource={uploadResponse.processedFiles}
                 rowKey="portfolioFileId"
@@ -503,7 +516,7 @@ const UploadV2: React.FC<UploadV2Props> = ({ onUploadComplete }) => {
                 size="small"
                 scroll={{ x: 1400 }}
               />
-            </>
+            </div>
           )}
         </Card>
       )}

@@ -24,11 +24,12 @@ const TopControls: React.FC<TopControlsProps> = ({
   onPageSizeChange,
 }) => {
   return (
-    <Row align="middle" justify="space-between" gutter={[12, 12]}>
+    <Row id="holding-change-funds-top-controls" align="middle" justify="space-between" gutter={[12, 12]}>
       <Col>
-        <Space>
-          <Text strong>Filter by Change Type:</Text>
+        <Space id="hcfc-filter-space">
+          <Text id="hcfc-filter-label" strong>Filter by Change Type:</Text>
           <Select
+            id="hcfc-filter-select"
             size="small"
             style={{ width: 160 }}
             value={filterType}
@@ -44,9 +45,10 @@ const TopControls: React.FC<TopControlsProps> = ({
         </Space>
       </Col>
       <Col>
-        <Space size={8}>
-          <Text type="secondary" style={{ fontSize: 12 }}>Per page:</Text>
+        <Space id="hcfc-pagination-space" size={8}>
+          <Text id="hcfc-per-page-label" type="secondary" style={{ fontSize: 12 }}>Per page:</Text>
           <Select
+            id="hcfc-page-size-select"
             size="small"
             value={pageSize}
             style={{ width: 90 }}
@@ -54,6 +56,7 @@ const TopControls: React.FC<TopControlsProps> = ({
             options={[10, 20, 50, 100].map(n => ({ label: `${n}`, value: n }))}
           />
           <Pagination
+            id="hcfc-pagination"
             size="small"
             current={page}
             total={totalCount}
@@ -96,16 +99,17 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
   }, [filteredData, page, pageSize]);
   return (
     <Modal
+      id="holding-change-funds-modal"
       title={
-        <Space>
-          <SwapOutlined />
-          <Text strong>Holding Change Fund Details</Text>
+        <Space id="holding-change-funds-modal-title">
+          <SwapOutlined id="holding-change-funds-modal-title-icon" />
+          <Text id="holding-change-funds-modal-title-text" strong>Holding Change Fund Details</Text>
         </Space>
       }
       open={visible}
       onCancel={onClose}
       footer={[
-        <Button key="close" onClick={onClose}>
+        <Button id="holding-change-funds-modal-close" key="close" onClick={onClose}>
           Close
         </Button>
       ]}
@@ -114,20 +118,21 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
       bodyStyle={{ maxHeight: '80vh', overflow: 'hidden' }}
     >
       {data && (
-        <div style={{ height: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div id="holding-change-funds-modal-content" style={{ height: '80vh', display: 'flex', flexDirection: 'column' }}>
           <Alert
+            id="holding-change-funds-modal-alert"
             message={`Holding Change: ${data.securityName}`}
             description={
-              <Space direction="vertical" size={2}>
-                <Text>ISIN: {data.isin}</Text>
-                <Text>Sector: {data.sector}</Text>
-                <Space>
-                  <Tag color={getChangeTypeColor(data.changeType)}>
+              <Space id="holding-change-funds-modal-alert-desc" direction="vertical" size={2}>
+                <Text id="holding-change-funds-modal-isin">ISIN: {data.isin}</Text>
+                <Text id="holding-change-funds-modal-sector">Sector: {data.sector}</Text>
+                <Space id="holding-change-funds-modal-tags">
+                  <Tag id="holding-change-funds-modal-change-type" color={getChangeTypeColor(data.changeType)}>
                     {data.changeType}
                   </Tag>
                   {data.changeType === 'Mixed' && data.constituentChangeTypes && (
-                    <Space>
-                      <Text type="secondary">Contains:</Text>
+                    <Space id="holding-change-funds-modal-mixed-types">
+                      <Text id="holding-change-funds-modal-mixed-label" type="secondary">Contains:</Text>
                       {data.constituentChangeTypes.map((type: string) => (
                         <Tag 
                           key={type}
@@ -147,8 +152,9 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             style={{ marginBottom: 16 }}
           />
           
-          <Row style={{ marginBottom: 12 }} align="middle" justify="space-between">
+          <Row id="holding-change-funds-controls-row" style={{ marginBottom: 12 }} align="middle" justify="space-between">
             <Col span={24}>
+              <div id="holding-change-funds-top-controls-wrapper">
               <TopControls 
                 filterType={filterType} 
                 onFilterChange={(v) => { setPage(1); onFilterChange(v); }} 
@@ -158,13 +164,15 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 onPageChange={setPage}
                 onPageSizeChange={(ps: number) => { setPage(1); setPageSize(ps); }}
               />
+              </div>
             </Col>
           </Row>
 
           {/* Top Summary KPIs */}
-          <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
+          <Row id="holding-change-funds-kpis-row" gutter={[16, 16]} style={{ marginBottom: 12 }}>
             <Col xs={12} sm={8} md={4}>
               <Statistic
+                id="hc-kpi-total-funds"
                 title="Total Funds"
                 value={filteredData.length}
                 prefix={<FundOutlined />}
@@ -172,6 +180,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             </Col>
             <Col xs={12} sm={8} md={5}>
               <Statistic
+                id="hc-kpi-weight-change"
                 title="Weight Change"
                 value={data.weightChange?.toFixed(2) || '0.00'}
                 suffix="%"
@@ -183,6 +192,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             </Col>
             <Col xs={12} sm={8} md={5}>
               <Statistic
+                id="hc-kpi-quantity-change"
                 title="Quantity Change"
                 value={data.quantityChange?.toLocaleString('en-IN') || '0'}
                 valueStyle={{ 
@@ -193,6 +203,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             </Col>
             <Col xs={12} sm={8} md={5}>
               <Statistic
+                id="hc-kpi-value-change"
                 title="Value Change"
                 value={`₹${Math.abs(data.valueChange || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                 valueStyle={{ 
@@ -203,6 +214,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             </Col>
             <Col xs={12} sm={8} md={5}>
               <Statistic
+                id="hc-kpi-current-weight"
                 title="Current Weight"
                 value={data.currentWeight?.toFixed(2) || '0.00'}
                 suffix="%"
@@ -211,8 +223,9 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             </Col>
           </Row>
           
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div id="holding-change-funds-table-container" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <Table
+            id="holding-change-funds-table"
             size="small"
             rowKey={(row: any) => `${row.mutualFundId}`}
             dataSource={pagedData}

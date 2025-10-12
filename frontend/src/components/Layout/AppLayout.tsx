@@ -48,22 +48,23 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
+    <Layout id="app-layout-container" style={{ minHeight: '100vh' }}>
+      <Header id="app-layout-header" style={{ 
         background: '#fff',
         padding: '0 24px',
         display: 'flex',
         alignItems: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
-        <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Space align="center">
-            <FileTextOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-            <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
+        <Space id="app-layout-header-space" align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space id="app-layout-logo-space" align="center">
+            <FileTextOutlined id="app-layout-logo-icon" style={{ fontSize: '24px', color: '#1890ff' }} />
+            <Title id="app-layout-title" level={3} style={{ margin: 0, color: '#1890ff' }}>
               Mutual Fund Scanner
             </Title>
           </Space>
           <Button 
+            id="app-layout-api-docs-btn"
             type="primary" 
             icon={<ApiOutlined />}
           >
@@ -72,10 +73,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
         </Space>
       </Header>
       
-      <Layout>
-        <Sider collapsible>
+      <Layout id="app-layout-main">
+        <Sider id="app-layout-sider" collapsible>
          
           <Menu
+            id="app-layout-menu"
             theme="light"
             defaultSelectedKeys={[selectedKey]}
             selectedKeys={[selectedKey]}
@@ -88,17 +90,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
           />
         </Sider>
         
-        <Layout style={{ 
+        <Layout id="app-layout-content-wrapper" style={{ 
           padding: '24px',
           background: '#f0f2f5',
           minHeight: 'calc(100vh - 128px)'
         }}>
-          <Content style={{ 
+          <Content id="app-layout-content" style={{ 
             margin: 0,
             padding: 0,
             minHeight: '100%',
           }}>
-            <div style={{
+            <div id="app-layout-content-inner" style={{
               background: '#fff',
               borderRadius: '8px',
               boxShadow: '0 1px 2px 0 rgba(0,0,0,0.03)',
@@ -112,13 +114,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
         </Layout>
       </Layout>
       
-      <Footer style={{ 
+      <Footer id="app-layout-footer" style={{ 
         textAlign: 'center',
         background: '#fff',
         borderTop: '1px solid #f0f0f0',
         padding: '16px 50px'
       }}>
-        Mutual Fund Scanner ©2024 - Upload and analyze mutual fund portfolio files
+        <span id="app-layout-footer-text">Mutual Fund Scanner ©2024 - Upload and analyze mutual fund portfolio files</span>
       </Footer>
     </Layout>
   );

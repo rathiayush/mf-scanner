@@ -350,20 +350,21 @@ const EnhancedAnalytics: React.FC = () => {
   }, [analyticsState.holdingChanges]);
 
   return (
-    <div>
-      <Title level={2}>Portfolio Analytics</Title>
-      <Text type="secondary">
+    <div id="enhanced-analytics-container">
+      <Title id="analytics-main-title" level={2}>Portfolio Analytics</Title>
+      <Text id="analytics-description" type="secondary">
         Analyze portfolio changes and holdings across multiple mutual funds over time.
       </Text>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col span={24}>
-          <Card title="Analysis Parameters">
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Select Mutual Funds</Text>
+      <Row id="analytics-main-row" gutter={[16, 16]} style={{ marginTop: 24 }}>
+        <Col id="analysis-parameters-col" span={24}>
+          <Card id="analysis-parameters-card" title="Analysis Parameters">
+            <Row id="parameters-row" gutter={[16, 16]}>
+              <Col id="fund-selection-col" span={12}>
+                <Space id="fund-selection-space" direction="vertical" style={{ width: '100%' }}>
+                  <Text id="fund-selection-label" strong>Select Mutual Funds</Text>
                   <Select
+                    id="fund-selection-dropdown"
                     mode="multiple"
                     style={{ width: '100%' }}
                     placeholder="Select mutual funds to analyze or choose 'All Funds'"
@@ -400,10 +401,11 @@ const EnhancedAnalytics: React.FC = () => {
                 </Space>
               </Col>
               
-              <Col span={12}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Date Range</Text>
+              <Col id="date-range-col" span={12}>
+                <Space id="date-range-space" direction="vertical" style={{ width: '100%' }}>
+                  <Text id="date-range-label" strong>Date Range</Text>
                   <RangePicker
+                    id="date-range-picker"
                     style={{ width: '100%' }}
                     value={analyticsState.dateRange}
                     onChange={(dates) => {
@@ -417,7 +419,7 @@ const EnhancedAnalytics: React.FC = () => {
                     placeholder={['From Date', 'To Date']}
                   />
                   {analyticsState.availableDates && (
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                    <Text id="available-dates-info" type="secondary" style={{ fontSize: '12px' }}>
                       Available: {analyticsState.availableDates.minDate} to {analyticsState.availableDates.maxDate}
                     </Text>
                   )}
@@ -425,8 +427,9 @@ const EnhancedAnalytics: React.FC = () => {
               </Col>
             </Row>
 
-            <div style={{ marginTop: 16, textAlign: 'right' }}>
+            <div id="analyze-button-container" style={{ marginTop: 16, textAlign: 'right' }}>
               <Button
+                id="analyze-portfolio-button"
                 type="primary"
                 icon={<BarChartOutlined />}
                 loading={analyticsState.loading}
@@ -440,32 +443,36 @@ const EnhancedAnalytics: React.FC = () => {
         </Col>
 
         {analyticsState.analyticsData && (
-          <Col span={24}>
-            <Card title="Analytics Summary">
-              <Row gutter={[16, 16]}>
-                <Col span={6}>
+          <Col id="analytics-summary-col" span={24}>
+            <Card id="analytics-summary-card" title="Analytics Summary">
+              <Row id="analytics-summary-row" gutter={[16, 16]}>
+                <Col id="total-holdings-stat-col" span={6}>
                   <Statistic
+                    id="total-holdings-statistic"
                     title="Total Holdings Analyzed"
                     value={analyticsState.analyticsData.summary.totalHoldingsAnalyzed}
                     prefix={<FundOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="added-holdings-stat-col" span={6}>
                   <Statistic
+                    id="added-holdings-statistic"
                     title="Added Holdings"
                     value={analyticsState.analyticsData.summary.addedHoldings}
                     valueStyle={{ color: '#3f8600' }}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="removed-holdings-stat-col" span={6}>
                   <Statistic
+                    id="removed-holdings-statistic"
                     title="Removed Holdings"
                     value={analyticsState.analyticsData.summary.removedHoldings}
                     valueStyle={{ color: '#cf1322' }}
                   />
                 </Col>
-                <Col span={6}>
+                <Col id="weight-change-stat-col" span={6}>
                   <Statistic
+                    id="weight-change-statistic"
                     title="Total Weight Change"
                     value={analyticsState.analyticsData.summary.totalWeightChange}
                     precision={2}
@@ -479,12 +486,13 @@ const EnhancedAnalytics: React.FC = () => {
         )}
 
         {(analyticsState.holdingChanges || (analyticsState.topShares && analyticsState.topShares.data.length > 0)) && (
-          <Col span={24}>
-            <Card>
-              <Tabs defaultActiveKey="changes">
+          <Col id="analytics-results-col" span={24}>
+            <Card id="analytics-results-card">
+              <Tabs id="analytics-tabs" defaultActiveKey="changes">
                 <TabPane 
+                  id="holding-changes-tab"
                   tab={
-                    <span>
+                    <span id="holding-changes-tab-label">
                       <SwapOutlined />
                       Holding Changes ({analyticsState.holdingChanges?.totalCount || 0})
                     </span>
@@ -492,8 +500,8 @@ const EnhancedAnalytics: React.FC = () => {
                   key="changes"
                 >
                   {analyticsState.holdingChanges && (
-                    <div>
-                      <div style={{ marginBottom: 16 }}>
+                    <div id="holding-changes-content">
+                      <div id="holding-changes-controls-container" style={{ marginBottom: 16 }}>
                         <HoldingChangesControls
                           selectedStatusFilters={sortingPagination.selectedStatusFilters}
                           onStatusFilterChange={handleStatusFilterChange}
@@ -544,6 +552,7 @@ const EnhancedAnalytics: React.FC = () => {
                         />
                       </div>
                       <Table
+                        id="holding-changes-table"
                         dataSource={analyticsState.holdingChanges?.data || []}
                         columns={holdingChangesColumns}
                         rowKey="isin"
@@ -567,16 +576,17 @@ const EnhancedAnalytics: React.FC = () => {
                 </TabPane>
 
                 <TabPane 
+                  id="top-shares-tab"
                   tab={
-                    <span>
+                    <span id="top-shares-tab-label">
                       <TrophyOutlined />
                       Top Shares ({analyticsState.topShares?.totalCount || 0})
                     </span>
                   } 
                   key="topShares"
                 >
-                  <div>
-                    <div style={{ marginBottom: 16 }}>
+                  <div id="top-shares-content">
+                    <div id="top-shares-controls-container" style={{ marginBottom: 16 }}>
                       <TopSharesControls
                         sortBy={sortingPagination.topSharesSortBy}
                         onSortByChange={(value) => {
@@ -594,6 +604,7 @@ const EnhancedAnalytics: React.FC = () => {
                     </div>
                     
                     <Table
+                      id="top-shares-table"
                       columns={topSharesColumns}
                       dataSource={analyticsState.topShares?.data || []}
                       className="sticky-table"
@@ -625,15 +636,16 @@ const EnhancedAnalytics: React.FC = () => {
                 </TabPane>
 
                 <TabPane 
+                  id="portfolio-snapshots-tab"
                   tab={
-                    <span>
+                    <span id="portfolio-snapshots-tab-label">
                       <FundOutlined />
                       Portfolio Snapshots ({analyticsState.portfolioSnapshots.length})
                     </span>
                   } 
                   key="snapshots"
                 >
-                  <PortfolioSnapshotsTab snapshots={analyticsState.portfolioSnapshots} />
+                  <PortfolioSnapshotsTab id="portfolio-snapshots-content" snapshots={analyticsState.portfolioSnapshots} />
                 </TabPane>
               </Tabs>
             </Card>
@@ -641,8 +653,9 @@ const EnhancedAnalytics: React.FC = () => {
         )}
 
         {analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected && (
-          <Col span={24}>
+          <Col id="no-funds-selected-col" span={24}>
             <Alert
+              id="no-funds-selected-alert"
               message="Select Mutual Funds"
               description="Please select one or more mutual funds or choose 'All Funds' to begin analysis."
               type="info"
@@ -653,12 +666,14 @@ const EnhancedAnalytics: React.FC = () => {
       </Row>
 
       <FundHoldingsModal
+        id="fund-holdings-modal"
         visible={modalState.showFundsModal}
         data={modalState.selectedModalData}
         onClose={modalState.closeFundsModal}
       />
 
       <HoldingChangeFundsModal
+        id="holding-change-funds-modal"
         visible={modalState.showHoldingFundsModal}
         data={modalState.selectedHoldingModalData}
         filterType={modalState.modalFilterType}

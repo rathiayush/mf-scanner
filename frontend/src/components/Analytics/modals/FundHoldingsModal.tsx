@@ -17,16 +17,17 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
   const pageData = useMemo(() => sortedData.slice((page - 1) * pageSize, page * pageSize), [sortedData, page]);
   return (
     <Modal
+      id="fund-holdings-modal-container"
       title={
-        <Space>
-          <FundOutlined />
-          <Text strong>Mutual Fund Holdings Details</Text>
+        <Space id="fund-holdings-modal-title-space">
+          <FundOutlined id="fund-holdings-modal-icon" />
+          <Text id="fund-holdings-modal-title-text" strong>Mutual Fund Holdings Details</Text>
         </Space>
       }
       open={visible}
       onCancel={onClose}
       footer={[
-        <Button key="close" onClick={onClose}>
+        <Button id="fund-holdings-modal-close-btn" key="close" onClick={onClose}>
           Close
         </Button>
       ]}
@@ -35,16 +36,18 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
       bodyStyle={{ maxHeight: '75vh', overflow: 'auto' }}
     >
       {data && (
-        <>
+        <div id="fund-holdings-modal-content">
           <Alert
+            id="fund-holdings-modal-alert"
             message="Fund Weight Distribution"
             description={`Showing holdings across ${data.length} mutual funds`}
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
           />
-          <Row justify="end" style={{ marginBottom: 8 }}>
+          <Row id="fund-holdings-modal-pagination-row" justify="end" style={{ marginBottom: 8 }}>
             <Pagination
+              id="fund-holdings-modal-pagination"
               current={page}
               total={sortedData.length}
               pageSize={pageSize}
@@ -55,6 +58,7 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
           </Row>
           
           <Table
+            id="fund-holdings-modal-table"
             dataSource={pageData}
             rowKey={(row: any) => `${row.mutualFundId}`}
             pagination={false}
@@ -101,9 +105,10 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
             ]}
           />
           
-          <Divider />
-          <Row justify="end">
+          <Divider id="fund-holdings-modal-divider" />
+          <Row id="fund-holdings-modal-bottom-pagination-row" justify="end">
             <Pagination
+              id="fund-holdings-modal-bottom-pagination"
               current={page}
               total={sortedData.length}
               pageSize={pageSize}
@@ -113,30 +118,34 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
             />
           </Row>
           
-          <Row gutter={[16, 16]}>
-            <Col span={8}>
+          <Row id="fund-holdings-modal-stats-row" gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col id="total-funds-stat-col" span={8}>
               <Statistic
+                id="total-funds-statistic"
                 title="Total Funds"
                 value={data.length}
                 prefix={<FundOutlined />}
               />
             </Col>
-            <Col span={8}>
+            <Col id="average-weight-stat-col" span={8}>
               <Statistic
+                id="average-weight-statistic"
                 title="Average Weight"
                 value={(data.reduce((sum: number, h: any) => sum + h.weight, 0) / data.length).toFixed(2)}
                 suffix="%"
+                valueStyle={{ color: '#1890ff' }}
               />
             </Col>
-            <Col span={8}>
+            <Col id="total-weight-stat-col" span={8}>
               <Statistic
+                id="total-weight-statistic"
                 title="Total Weight"
                 value={data.reduce((sum: number, h: any) => sum + h.weight, 0).toFixed(2)}
                 suffix="%"
               />
             </Col>
           </Row>
-        </>
+        </div>
       )}
     </Modal>
   );

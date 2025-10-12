@@ -207,20 +207,21 @@ const PortfolioHoldingsPage: React.FC = () => {
   const totalMarketValue = holdings?.data.reduce((sum, holding) => sum + holding.marketValue, 0) || 0;
 
   return (
-    <div>
-      <Title level={2}>Portfolio Holdings Viewer</Title>
-      <Text type="secondary">
+    <div id="portfolio-holdings-page">
+      <Title id="portfolio-holdings-title" level={2}>Portfolio Holdings Viewer</Title>
+      <Text id="portfolio-holdings-description" type="secondary">
         View detailed portfolio holdings for a specific mutual fund on a selected date.
       </Text>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col span={24}>
-          <Card title="Selection Parameters">
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Select Mutual Fund</Text>
+      <Row id="portfolio-holdings-main-row" gutter={[16, 16]} style={{ marginTop: 24 }}>
+        <Col id="selection-parameters-col" span={24}>
+          <Card id="selection-parameters-card" title="Selection Parameters">
+            <Row id="selection-parameters-row" gutter={[16, 16]}>
+              <Col id="fund-selection-col" span={12}>
+                <Space id="fund-selection-space" direction="vertical" style={{ width: '100%' }}>
+                  <Text id="fund-selection-label" strong>Select Mutual Fund</Text>
                   <Select
+                    id="fund-selection-dropdown"
                     style={{ width: '100%' }}
                     placeholder="Choose a mutual fund"
                     value={selectedFundId}
@@ -243,10 +244,11 @@ const PortfolioHoldingsPage: React.FC = () => {
                 </Space>
               </Col>
               
-              <Col span={12}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Select Date</Text>
+              <Col id="date-selection-col" span={12}>
+                <Space id="date-selection-space" direction="vertical" style={{ width: '100%' }}>
+                  <Text id="date-selection-label" strong>Select Date</Text>
                   <DatePicker
+                    id="date-selection-picker"
                     style={{ width: '100%' }}
                     value={selectedDate}
                     onChange={setSelectedDate}
@@ -257,8 +259,9 @@ const PortfolioHoldingsPage: React.FC = () => {
               </Col>
             </Row>
 
-            <div style={{ marginTop: 16, textAlign: 'right' }}>
+            <div id="view-holdings-button-container" style={{ marginTop: 16, textAlign: 'right' }}>
               <Button
+                id="view-holdings-button"
                 type="primary"
                 icon={<EyeOutlined />}
                 loading={loading}
@@ -273,31 +276,35 @@ const PortfolioHoldingsPage: React.FC = () => {
 
         {holdings && (
           <>
-            <Col span={24}>
-              <Card title="Holdings Summary">
-                <Row gutter={[16, 16]}>
-                  <Col span={6}>
+            <Col id="holdings-summary-col" span={24}>
+              <Card id="holdings-summary-card" title="Holdings Summary">
+                <Row id="holdings-summary-row" gutter={[16, 16]}>
+                  <Col id="fund-name-stat-col" span={6}>
                     <Statistic
+                      id="fund-name-statistic"
                       title="Fund Name"
                       value={selectedFund?.fundName || 'Unknown'}
                       prefix={<FundOutlined />}
                     />
                   </Col>
-                  <Col span={6}>
+                  <Col id="date-stat-col" span={6}>
                     <Statistic
+                      id="date-statistic"
                       title="Date"
                       value={selectedDate?.format('DD MMM YYYY') || ''}
                       prefix={<CalendarOutlined />}
                     />
                   </Col>
-                  <Col span={6}>
+                  <Col id="total-holdings-stat-col" span={6}>
                     <Statistic
+                      id="total-holdings-statistic"
                       title="Total Holdings"
                       value={holdings.totalCount}
                     />
                   </Col>
-                  <Col span={6}>
+                  <Col id="total-value-stat-col" span={6}>
                     <Statistic
+                      id="total-value-statistic"
                       title="Total Market Value"
                       value={`₹${totalMarketValue.toLocaleString()}`}
                     />
@@ -306,9 +313,10 @@ const PortfolioHoldingsPage: React.FC = () => {
               </Card>
             </Col>
 
-            <Col span={24}>
-              <Card title="Portfolio Holdings">
+            <Col id="portfolio-holdings-table-col" span={24}>
+              <Card id="portfolio-holdings-table-card" title="Portfolio Holdings">
                 <Table
+                  id="portfolio-holdings-table"
                   columns={columns}
                   dataSource={holdings.data}
                   loading={loading}
@@ -331,12 +339,12 @@ const PortfolioHoldingsPage: React.FC = () => {
         )}
 
         {!selectedFundId && !selectedDate && (
-          <Col span={24}>
-            <Card>
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <FundOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: 16 }} />
-                <Title level={4} type="secondary">Select Fund and Date</Title>
-                <Text type="secondary">
+          <Col id="empty-state-col" span={24}>
+            <Card id="empty-state-card">
+              <div id="empty-state-content" style={{ textAlign: 'center', padding: '40px 0' }}>
+                <FundOutlined id="empty-state-icon" style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: 16 }} />
+                <Title id="empty-state-title" level={4} type="secondary">Select Fund and Date</Title>
+                <Text id="empty-state-description" type="secondary">
                   Choose a mutual fund and date to view its portfolio holdings
                 </Text>
               </div>
