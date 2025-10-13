@@ -1,7 +1,7 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Layout, Typography, Space, Button, Menu } from 'antd';
-import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, EyeOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ApiOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, EyeOutlined, PlayCircleOutlined, SettingOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -13,7 +13,6 @@ interface AppLayoutProps {
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) => {
-  const navigate = useNavigate();
   const menuItems = [
     {
       key: '2',
@@ -39,6 +38,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
       key: '8',
       icon: <EyeOutlined />,
       label: <Link to="/portfolio-holdings">Portfolio Holdings</Link>,
+    },
+    {
+      key: '10',
+      icon: <SettingOutlined />,
+      label: <Link to="/snapshot-management">Snapshot Management</Link>,
     },
     {
       key: '6',

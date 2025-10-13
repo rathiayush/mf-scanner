@@ -502,3 +502,67 @@ export interface DeletedMutualFundInfo {
   holdingsDeleted: number;
   holdingChangesDeleted: number;
 }
+
+// Snapshot Management DTOs
+export interface SnapshotListRequestDto {
+  mutualFundId: number;
+}
+
+export interface SnapshotDto {
+  id: number;
+  date: string;
+  totalValue: number;
+  holdingsCount: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface SnapshotListResponseDto {
+  success: boolean;
+  message: string;
+  mutualFundId: number;
+  mutualFundName: string;
+  snapshots: SnapshotDto[];
+}
+
+export interface SnapshotHoldingsRequestDto {
+  mutualFundId: number;
+  snapshotDate: string;
+  page: number;
+  pageSize: number;
+  sortBy?: string;
+  sortDirection?: string;
+  searchTerm?: string;
+  sectorFilter?: string;
+  industryFilter?: string;
+}
+
+export interface SnapshotHoldingsResponseDto {
+  success: boolean;
+  message: string;
+  mutualFundId: number;
+  mutualFundName: string;
+  snapshotDate: string;
+  totalValue: number;
+  totalHoldings: number;
+  holdings: PagedResult<CurrentHoldingDto>;
+}
+
+export interface DeleteSnapshotRequestDto {
+  mutualFundId: number;
+  snapshotDate: string;
+}
+
+export interface DeleteSnapshotResponseDto {
+  success: boolean;
+  message: string;
+  deletedRecordsCount: number;
+  summary: DeletedRecordsSummary;
+}
+
+export interface DeletedRecordsSummary {
+  portfolioSnapshotsDeleted: number;
+  portfolioFilesDeleted: number;
+  portfolioHoldingsDeleted: number;
+  holdingChangesDeleted: number;
+}

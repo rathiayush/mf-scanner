@@ -61,6 +61,7 @@ builder.Services.AddScoped<IConcreteMutualFundService, MutualFundScanner.Applica
 builder.Services.AddScoped<ISecurityAnalyticsService, SecurityAnalyticsService>();
 builder.Services.AddScoped<IBackgroundProcessingService, BackgroundProcessingService>();
 builder.Services.AddScoped<IExcelReportService, ExcelReportService>();
+builder.Services.AddScoped<ISnapshotManagementService, SnapshotManagementService>();
 
 // Register Repository Services
 builder.Services.AddScoped<IConcreteMutualFundRepository, ConcreteMutualFundRepository>();

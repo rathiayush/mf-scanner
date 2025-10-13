@@ -5,6 +5,7 @@ import AppLayout from './components/Layout';
 import { AnalysePage, MutualFundListPage, PortfolioHoldingsPage } from './pages';
 import UploadV2 from './components/Upload/UploadV2';
 import ConcreteMutualFunds from './pages/ConcreteMutualFunds';
+import SnapshotManagementPage from './pages/SnapshotManagementPage';
 import { SecurityAnalytics } from './components/Analytics';
 import BackgroundProcessingPage from './components/BackgroundProcessing/BackgroundProcessingPage';
 
@@ -18,6 +19,7 @@ const AppContent: React.FC = () => {
     if (path === '/security-analytics') return '3';
     if (path === '/mutual-funds') return '4';
     if (path === '/portfolio-holdings') return '8';
+    if (path === '/snapshot-management') return '10';
     if (path === '/upload-v2') return '6';
     if (path === '/concrete-funds') return '7';
     if (path === '/background-processing') return '9';
@@ -32,6 +34,7 @@ const AppContent: React.FC = () => {
         <Route path="/security-analytics" element={<SecurityAnalytics />} />
         <Route path="/mutual-funds" element={<MutualFundListPage />} />
         <Route path="/portfolio-holdings" element={<PortfolioHoldingsPage />} />
+        <Route path="/snapshot-management" element={<SnapshotManagementPage />} />
         <Route path="/upload-v2" element={<UploadV2 />} />
         <Route path="/concrete-funds" element={<ConcreteMutualFunds />} />
         <Route path="/background-processing" element={<BackgroundProcessingPage />} />
@@ -43,7 +46,7 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter basename={import.meta.env.REACT_APP_BASE_PATH || ''}>
+    <BrowserRouter>
       <ConfigProvider
         theme={{
           token: {
