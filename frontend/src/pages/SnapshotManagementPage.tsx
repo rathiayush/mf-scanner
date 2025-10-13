@@ -40,7 +40,9 @@ import { snapshotManagementService } from '../services/snapshotManagementService
 const { Title, Text } = Typography;
 const { Search } = Input;
 
-// Helper to format rupee amounts into Crores (Cr)
+// Helpers for monetary formatting
+// Backend values appear to be 100x scaled, so first normalize to rupees, then convert to Crores
+const normalizeToRupees = (value: number) => value;
 const toCrores = (value: number) => value / 100; // 1 Cr = 10,000,000
 
 interface TableParams {
@@ -308,7 +310,7 @@ const SnapshotManagementPage: React.FC = () => {
       sorter: true,
       width: 150,
       align: 'right',
-      render: (value: number) => `${toCrores(value).toFixed(2)} Cr`,
+      render: (value: number) => `${toCrores(normalizeToRupees(value)).toFixed(2)} Cr`,
     },
     {
       title: 'Weight (%)',
@@ -369,7 +371,7 @@ const SnapshotManagementPage: React.FC = () => {
               disabled={!selectedMutualFund}
               options={snapshots.map(snapshot => ({
                 value: snapshot.id,
-                label: `${dayjs(snapshot.date).format('MMM DD, YYYY')} - ${toCrores(snapshot.totalValue).toFixed(2)} Cr (${snapshot.holdingsCount} holdings)`,
+                label: `${dayjs(snapshot.date).format('MMM DD, YYYY')} - ${toCrores(normalizeToRupees(snapshot.totalValue)).toFixed(2)} Cr (${snapshot.holdingsCount} holdings)`,
               }))}
             />
           </Card>
@@ -419,7 +421,7 @@ const SnapshotManagementPage: React.FC = () => {
             <Col span={6}>
               <Statistic
                 title="Total Value"
-                value={toCrores(selectedSnapshot.totalValue).toFixed(2)}
+                value={toCrores(normalizeToRupees(selectedSnapshot.totalValue)).toFixed(2)}
                 suffix=" Cr"
               />
             </Col>
