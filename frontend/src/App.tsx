@@ -6,6 +6,7 @@ import { AnalysePage, MutualFundListPage, PortfolioHoldingsPage } from './pages'
 import UploadV2 from './components/Upload/UploadV2';
 import ConcreteMutualFunds from './pages/ConcreteMutualFunds';
 import { SecurityAnalytics } from './components/Analytics';
+import BackgroundProcessingPage from './components/BackgroundProcessing/BackgroundProcessingPage';
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -19,6 +20,7 @@ const AppContent: React.FC = () => {
     if (path === '/portfolio-holdings') return '8';
     if (path === '/upload-v2') return '6';
     if (path === '/concrete-funds') return '7';
+    if (path === '/background-processing') return '9';
     return '2';
   };
 
@@ -32,6 +34,7 @@ const AppContent: React.FC = () => {
         <Route path="/portfolio-holdings" element={<PortfolioHoldingsPage />} />
         <Route path="/upload-v2" element={<UploadV2 />} />
         <Route path="/concrete-funds" element={<ConcreteMutualFunds />} />
+        <Route path="/background-processing" element={<BackgroundProcessingPage />} />
         <Route path="*" element={<Navigate to="/analyze" replace />} />
       </Routes>
     </AppLayout>
