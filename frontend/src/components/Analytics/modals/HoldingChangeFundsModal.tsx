@@ -4,6 +4,25 @@ const { Text } = Typography;
 import { SwapOutlined, FundOutlined } from '@ant-design/icons';
 import { getChangeTypeColor } from '../utils/trendCalculator';
 
+// Inject minimal CSS to ensure the table body owns horizontal scrolling within the modal
+const modalTableStyles = `
+  #holding-change-funds-table .ant-table-body {
+    overflow-x: auto !important;
+  }
+  #holding-change-funds-table .ant-table-content {
+    overflow-x: auto !important;
+  }
+  #holding-change-funds-table .ant-table-container {
+    overflow-x: auto !important;
+  }
+`;
+const modalStyleEl = document.createElement('style');
+if (!document.head.querySelector('style[data-hcfm-styles]')) {
+  modalStyleEl.setAttribute('data-hcfm-styles', 'true');
+  modalStyleEl.textContent = modalTableStyles;
+  document.head.appendChild(modalStyleEl);
+}
+
 interface TopControlsProps {
   filterType: string;
   onFilterChange: (v: string) => void;
@@ -99,7 +118,6 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
   }, [filteredData, page, pageSize]);
   return (
     <Modal
-      id="holding-change-funds-modal"
       title={
         <Space id="holding-change-funds-modal-title">
           <SwapOutlined id="holding-change-funds-modal-title-icon" />
@@ -223,14 +241,50 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             </Col>
           </Row>
           
-          <div id="holding-change-funds-table-container" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div id="holding-change-funds-table-container" style={{ flex: 1, paddingBottom: 80 }}>
+          <div
+            id="holding-change-funds-table-wrapper"
+            tabIndex={0}
+            style={{ outline: 'none' }}
+            onKeyDown={(e) => {
+              const body = (document.querySelector('#holding-change-funds-table .ant-table-body') as HTMLDivElement) || null;
+              if (!body) return;
+              const step = 60;
+              if (e.key === 'ArrowDown') {
+                body.scrollTop += step;
+                e.preventDefault();
+              } else if (e.key === 'ArrowUp') {
+                body.scrollTop -= step;
+                e.preventDefault();
+              } else if (e.key === 'ArrowRight') {
+                body.scrollLeft += step;
+                e.preventDefault();
+              } else if (e.key === 'ArrowLeft') {
+                body.scrollLeft -= step;
+                e.preventDefault();
+              } else if (e.key === 'PageDown') {
+                body.scrollTop += body.clientHeight;
+                e.preventDefault();
+              } else if (e.key === 'PageUp') {
+                body.scrollTop -= body.clientHeight;
+                e.preventDefault();
+              } else if (e.key === 'Home') {
+                body.scrollTop = 0;
+                e.preventDefault();
+              } else if (e.key === 'End') {
+                body.scrollTop = body.scrollHeight;
+                e.preventDefault();
+              }
+            }}
+          >
           <Table
             id="holding-change-funds-table"
             size="small"
             rowKey={(row: any) => `${row.mutualFundId}`}
             dataSource={pagedData}
             pagination={false}
-            scroll={{ x: 'max-content' }}
+            sticky
+            scroll={{ x: 'max-content' as any, y: 'calc(78vh - 320px)' as any }}
             className="sticky-table"
             columns={[
               {
@@ -245,6 +299,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 dataIndex: 'mutualFundName',
                 key: 'mutualFundName',
                 width: 220,
+                fixed: 'left' as const,
                 render: (text: string, row: any) => (
                   <Space direction="vertical" size={0}>
                     <Text strong>{text}</Text>
@@ -366,6 +421,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
               },
             ]}
           />
+          </div>
           
           <Divider />
           </div>

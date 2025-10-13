@@ -22,6 +22,7 @@ export const getHoldingChangesColumns = ({
     dataIndex: 'securityName',
     key: 'securityName',
     width: 200,
+    fixed: 'left' as const,
     render: (text: string, record: HoldingChangeDto) => (
       <Space direction="vertical" size="small">
         <Text strong>{text}</Text>
