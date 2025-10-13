@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Layout, Typography, Space, Button, Menu } from 'antd';
-import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, EyeOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ApiOutlined, UploadOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, EyeOutlined, PlayCircleOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -44,6 +44,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
       key: '6',
       icon: <RobotOutlined />,
       label: <Link to="/upload-v2">Smart Upload V2</Link>,
+    },
+    {
+      key: '9',
+      icon: <PlayCircleOutlined />,
+      label: <Link to="/background-processing">Background Processing</Link>,
     },
   ];
 

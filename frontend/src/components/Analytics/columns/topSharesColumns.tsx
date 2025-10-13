@@ -15,6 +15,7 @@ export const getTopSharesColumns = ({ onViewFundHoldings }: TopSharesColumnsProp
     dataIndex: 'securityName',
     key: 'securityName',
     width: 200,
+    fixed: 'left' as const,
     render: (text: string, record: TopShareDto) => (
       <Space direction="vertical" size="small">
         <Text strong>{text}</Text>

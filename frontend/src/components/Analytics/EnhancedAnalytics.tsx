@@ -50,12 +50,29 @@ const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
-// Add styles for blinking animation
+// Add styles for blinking animation and table scroll behavior
 const styles = `
   @keyframes blink {
     0% { opacity: 1; }
     50% { opacity: 0.3; }
     100% { opacity: 1; }
+  }
+
+  /* Provide comfortable space but avoid container scrolling; table handles scroll */
+  #holding-changes-content,
+  #top-shares-content {
+    padding-bottom: 8px;
+  }
+
+  /* Focusable wrappers for keyboard scrolling */
+  .table-scroll-wrapper {
+    outline: none;
+  }
+
+  /* Ensure horizontal scrollbar appears on analytics tables */
+  #holding-changes-table .ant-table-body,
+  #top-shares-table .ant-table-body {
+    overflow-x: auto !important;
   }
 `;
 
@@ -551,26 +568,64 @@ const EnhancedAnalytics: React.FC = () => {
                           onMinFundsCount={(v) => sortingPagination.setMinFundsCount(v === null ? undefined : v)}
                         />
                       </div>
-                      <Table
-                        id="holding-changes-table"
-                        dataSource={analyticsState.holdingChanges?.data || []}
-                        columns={holdingChangesColumns}
-                        rowKey="isin"
-                        loading={analyticsState.loading}
-                        className="sticky-table"
-                        pagination={{
-                          current: analyticsState.holdingChanges?.page || 1,
-                          pageSize: analyticsState.holdingChanges?.pageSize || 20,
-                          total: analyticsState.holdingChanges?.totalCount || 0,
-                          showSizeChanger: true,
-                          showQuickJumper: true,
-                          showTotal: (total, range) =>
-                            `${range[0]}-${range[1]} of ${total} holdings`,
-                          onChange: handleTableChange,
-                          onShowSizeChange: handleTableChange,
+                      <div
+                        id="holding-changes-table-wrapper"
+                        className="table-scroll-wrapper"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          const body = (document.querySelector('#holding-changes-table .ant-table-body') as HTMLDivElement) || null;
+                          if (!body) return;
+                          const step = 60; // pixels per key press
+                          if (e.key === 'ArrowDown') {
+                            body.scrollTop += step;
+                            e.preventDefault();
+                          } else if (e.key === 'ArrowUp') {
+                            body.scrollTop -= step;
+                            e.preventDefault();
+                          } else if (e.key === 'ArrowRight') {
+                            body.scrollLeft += step;
+                            e.preventDefault();
+                          } else if (e.key === 'ArrowLeft') {
+                            body.scrollLeft -= step;
+                            e.preventDefault();
+                          } else if (e.key === 'PageDown') {
+                            body.scrollTop += body.clientHeight;
+                            e.preventDefault();
+                          } else if (e.key === 'PageUp') {
+                            body.scrollTop -= body.clientHeight;
+                            e.preventDefault();
+                          } else if (e.key === 'Home') {
+                            body.scrollTop = 0;
+                            e.preventDefault();
+                          } else if (e.key === 'End') {
+                            body.scrollTop = body.scrollHeight;
+                            e.preventDefault();
+                          }
                         }}
-                        scroll={{ x: 1200 }}
-                      />
+                      >
+                        <Table
+                          id="holding-changes-table"
+                          dataSource={analyticsState.holdingChanges?.data || []}
+                          columns={holdingChangesColumns}
+                          rowKey="isin"
+                          loading={analyticsState.loading}
+                          className="sticky-table"
+                          pagination={{
+                            position: ['topRight', 'bottomRight'],
+                            current: analyticsState.holdingChanges?.page || 1,
+                            pageSize: analyticsState.holdingChanges?.pageSize || 20,
+                            total: analyticsState.holdingChanges?.totalCount || 0,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) =>
+                              `${range[0]}-${range[1]} of ${total} holdings`,
+                            onChange: handleTableChange,
+                            onShowSizeChange: handleTableChange,
+                          }}
+                          sticky
+                          scroll={{ x: 1800, y: '120vh' as any }}
+                        />
+                      </div>
                     </div>
                   )}
                 </TabPane>
@@ -603,35 +658,73 @@ const EnhancedAnalytics: React.FC = () => {
                       />
                     </div>
                     
-                    <Table
-                      id="top-shares-table"
-                      columns={topSharesColumns}
-                      dataSource={analyticsState.topShares?.data || []}
-                      className="sticky-table"
-                      pagination={{
-                        current: analyticsState.topShares?.page || 1,
-                        pageSize: analyticsState.topShares?.pageSize || 20,
-                        total: analyticsState.topShares?.totalCount || 0,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) =>
-                          `${range[0]}-${range[1]} of ${total} shares`,
-                        onChange: (page, pageSize) => {
-                          sortingPagination.setTopSharesPage(page);
-                          if (pageSize !== sortingPagination.topSharesPageSize) {
-                            sortingPagination.setTopSharesPageSize(pageSize);
-                          }
-                          loadTopShares(page, pageSize, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
-                        },
-                        onShowSizeChange: (_, size) => {
-                          sortingPagination.setTopSharesPage(1);
-                          sortingPagination.setTopSharesPageSize(size);
-                          loadTopShares(1, size, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
-                        },
+                    <div
+                      id="top-shares-table-wrapper"
+                      className="table-scroll-wrapper"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        const body = (document.querySelector('#top-shares-table .ant-table-body') as HTMLDivElement) || null;
+                        if (!body) return;
+                        const step = 60;
+                        if (e.key === 'ArrowDown') {
+                          body.scrollTop += step;
+                          e.preventDefault();
+                        } else if (e.key === 'ArrowUp') {
+                          body.scrollTop -= step;
+                          e.preventDefault();
+                        } else if (e.key === 'ArrowRight') {
+                          body.scrollLeft += step;
+                          e.preventDefault();
+                        } else if (e.key === 'ArrowLeft') {
+                          body.scrollLeft -= step;
+                          e.preventDefault();
+                        } else if (e.key === 'PageDown') {
+                          body.scrollTop += body.clientHeight;
+                          e.preventDefault();
+                        } else if (e.key === 'PageUp') {
+                          body.scrollTop -= body.clientHeight;
+                          e.preventDefault();
+                        } else if (e.key === 'Home') {
+                          body.scrollTop = 0;
+                          e.preventDefault();
+                        } else if (e.key === 'End') {
+                          body.scrollTop = body.scrollHeight;
+                          e.preventDefault();
+                        }
                       }}
-                      rowKey="isin"
-                      scroll={{ x: 1000 }}
-                    />
+                    >
+                      <Table
+                        id="top-shares-table"
+                        columns={topSharesColumns}
+                        dataSource={analyticsState.topShares?.data || []}
+                        className="sticky-table"
+                        pagination={{
+                          position: ['topRight', 'bottomRight'],
+                          current: analyticsState.topShares?.page || 1,
+                          pageSize: analyticsState.topShares?.pageSize || 20,
+                          total: analyticsState.topShares?.totalCount || 0,
+                          showSizeChanger: true,
+                          showQuickJumper: true,
+                          showTotal: (total, range) =>
+                            `${range[0]}-${range[1]} of ${total} shares`,
+                          onChange: (page, pageSize) => {
+                            sortingPagination.setTopSharesPage(page);
+                            if (pageSize !== sortingPagination.topSharesPageSize) {
+                              sortingPagination.setTopSharesPageSize(pageSize);
+                            }
+                            loadTopShares(page, pageSize, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
+                          },
+                          onShowSizeChange: (_, size) => {
+                            sortingPagination.setTopSharesPage(1);
+                            sortingPagination.setTopSharesPageSize(size);
+                            loadTopShares(1, size, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
+                          },
+                        }}
+                        rowKey="isin"
+                        sticky
+                        scroll={{ x: 1600, y: '120vh' as any }}
+                      />
+                    </div>
                   </div>
                 </TabPane>
 
