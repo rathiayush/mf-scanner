@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MutualFundScanner.Domain.Entities;
+using MutualFundScanner.Domain.Enums;
 using MutualFundScanner.Infrastructure.Data.Configurations;
 
 namespace MutualFundScanner.Infrastructure.Data;
@@ -17,6 +18,7 @@ public class MutualFundContext : DbContext
     public DbSet<PortfolioSnapshot> PortfolioSnapshots { get; set; }
     public DbSet<HoldingChange> HoldingChanges { get; set; }
     public DbSet<ConcreteMutualFund> ConcreteMutualFunds { get; set; }
+    public DbSet<BackgroundJob> BackgroundJobs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,6 +109,23 @@ public class MutualFundContext : DbContext
                   .WithMany(e => e.HoldingChanges)
                   .HasForeignKey(e => e.MutualFundId)
                   .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // BackgroundJob configuration
+        modelBuilder.Entity<BackgroundJob>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(50);
+            entity.Property(e => e.JobType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.DirectoryPath).HasMaxLength(500);
+            entity.Property(e => e.FilePatterns).HasMaxLength(1000);
+            entity.Property(e => e.CurrentFile).HasMaxLength(255);
+            entity.Property(e => e.ExcelReportPath).HasMaxLength(500);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+            entity.Property(e => e.CreatedBy).HasMaxLength(100);
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
         });
 
         // Apply entity configurations
