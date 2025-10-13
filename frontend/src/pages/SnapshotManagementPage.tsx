@@ -40,6 +40,9 @@ import { snapshotManagementService } from '../services/snapshotManagementService
 const { Title, Text } = Typography;
 const { Search } = Input;
 
+// Helper to format rupee amounts into Crores (Cr)
+const toCrores = (value: number) => value / 100; // 1 Cr = 10,000,000
+
 interface TableParams {
   pagination?: TablePaginationConfig;
   sortField?: string;
@@ -299,13 +302,13 @@ const SnapshotManagementPage: React.FC = () => {
       render: (value: number) => value.toLocaleString(),
     },
     {
-      title: 'Market Value',
+      title: 'Market Value (Cr)',
       dataIndex: 'value',
       key: 'value',
       sorter: true,
       width: 150,
       align: 'right',
-      render: (value: number) => `₹${value.toLocaleString()}`,
+      render: (value: number) => `${toCrores(value).toFixed(2)} Cr`,
     },
     {
       title: 'Weight (%)',
@@ -366,7 +369,7 @@ const SnapshotManagementPage: React.FC = () => {
               disabled={!selectedMutualFund}
               options={snapshots.map(snapshot => ({
                 value: snapshot.id,
-                label: `${dayjs(snapshot.date).format('MMM DD, YYYY')} - ₹${snapshot.totalValue.toLocaleString()} (${snapshot.holdingsCount} holdings)`,
+                label: `${dayjs(snapshot.date).format('MMM DD, YYYY')} - ${toCrores(snapshot.totalValue).toFixed(2)} Cr (${snapshot.holdingsCount} holdings)`,
               }))}
             />
           </Card>
@@ -416,9 +419,8 @@ const SnapshotManagementPage: React.FC = () => {
             <Col span={6}>
               <Statistic
                 title="Total Value"
-                value={selectedSnapshot.totalValue}
-                prefix="₹"
-                precision={0}
+                value={toCrores(selectedSnapshot.totalValue).toFixed(2)}
+                suffix=" Cr"
               />
             </Col>
             <Col span={6}>

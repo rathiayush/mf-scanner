@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import AppLayout from './components/Layout';
-import { AnalysePage, MutualFundListPage, PortfolioHoldingsPage } from './pages';
+import { AnalysePage, MutualFundListPage } from './pages';
 import UploadV2 from './components/Upload/UploadV2';
 import ConcreteMutualFunds from './pages/ConcreteMutualFunds';
 import SnapshotManagementPage from './pages/SnapshotManagementPage';
@@ -18,7 +18,7 @@ const AppContent: React.FC = () => {
     if (path === '/' || path === '/analyze') return '2';
     if (path === '/security-analytics') return '3';
     if (path === '/mutual-funds') return '4';
-    if (path === '/portfolio-holdings') return '8';
+    // portfolio-holdings removed
     if (path === '/snapshot-management') return '10';
     if (path === '/upload-v2') return '6';
     if (path === '/concrete-funds') return '7';
@@ -33,7 +33,7 @@ const AppContent: React.FC = () => {
         <Route path="/analyze" element={<AnalysePage />} />
         <Route path="/security-analytics" element={<SecurityAnalytics />} />
         <Route path="/mutual-funds" element={<MutualFundListPage />} />
-        <Route path="/portfolio-holdings" element={<PortfolioHoldingsPage />} />
+        {/* Portfolio Holdings page removed */}
         <Route path="/snapshot-management" element={<SnapshotManagementPage />} />
         <Route path="/upload-v2" element={<UploadV2 />} />
         <Route path="/concrete-funds" element={<ConcreteMutualFunds />} />
