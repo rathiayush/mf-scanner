@@ -3,7 +3,11 @@ import {
   SnapshotHoldingsRequestDto, 
   SnapshotHoldingsResponseDto,
   DeleteSnapshotRequestDto,
-  DeleteSnapshotResponseDto
+  DeleteSnapshotResponseDto,
+  BulkDeleteSnapshotRequestDto,
+  BulkDeleteSnapshotResponseDto,
+  AvailableSnapshotDatesRequestDto,
+  AvailableSnapshotDatesResponseDto
 } from '../types';
 import env from '../config/env';
 
@@ -70,6 +74,48 @@ class SnapshotManagementService {
       return await response.json();
     } catch (error) {
       console.error('Error deleting snapshot:', error);
+      throw error;
+    }
+  }
+
+  async bulkDeleteSnapshots(request: BulkDeleteSnapshotRequestDto): Promise<BulkDeleteSnapshotResponseDto> {
+    try {
+      const response = await fetch(`${this.baseUrl}/snapshots/bulk`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error bulk deleting snapshots:', error);
+      throw error;
+    }
+  }
+
+  async getAvailableSnapshotDates(request: AvailableSnapshotDatesRequestDto): Promise<AvailableSnapshotDatesResponseDto> {
+    try {
+      const response = await fetch(`${this.baseUrl}/available-dates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching available snapshot dates:', error);
       throw error;
     }
   }

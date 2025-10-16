@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   Select, 
-  DatePicker, 
   Table, 
   Button, 
   Space, 
@@ -15,12 +14,12 @@ import {
   Statistic,
   Popconfirm,
   Tooltip,
-  Tag
+  Tag,
+  Tabs
 } from 'antd';
 import { 
   SearchOutlined, 
   DeleteOutlined, 
-  EyeOutlined, 
   ReloadOutlined,
   ExclamationCircleOutlined 
 } from '@ant-design/icons';
@@ -29,10 +28,7 @@ import dayjs from 'dayjs';
 import { 
   MutualFundDto, 
   SnapshotDto, 
-  SnapshotListResponseDto,
-  SnapshotHoldingsResponseDto,
-  CurrentHoldingDto,
-  DeleteSnapshotResponseDto
+  CurrentHoldingDto
 } from '../types';
 import { mutualFundService } from '../services/api';
 import { snapshotManagementService } from '../services/snapshotManagementService';
@@ -57,6 +53,14 @@ const SnapshotManagementPage: React.FC = () => {
   const [mutualFunds, setMutualFunds] = useState<MutualFundDto[]>([]);
   const [selectedMutualFund, setSelectedMutualFund] = useState<number | null>(null);
   const [selectedMutualFundName, setSelectedMutualFundName] = useState<string>('');
+  
+  // State for bulk delete
+  const [selectedMutualFunds, setSelectedMutualFunds] = useState<number[]>([]);
+  const [bulkDeleteDate, setBulkDeleteDate] = useState<dayjs.Dayjs | null>(null);
+  const [bulkDeleteModalVisible, setBulkDeleteModalVisible] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [availableSnapshots, setAvailableSnapshots] = useState<string[]>([]);
+  const [loadingAvailableSnapshots, setLoadingAvailableSnapshots] = useState(false);
   
   // State for snapshots
   const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
@@ -110,6 +114,11 @@ const SnapshotManagementPage: React.FC = () => {
       setHoldings([]);
     }
   }, [selectedSnapshot, selectedMutualFund, tableParams.pagination?.current, tableParams.pagination?.pageSize, tableParams.sortField, tableParams.sortOrder, searchTerm, sectorFilter, industryFilter]);
+
+  // Load available snapshot dates when selected mutual funds change
+  useEffect(() => {
+    loadAvailableSnapshotDates();
+  }, [selectedMutualFunds]);
 
   const loadMutualFunds = async () => {
     setLoadingMutualFunds(true);
@@ -213,6 +222,74 @@ const SnapshotManagementPage: React.FC = () => {
       message.error('Error deleting snapshot');
     } finally {
       setDeletingSnapshot(false);
+    }
+  };
+
+  const loadAvailableSnapshotDates = async () => {
+    if (selectedMutualFunds.length === 0) {
+      setAvailableSnapshots([]);
+      return;
+    }
+
+    setLoadingAvailableSnapshots(true);
+    try {
+      const response = await snapshotManagementService.getAvailableSnapshotDates({
+        mutualFundIds: selectedMutualFunds,
+      });
+
+      if (response.success) {
+        setAvailableSnapshots(response.availableDates);
+      } else {
+        message.error(response.message || 'Failed to load available dates');
+        setAvailableSnapshots([]);
+      }
+    } catch (error) {
+      console.error('Error loading available dates:', error);
+      message.error('Error loading available dates');
+      setAvailableSnapshots([]);
+    } finally {
+      setLoadingAvailableSnapshots(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMutualFunds.length === 0 || !bulkDeleteDate) {
+      message.error('Please select mutual funds and a date');
+      return;
+    }
+
+    setBulkDeleting(true);
+    try {
+      const response = await snapshotManagementService.bulkDeleteSnapshots({
+        mutualFundIds: selectedMutualFunds,
+        snapshotDate: bulkDeleteDate.format('YYYY-MM-DD'),
+      });
+
+      if (response.success) {
+        message.success(
+          `Bulk delete completed: ${response.successfulDeletions} snapshots deleted, ${response.totalRecordsDeleted} total records removed.`
+        );
+        if (response.failedDeletions > 0) {
+          message.warning(`${response.failedDeletions} snapshots failed to delete.`);
+        }
+      } else {
+        message.error(response.message || 'Bulk delete failed');
+      }
+
+      setBulkDeleteModalVisible(false);
+      setSelectedMutualFunds([]);
+      setBulkDeleteDate(null);
+      setAvailableSnapshots([]);
+      
+      // Refresh current view if needed
+      if (selectedMutualFund) {
+        await loadSnapshots();
+      }
+    } catch (error) {
+      console.error('Error in bulk delete:', error);
+      message.error('Error during bulk delete operation');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -323,60 +400,59 @@ const SnapshotManagementPage: React.FC = () => {
     },
   ];
 
-  return (
-    <div style={{ padding: '24px' }}>
-      <Title level={2}>Snapshot Management</Title>
-      <Text type="secondary">
-        Select a mutual fund and snapshot date to view portfolio holdings. You can also delete snapshots and all related data.
-      </Text>
+  const tabItems = [
+    {
+      key: '1',
+      label: 'View & Manage',
+      children: (
+        <div>
+          <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
+            {/* Mutual Fund Selection */}
+            <Col xs={24} md={12}>
+              <Card title="Select Mutual Fund" size="small">
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="Search and select mutual fund"
+                  showSearch
+                  loading={loadingMutualFunds}
+                  value={selectedMutualFund}
+                  onChange={(value) => {
+                    setSelectedMutualFund(value);
+                    setSelectedSnapshot(null);
+                    setHoldings([]);
+                  }}
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  options={mutualFunds.map(fund => ({
+                    value: fund.id,
+                    label: `${fund.fundName} (${fund.fundCode})`,
+                  }))}
+                />
+              </Card>
+            </Col>
 
-      <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
-        {/* Mutual Fund Selection */}
-        <Col xs={24} md={12}>
-          <Card title="Select Mutual Fund" size="small">
-            <Select
-              style={{ width: '100%' }}
-              placeholder="Search and select mutual fund"
-              showSearch
-              loading={loadingMutualFunds}
-              value={selectedMutualFund}
-              onChange={(value, option: any) => {
-                setSelectedMutualFund(value);
-                setSelectedSnapshot(null);
-                setHoldings([]);
-              }}
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-              options={mutualFunds.map(fund => ({
-                value: fund.id,
-                label: `${fund.fundName} (${fund.fundCode})`,
-              }))}
-            />
-          </Card>
-        </Col>
-
-        {/* Snapshot Selection */}
-        <Col xs={24} md={12}>
-          <Card title="Select Snapshot Date" size="small">
-            <Select
-              style={{ width: '100%' }}
-              placeholder="Select snapshot date"
-              loading={loadingSnapshots}
-              value={selectedSnapshot?.id}
-              onChange={(value) => {
-                const snapshot = snapshots.find(s => s.id === value);
-                setSelectedSnapshot(snapshot || null);
-              }}
-              disabled={!selectedMutualFund}
-              options={snapshots.map(snapshot => ({
-                value: snapshot.id,
-                label: `${dayjs(snapshot.date).format('MMM DD, YYYY')} - ${toCrores(normalizeToRupees(snapshot.totalValue)).toFixed(2)} Cr (${snapshot.holdingsCount} holdings)`,
-              }))}
-            />
-          </Card>
-        </Col>
-      </Row>
+            {/* Snapshot Selection */}
+            <Col xs={24} md={12}>
+              <Card title="Select Snapshot Date" size="small">
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="Select snapshot date"
+                  loading={loadingSnapshots}
+                  value={selectedSnapshot?.id}
+                  onChange={(value) => {
+                    const snapshot = snapshots.find(s => s.id === value);
+                    setSelectedSnapshot(snapshot || null);
+                  }}
+                  disabled={!selectedMutualFund}
+                  options={snapshots.map(snapshot => ({
+                    value: snapshot.id,
+                    label: `${dayjs(snapshot.date).format('MMM DD, YYYY')} - ${toCrores(normalizeToRupees(snapshot.totalValue)).toFixed(2)} Cr (${snapshot.holdingsCount} holdings)`,
+                  }))}
+                />
+              </Card>
+            </Col>
+          </Row>
 
       {/* Snapshot Summary */}
       {selectedSnapshot && (
@@ -514,6 +590,136 @@ const SnapshotManagementPage: React.FC = () => {
           <p>Are you sure you want to proceed?</p>
         </div>
       </Modal>
+        </div>
+      ),
+    },
+    {
+      key: '2',
+      label: 'Bulk Delete',
+      children: (
+        <div>
+          <Card 
+            title="Bulk Delete Snapshots" 
+            style={{ marginTop: '16px' }}
+            extra={
+              <Button
+                type="primary"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => setBulkDeleteModalVisible(true)}
+                disabled={selectedMutualFunds.length === 0 || !bulkDeleteDate}
+                loading={bulkDeleting}
+              >
+                Bulk Delete
+              </Button>
+            }
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={16}>
+                <Text strong>Select Multiple Mutual Funds:</Text>
+                <Select
+                  mode="multiple"
+                  style={{ width: '100%', marginTop: '8px' }}
+                  placeholder="Search and select multiple mutual funds"
+                  showSearch
+                  loading={loadingMutualFunds}
+                  value={selectedMutualFunds}
+                  onChange={setSelectedMutualFunds}
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  options={mutualFunds.map(fund => ({
+                    value: fund.id,
+                    label: `${fund.fundName} (${fund.fundCode})`,
+                  }))}
+                  maxTagCount="responsive"
+                />
+              </Col>
+              <Col xs={24} md={8}>
+                <Text strong>Select Snapshot Date:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: '8px' }}
+                  placeholder="Select date to delete"
+                  value={bulkDeleteDate?.format('YYYY-MM-DD')}
+                  onChange={(value) => setBulkDeleteDate(value ? dayjs(value) : null)}
+                  loading={loadingAvailableSnapshots}
+                  disabled={selectedMutualFunds.length === 0}
+                  options={availableSnapshots.map(date => ({
+                    value: date,
+                    label: dayjs(date).format('MMM DD, YYYY'),
+                  }))}
+                />
+              </Col>
+            </Row>
+            <div style={{ marginTop: '12px' }}>
+              <Text type="secondary">
+                Selected {selectedMutualFunds.length} mutual funds. 
+                {selectedMutualFunds.length > 0 && availableSnapshots.length > 0 && 
+                  ` ${availableSnapshots.length} common snapshot dates available.`}
+                {bulkDeleteDate && ` Will delete snapshots for ${bulkDeleteDate.format('MMM DD, YYYY')}.`}
+              </Text>
+            </div>
+          </Card>
+
+          {/* Bulk Delete Confirmation Modal */}
+          <Modal
+            title="Confirm Bulk Snapshot Deletion"
+            open={bulkDeleteModalVisible}
+            onOk={handleBulkDelete}
+            onCancel={() => setBulkDeleteModalVisible(false)}
+            confirmLoading={bulkDeleting}
+            okText="Delete All"
+            okType="danger"
+            cancelText="Cancel"
+            width={600}
+          >
+            <div>
+              <p><strong>Warning:</strong> This action cannot be undone!</p>
+              <p>You are about to permanently delete snapshots for:</p>
+              <ul>
+                <li><strong>Date:</strong> {bulkDeleteDate?.format('MMM DD, YYYY')}</li>
+                <li><strong>Mutual Funds:</strong> {selectedMutualFunds.length} selected</li>
+              </ul>
+              
+              <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #d9d9d9', padding: '8px', marginTop: '12px' }}>
+                <Text strong>Selected Mutual Funds:</Text>
+                <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+                  {selectedMutualFunds.map(fundId => {
+                    const fund = mutualFunds.find(f => f.id === fundId);
+                    return (
+                      <li key={fundId}>
+                        {fund ? `${fund.fundName} (${fund.fundCode})` : `Fund ID: ${fundId}`}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <p style={{ marginTop: '16px' }}>
+                <strong>This will delete:</strong>
+              </p>
+              <ul>
+                <li>Portfolio snapshots for the selected date</li>
+                <li>All portfolio holdings for those snapshots</li>
+                <li>Associated portfolio files</li>
+                <li>All related holding changes</li>
+              </ul>
+              <p>Are you sure you want to proceed with bulk deletion?</p>
+            </div>
+          </Modal>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ padding: '24px' }}>
+      <Title level={2}>Snapshot Management</Title>
+      <Text type="secondary">
+        Select a mutual fund and snapshot date to view portfolio holdings, or use bulk delete to remove multiple snapshots at once.
+      </Text>
+
+      <Tabs defaultActiveKey="1" items={tabItems} style={{ marginTop: '24px' }} />
     </div>
   );
 };

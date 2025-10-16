@@ -566,3 +566,37 @@ export interface DeletedRecordsSummary {
   portfolioHoldingsDeleted: number;
   holdingChangesDeleted: number;
 }
+
+export interface BulkDeleteSnapshotRequestDto {
+  mutualFundIds: number[];
+  snapshotDate: string;
+}
+
+export interface BulkDeleteSnapshotResponseDto {
+  success: boolean;
+  message: string;
+  totalRequestedDeletions: number;
+  successfulDeletions: number;
+  failedDeletions: number;
+  totalRecordsDeleted: number;
+  results: BulkDeleteResult[];
+  summary: DeletedRecordsSummary;
+}
+
+export interface BulkDeleteResult {
+  mutualFundId: number;
+  mutualFundName: string;
+  success: boolean;
+  message: string;
+  recordsDeleted: number;
+}
+
+export interface AvailableSnapshotDatesRequestDto {
+  mutualFundIds: number[];
+}
+
+export interface AvailableSnapshotDatesResponseDto {
+  success: boolean;
+  message: string;
+  availableDates: string[];
+}

@@ -6,9 +6,10 @@ import {
   DirectoryValidation,
   StartJobResponse
 } from '../types/backgroundProcessing';
+import env from '../config/env';
 
-// Default to localhost if environment variable is not set
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:7001';
+// Use shared environment config (defaults handled in env.ts)
+const API_BASE_URL = env.api.baseUrl;
 
 class BackgroundProcessingService {
   private baseUrl = `${API_BASE_URL.replace(/\/$/, '')}/background-processing`;

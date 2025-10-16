@@ -129,4 +129,80 @@ public class SnapshotManagementController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Bulk delete snapshots for multiple mutual funds on a specific date
+    /// </summary>
+    /// <param name="request">Request containing mutual fund IDs and snapshot date</param>
+    /// <returns>Bulk deletion result with detailed summary</returns>
+    [HttpDelete("snapshots/bulk")]
+    public async Task<ActionResult<BulkDeleteSnapshotResponseDto>> BulkDeleteSnapshots([FromBody] BulkDeleteSnapshotRequestDto request)
+    {
+        try
+        {
+            _logger.LogInformation("Bulk deleting snapshots for {Count} mutual funds on date: {Date}",
+                request.MutualFundIds.Count, request.SnapshotDate);
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _snapshotManagementService.BulkDeleteSnapshotsAsync(request);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in bulk delete snapshots for {Count} mutual funds on date: {Date}",
+                request.MutualFundIds.Count, request.SnapshotDate);
+            return StatusCode(500, new BulkDeleteSnapshotResponseDto
+            {
+                Success = false,
+                Message = "Internal server error occurred during bulk deletion"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get available snapshot dates that exist for all selected mutual funds
+    /// </summary>
+    /// <param name="request">Request containing mutual fund IDs</param>
+    /// <returns>List of dates that have snapshots for all selected funds</returns>
+    [HttpPost("available-dates")]
+    public async Task<ActionResult<AvailableSnapshotDatesResponseDto>> GetAvailableSnapshotDates([FromBody] AvailableSnapshotDatesRequestDto request)
+    {
+        try
+        {
+            _logger.LogInformation("Getting available snapshot dates for {Count} mutual funds", request.MutualFundIds.Count);
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _snapshotManagementService.GetAvailableSnapshotDatesAsync(request);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available snapshot dates for {Count} mutual funds", request.MutualFundIds.Count);
+            return StatusCode(500, new AvailableSnapshotDatesResponseDto
+            {
+                Success = false,
+                Message = "Internal server error occurred while retrieving available dates"
+            });
+        }
+    }
 }
