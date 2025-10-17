@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { Modal, Button, Space, Alert, Row, Col, Tag, Progress, Divider, Statistic, Typography, Pagination, Table } from 'antd';
+import { useMemo, useState } from 'react';
+import { Modal, Button, Space, Alert, Row, Col, Tag, Progress, Divider, Statistic, Typography, Pagination, Table, theme } from 'antd';
 
 const { Text } = Typography;
+const { useToken } = theme;
 import { FundOutlined } from '@ant-design/icons';
 
 interface FundHoldingsModalProps {
@@ -11,6 +12,7 @@ interface FundHoldingsModalProps {
 }
 
 const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, onClose }) => {
+  const { token } = useToken();
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const sortedData = useMemo(() => (data || []).slice().sort((a: any, b: any) => b.weight - a.weight), [data]);
@@ -92,7 +94,7 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
                 sorter: (a: any, b: any) => (a.weight ?? 0) - (b.weight ?? 0),
                 render: (w: number) => (
                   <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                    <Text strong style={{ color: '#1890ff' }}>{(w ?? 0).toFixed(2)}%</Text>
+                    <Text strong style={{ color: token.colorPrimary }}>{(w ?? 0).toFixed(2)}%</Text>
                     <Progress 
                       percent={w}
                       showInfo={false}
@@ -133,7 +135,7 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
                 title="Average Weight"
                 value={(data.reduce((sum: number, h: any) => sum + h.weight, 0) / data.length).toFixed(2)}
                 suffix="%"
-                valueStyle={{ color: '#1890ff' }}
+                valueStyle={{ color: token.colorPrimary }}
               />
             </Col>
             <Col id="total-weight-stat-col" span={8}>

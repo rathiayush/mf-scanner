@@ -1,7 +1,7 @@
-import React from 'react';
-import { Space, Tag, Button, Typography } from 'antd';
+import { Space, Tag, Button, Typography, theme } from 'antd';
 
 const { Text } = Typography;
+const { useToken } = theme;
 import { EyeOutlined } from '@ant-design/icons';
 import { TopShareDto } from '../../../types';
 
@@ -9,7 +9,10 @@ interface TopSharesColumnsProps {
   onViewFundHoldings: (holdings: any[]) => void;
 }
 
-export const getTopSharesColumns = ({ onViewFundHoldings }: TopSharesColumnsProps) => [
+export const getTopSharesColumns = ({ onViewFundHoldings }: TopSharesColumnsProps) => {
+  // const { token } = useToken(); // Reserved for future dark mode enhancements
+  
+  return [
   {
     title: 'Security Name',
     dataIndex: 'securityName',
@@ -72,3 +75,4 @@ export const getTopSharesColumns = ({ onViewFundHoldings }: TopSharesColumnsProp
     ),
   },
 ];
+};

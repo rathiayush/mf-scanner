@@ -1,7 +1,7 @@
-import React from 'react';
-import { Space, Tag, Button, Typography } from 'antd';
+import { Space, Tag, Button, Typography, theme } from 'antd';
 
 const { Text } = Typography;
+const { useToken } = theme;
 import { EyeOutlined } from '@ant-design/icons';
 import { HoldingChangeDto } from '../../../types';
 import { calculateConvictionTrend, getChangeTypeColor } from '../utils/trendCalculator';
@@ -16,7 +16,10 @@ export const getHoldingChangesColumns = ({
   requestSort,
   getSortOrder,
   onViewFundDetails
-}: HoldingChangesColumnsProps) => [
+}: HoldingChangesColumnsProps) => {
+  const { token } = useToken();
+  
+  return [
   {
     title: 'Security Name',
     dataIndex: 'securityName',
@@ -236,3 +239,4 @@ export const getHoldingChangesColumns = ({
     ),
   },
 ];
+};

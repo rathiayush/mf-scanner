@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { Modal, Button, Space, Alert, Row, Col, Tag, Select, Divider, Statistic, Typography, Table, Pagination } from 'antd';
+import { useMemo, useState } from 'react';
+import { Modal, Button, Space, Alert, Row, Col, Tag, Select, Divider, Statistic, Typography, Table, Pagination, theme } from 'antd';
 const { Text } = Typography;
+const { useToken } = theme;
 import { SwapOutlined, FundOutlined } from '@ant-design/icons';
 import { getChangeTypeColor } from '../utils/trendCalculator';
 
@@ -104,6 +105,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
   onFilterChange,
   onClose 
 }) => {
+  const { token } = useToken();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -203,8 +205,8 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 value={data.weightChange?.toFixed(2) || '0.00'}
                 suffix="%"
                 valueStyle={{ 
-                  color: (data.weightChange || 0) > 0 ? '#52c41a' : 
-                         (data.weightChange || 0) < 0 ? '#ff4d4f' : '#666666'
+                  color: (data.weightChange || 0) > 0 ? token.colorSuccess : 
+                         (data.weightChange || 0) < 0 ? token.colorError : token.colorTextSecondary
                 }}
               />
             </Col>
@@ -214,8 +216,8 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 title="Quantity Change"
                 value={data.quantityChange?.toLocaleString('en-IN') || '0'}
                 valueStyle={{ 
-                  color: (data.quantityChange || 0) > 0 ? '#52c41a' : 
-                         (data.quantityChange || 0) < 0 ? '#ff4d4f' : '#666666'
+                  color: (data.quantityChange || 0) > 0 ? token.colorSuccess : 
+                         (data.quantityChange || 0) < 0 ? token.colorError : token.colorTextSecondary
                 }}
               />
             </Col>
@@ -225,8 +227,8 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 title="Value Change"
                 value={`₹${Math.abs(data.valueChange || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                 valueStyle={{ 
-                  color: (data.valueChange || 0) > 0 ? '#52c41a' : 
-                         (data.valueChange || 0) < 0 ? '#ff4d4f' : '#666666'
+                  color: (data.valueChange || 0) > 0 ? token.colorSuccess : 
+                         (data.valueChange || 0) < 0 ? token.colorError : token.colorTextSecondary
                 }}
               />
             </Col>
@@ -236,7 +238,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 title="Current Weight"
                 value={data.currentWeight?.toFixed(2) || '0.00'}
                 suffix="%"
-                valueStyle={{ color: '#1890ff' }}
+                valueStyle={{ color: token.colorPrimary }}
               />
             </Col>
           </Row>
@@ -352,7 +354,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 width: 120,
                 sorter: (a: any, b: any) => (a.quantityChange ?? 0) - (b.quantityChange ?? 0),
                 render: (v: number) => (
-                  <Text style={{ color: (v || 0) > 0 ? '#52c41a' : (v || 0) < 0 ? '#ff4d4f' : '#666' }}>
+                  <Text style={{ color: (v || 0) > 0 ? token.colorSuccess : (v || 0) < 0 ? token.colorError : token.colorTextSecondary }}>
                     {v ? (v > 0 ? '+' : '') + v.toLocaleString('en-IN') : '-'}
                   </Text>
                 )
@@ -381,10 +383,10 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 sorter: (a: any, b: any) => (a.valueChange ?? 0) - (b.valueChange ?? 0),
                 render: (v: number | null | undefined) => {
                   if (v == null) {
-                    return <Text style={{ color: '#666' }}>-</Text>;
+                    return <Text style={{ color: token.colorTextSecondary }}>-</Text>;
                   }
                   const num = Number(v);
-                  const color = num > 0 ? '#52c41a' : num < 0 ? '#ff4d4f' : '#666';
+                  const color = num > 0 ? token.colorSuccess : num < 0 ? token.colorError : token.colorTextSecondary;
                   const sign = num > 0 ? '+' : num < 0 ? '-' : '';
                   return (
                     <Text style={{ color }}>
@@ -414,7 +416,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
                 width: 120,
                 sorter: (a: any, b: any) => (a.weightChange ?? 0) - (b.weightChange ?? 0),
                 render: (v: number) => (
-                  <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
+                  <Text style={{ color: v > 0 ? token.colorSuccess : v < 0 ? token.colorError : token.colorTextSecondary }}>
                     {v > 0 ? '+' : ''}{v.toFixed(2)}
                   </Text>
                 )

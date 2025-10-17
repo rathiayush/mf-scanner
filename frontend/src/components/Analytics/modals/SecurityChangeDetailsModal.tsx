@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { Modal, Button, Space, Row, Col, Tag, Select, Typography, Table, Pagination } from 'antd';
+import { useState, useMemo } from 'react';
+import { Modal, Button, Space, Row, Col, Tag, Select, Typography, Table, Pagination, theme } from 'antd';
 import { SecurityMonthlyChangeDto, SecurityFundChangeDto } from '../../../types';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
+const { useToken } = theme;
 
 interface SecurityChangeDetailsModalProps {
   visible: boolean;
@@ -12,6 +13,7 @@ interface SecurityChangeDetailsModalProps {
 }
 
 const SecurityChangeDetailsModal: React.FC<SecurityChangeDetailsModalProps> = ({ visible, data, onClose }) => {
+  const { token } = useToken();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filterType, setFilterType] = useState('all');

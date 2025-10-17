@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, theme } from 'antd';
 import AppLayout from './components/Layout';
 import { AnalysePage, MutualFundListPage } from './pages';
 import UploadV2 from './components/Upload/UploadV2';
@@ -9,7 +9,12 @@ import SnapshotManagementPage from './pages/SnapshotManagementPage';
 import { SecurityAnalytics } from './components/Analytics';
 import BackgroundProcessingPage from './components/BackgroundProcessing/BackgroundProcessingPage';
 
-const AppContent: React.FC = () => {
+interface AppContentProps {
+  isDarkMode: boolean;
+  toggleTheme: () => void;
+}
+
+const AppContent: React.FC<AppContentProps> = ({ isDarkMode, toggleTheme }) => {
   const location = useLocation();
   
   // Map routes to menu keys
@@ -27,7 +32,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <AppLayout selectedKey={getSelectedKey()}>
+    <AppLayout selectedKey={getSelectedKey()} isDarkMode={isDarkMode} toggleTheme={toggleTheme}>
       <Routes>
         <Route path="/" element={<Navigate to="/analyze" replace />} />
         <Route path="/analyze" element={<AnalysePage />} />
@@ -45,73 +50,39 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const { darkAlgorithm, defaultAlgorithm } = theme;
+
   return (
     <BrowserRouter>
       <ConfigProvider
         theme={{
+          algorithm: isDarkMode ? darkAlgorithm : defaultAlgorithm,
           token: {
             colorPrimary: '#1890ff',
             borderRadius: 8,
-          colorBgContainer: '#ffffff',
-          colorText: 'rgba(0, 0, 0, 0.85)',
-          colorTextSecondary: 'rgba(0, 0, 0, 0.65)',
-          colorBorder: '#d9d9d9',
-          colorBorderSecondary: '#f0f0f0',
-          colorBgLayout: '#f5f5f5',
-          colorBgElevated: '#ffffff',
-          colorPrimaryHover: '#40a9ff',
-          colorPrimaryActive: '#096dd9',
-          colorError: '#ff4d4f',
-          colorWarning: '#faad14',
-          colorSuccess: '#52c41a',
-          colorInfo: '#1890ff',
-          fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-          fontSize: 14,
-          lineHeight: 1.5715,
-          controlHeight: 32,
-          controlHeightSM: 24,
-          controlHeightLG: 40,
-        },
-        components: {
-          Layout: {
-            headerBg: '#fff',
-            headerHeight: 64,
-            headerPadding: '0 24px',
-            headerColor: 'rgba(0, 0, 0, 0.85)',
-            siderBg: '#fff',
-            triggerBg: '#f0f0f0',
-            triggerColor: 'rgba(0, 0, 0, 0.65)',
-            bodyBg: '#fff',
+            fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            fontSize: 14,
+            lineHeight: 1.5715,
+            controlHeight: 32,
+            controlHeightSM: 24,
+            controlHeightLG: 40,
           },
-          Menu: {
-            itemBg: '#fff',
-            itemColor: 'rgba(0, 0, 0, 0.85)',
-            itemHoverBg: '#f5f5f5',
-            itemSelectedBg: '#e6f7ff',
-            itemSelectedColor: '#1890ff',
-            itemActiveBg: '#f0f0f0',
-            subMenuItemBg: '#fff',
-            itemHoverColor: '#1890ff',
-          },
-          Button: {
-            primaryColor: '#fff',
-          },
-          Table: {
-            headerBg: '#fafafa',
-            headerColor: 'rgba(0, 0, 0, 0.85)',
-            rowHoverBg: '#f5f5f5',
-            borderColor: '#f0f0f0',
-            headerSplitColor: 'transparent',
-          },
-          Card: {
-            paddingLG: 24,
-            borderRadiusLG: 8,
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
-          },
-        },
-      }}
-    >
-        <AppContent />
+        }}
+      >
+        <AppContent isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
       </ConfigProvider>
     </BrowserRouter>
   );

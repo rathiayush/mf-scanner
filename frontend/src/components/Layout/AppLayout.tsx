@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Layout, Typography, Space, Button, Menu } from 'antd';
-import { FileTextOutlined, ApiOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, PlayCircleOutlined, SettingOutlined } from '@ant-design/icons';
+import { Layout, Typography, Space, Button, Menu, Switch } from 'antd';
+import { FileTextOutlined, ApiOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, PlayCircleOutlined, SettingOutlined, BulbOutlined, BulbFilled } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -10,9 +10,11 @@ interface AppLayoutProps {
   children: React.ReactNode;
   selectedKey?: string;
   onMenuSelect?: (key: string) => void;
+  isDarkMode: boolean;
+  toggleTheme: () => void;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) => {
+const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2', isDarkMode, toggleTheme }) => {
   const menuItems = [
     {
       key: '2',
@@ -55,7 +57,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
   return (
     <Layout id="app-layout-container" style={{ minHeight: '100vh' }}>
       <Header id="app-layout-header" style={{ 
-        background: '#fff',
         padding: '0 24px',
         display: 'flex',
         alignItems: 'center',
@@ -68,13 +69,24 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
               Mutual Fund Scanner
             </Title>
           </Space>
-          <Button 
-            id="app-layout-api-docs-btn"
-            type="primary" 
-            icon={<ApiOutlined />}
-          >
-            <Link to="https://localhost:7052/swagger/index.html" target="_blank">API Documentation</Link>
-          </Button>
+          <Space>
+            <Space align="center" style={{ marginRight: 16 }}>
+              {isDarkMode ? <BulbFilled style={{ fontSize: 16, color: '#faad14' }} /> : <BulbOutlined style={{ fontSize: 16 }} />}
+              <Switch 
+                checked={isDarkMode}
+                onChange={toggleTheme}
+                checkedChildren="Dark"
+                unCheckedChildren="Light"
+              />
+            </Space>
+            <Button 
+              id="app-layout-api-docs-btn"
+              type="primary" 
+              icon={<ApiOutlined />}
+            >
+              <Link to="https://localhost:7052/swagger/index.html" target="_blank">API Documentation</Link>
+            </Button>
+          </Space>
         </Space>
       </Header>
       
@@ -83,21 +95,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
          
           <Menu
             id="app-layout-menu"
-            theme="light"
+            theme={isDarkMode ? 'dark' : 'light'}
             defaultSelectedKeys={[selectedKey]}
             selectedKeys={[selectedKey]}
             mode="inline"
-            style={{
-              borderRight: '1px solid #f0f0f0',
-              background: '#fff'
-            }}
             items={menuItems}
           />
         </Sider>
         
         <Layout id="app-layout-content-wrapper" style={{ 
           padding: '24px',
-          background: '#f0f2f5',
           minHeight: 'calc(100vh - 128px)'
         }}>
           <Content id="app-layout-content" style={{ 
@@ -106,7 +113,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
             minHeight: '100%',
           }}>
             <div id="app-layout-content-inner" style={{
-              background: '#fff',
               borderRadius: '8px',
               boxShadow: '0 1px 2px 0 rgba(0,0,0,0.03)',
               padding: '24px',
@@ -121,8 +127,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2' }) =>
       
       <Footer id="app-layout-footer" style={{ 
         textAlign: 'center',
-        background: '#fff',
-        borderTop: '1px solid #f0f0f0',
         padding: '16px 50px'
       }}>
         <span id="app-layout-footer-text">Mutual Fund Scanner ©2024 - Upload and analyze mutual fund portfolio files</span>

@@ -1,13 +1,15 @@
-import React from 'react';
-import { Row, Col, Card, Statistic, Alert, Typography } from 'antd';
+import { useMemo } from 'react';
+import { Row, Col, Card, Statistic, Alert, Typography, theme } from 'antd';
 
 const { Text } = Typography;
+const { useToken } = theme;
 
 interface PortfolioSnapshotsTabProps {
   snapshots: any[];
 }
 
 const PortfolioSnapshotsTab: React.FC<PortfolioSnapshotsTabProps> = ({ snapshots }) => {
+  const { token } = useToken();
   if (snapshots.length === 0) {
     return (
       <Alert
@@ -54,7 +56,7 @@ const PortfolioSnapshotsTab: React.FC<PortfolioSnapshotsTabProps> = ({ snapshots
                   </div>
                 )) : 
                 <div style={{ marginTop: 4 }}>
-                  <Text style={{ fontSize: '12px', color: '#999' }}>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
                     No holdings data available
                   </Text>
                 </div>
