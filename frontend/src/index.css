@@ -8,7 +8,8 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  /* Remove hardcoded background - let Ant Design handle it */
+  /* Force background inheritance for sticky headers in dark mode */
+  background-color: inherit !important;
 }
 
 /* When tables are inside a modal or card with overflow, make header shadow subtle */
@@ -19,7 +20,7 @@
   right: 0;
   bottom: 0;
   height: 1px;
-  /* Remove hardcoded background - let Ant Design handle it */
+  opacity: 0.1;
 }
 * {
   margin: 0;

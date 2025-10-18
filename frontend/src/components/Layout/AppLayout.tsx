@@ -91,7 +91,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2', isDa
       </Header>
       
       <Layout id="app-layout-main">
-        <Sider id="app-layout-sider" collapsible>
+        <Sider id="app-layout-sider" collapsible theme={isDarkMode ? 'dark' : 'light'}>
          
           <Menu
             id="app-layout-menu"
