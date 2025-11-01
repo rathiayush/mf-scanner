@@ -1,10 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Modal, Button, Space, Row, Col, Tag, Select, Typography, Table, Pagination, theme } from 'antd';
+import { Modal, Button, Space, Row, Col, Tag, Select, Typography, Table, Pagination, Statistic } from 'antd';
 import { SecurityMonthlyChangeDto, SecurityFundChangeDto } from '../../../types';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
-const { useToken } = theme;
 
 interface SecurityChangeDetailsModalProps {
   visible: boolean;
@@ -13,7 +12,6 @@ interface SecurityChangeDetailsModalProps {
 }
 
 const SecurityChangeDetailsModal: React.FC<SecurityChangeDetailsModalProps> = ({ visible, data, onClose }) => {
-  const { token } = useToken();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filterType, setFilterType] = useState('all');
@@ -89,6 +87,40 @@ const SecurityChangeDetailsModal: React.FC<SecurityChangeDetailsModalProps> = ({
     >
       {data && (
         <div id="security-change-details-modal-content">
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={6}>
+              <Statistic
+                title="Total Current Value"
+                value={(data.totalCurrentValue / 10000000).toFixed(2)}
+                suffix="Cr"
+                precision={2}
+              />
+            </Col>
+            <Col span={6}>
+              <Statistic
+                title="Total Value Change"
+                value={(data.totalValueChange / 10000000).toFixed(2)}
+                suffix="Cr"
+                precision={2}
+                valueStyle={{ color: data.totalValueChange > 0 ? '#3f8600' : data.totalValueChange < 0 ? '#cf1322' : undefined }}
+              />
+            </Col>
+            <Col span={6}>
+              <Statistic
+                title="Impact Ratio"
+                value={data.valueImpactRatio.toFixed(2)}
+                suffix="%"
+                precision={2}
+                valueStyle={{ color: data.valueImpactRatio > 0 ? '#3f8600' : data.valueImpactRatio < 0 ? '#cf1322' : undefined }}
+              />
+            </Col>
+            <Col span={6}>
+              <Statistic
+                title="Mutual Funds"
+                value={data.totalMutualFundsCount}
+              />
+            </Col>
+          </Row>
           <Row id="security-change-details-modal-controls-row" justify="space-between" align="middle" style={{ marginBottom: 16 }}>
             <Col id="security-change-details-modal-filter-col">
                 <Space id="security-change-details-modal-filter-space">

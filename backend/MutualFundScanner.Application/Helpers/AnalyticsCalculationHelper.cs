@@ -344,6 +344,7 @@ public class AnalyticsCalculationHelper
                     CurrentValue = totalCurrentValue,
                     ValueChange = totalValueChange,
                     TotalMarketValue = totalCurrentValue,
+                    ValueImpactRatio = totalCurrentValue != 0 ? (totalValueChange / totalCurrentValue) : 0,
                     ChangeType = overallChangeType,
                     MutualFundNames = changesForIsin.Select(c => c.FundName).Distinct().OrderBy(name => name).ToList(),
                     FundChangeDetails = fundChangeDetails.OrderBy(fd => fd.MutualFundName).ToList(),

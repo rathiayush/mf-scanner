@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MutualFundScanner.Application.DTOs;
 using MutualFundScanner.Application.Interfaces;
 
@@ -97,6 +98,7 @@ public class SnapshotManagementController : ControllerBase
     /// <param name="request">Request containing mutual fund ID and snapshot date</param>
     /// <returns>Deletion result with summary of deleted records</returns>
     [HttpDelete("snapshot")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<DeleteSnapshotResponseDto>> DeleteSnapshot([FromBody] DeleteSnapshotRequestDto request)
     {
         try
@@ -136,6 +138,7 @@ public class SnapshotManagementController : ControllerBase
     /// <param name="request">Request containing mutual fund IDs and snapshot date</param>
     /// <returns>Bulk deletion result with detailed summary</returns>
     [HttpDelete("snapshots/bulk")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<BulkDeleteSnapshotResponseDto>> BulkDeleteSnapshots([FromBody] BulkDeleteSnapshotRequestDto request)
     {
         try

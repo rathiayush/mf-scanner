@@ -44,6 +44,7 @@ public class HoldingChangeDto
     public decimal CurrentValue { get; set; }
     public decimal ValueChange { get; set; }
     public decimal TotalMarketValue { get; set; }
+    public decimal ValueImpactRatio { get; set; }
     public string ChangeType { get; set; } = string.Empty; // Added, Removed, Increased, Decreased, Mixed
     public List<string> MutualFundNames { get; set; } = new();
     public List<FundChangeDetailDto> FundChangeDetails { get; set; } = new(); // Details for each fund's contribution
@@ -159,6 +160,8 @@ public class SecurityMonthlyChangeDto
     public decimal TotalAbsoluteWeightChange { get; set; }
     public decimal TotalQuantityChange { get; set; }
     public decimal TotalValueChange { get; set; }
+    public decimal TotalCurrentValue { get; set; } // Total current value across all funds
+    public decimal ValueImpactRatio { get; set; } // ValueChange / TotalCurrentValue
     public List<SecurityFundChangeDto> AllFundChanges { get; set; } = new();
 }
 

@@ -97,6 +97,7 @@ const HoldingChangesControls: React.FC<HoldingChangesControlsProps> = ({
         <Option value="valueChange">Value Change</Option>
         <Option value="changeType">Change Type</Option>
         <Option value="mutualFundsCount">Mutual Funds Count</Option>
+        <Option value="valueImpactRatio">Value Impact Ratio</Option>
       </Select>
       
       <Select

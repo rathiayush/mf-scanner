@@ -218,7 +218,31 @@ const SecurityAnalytics: React.FC = () => {
       width: 140,
       render: (change: number) => (
         <Text type={change > 0 ? 'success' : change < 0 ? 'danger' : undefined}>
-          {change > 0 ? '+' : ''}{(change / 100)?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) ?? '0.00'}
+          {change > 0 ? '+' : ''}{(change / 10000000)?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) ?? '0.00'}
+        </Text>
+      ),
+      sorter: true,
+    },
+    {
+      title: 'Total Value (Cr)',
+      dataIndex: 'totalCurrentValue',
+      key: 'totalCurrentValue',
+      width: 140,
+      render: (value: number) => (
+        <Text strong>
+          {(value / 10000000)?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) ?? '0.00'}
+        </Text>
+      ),
+      sorter: true,
+    },
+    {
+      title: 'Impact Ratio %',
+      dataIndex: 'valueImpactRatio',
+      key: 'valueImpactRatio',
+      width: 120,
+      render: (ratio: number) => (
+        <Text type={ratio > 0 ? 'success' : ratio < 0 ? 'danger' : undefined}>
+          {ratio > 0 ? '+' : ''}{ratio?.toFixed(2) ?? '0.00'}%
         </Text>
       ),
       sorter: true,

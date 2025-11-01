@@ -19,6 +19,7 @@ public class MutualFundContext : DbContext
     public DbSet<HoldingChange> HoldingChanges { get; set; }
     public DbSet<ConcreteMutualFund> ConcreteMutualFunds { get; set; }
     public DbSet<BackgroundJob> BackgroundJobs { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -126,6 +127,22 @@ public class MutualFundContext : DbContext
             entity.Property(e => e.Notes).HasMaxLength(1000);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // User configuration
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Username).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.PasswordHash).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasOne(e => e.CreatedBy)
+                  .WithMany()
+                  .HasForeignKey(e => e.CreatedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
         });
 
         // Apply entity configurations

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Layout, Typography, Space, Button, Menu, Switch } from 'antd';
-import { FileTextOutlined, ApiOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, PlayCircleOutlined, SettingOutlined, BulbOutlined, BulbFilled } from '@ant-design/icons';
+import { Layout, Typography, Space, Button, Menu, Switch, Dropdown, Avatar } from 'antd';
+import { FileTextOutlined, ApiOutlined, BarChartOutlined, UnorderedListOutlined, RobotOutlined, DatabaseOutlined, StockOutlined, PlayCircleOutlined, SettingOutlined, BulbOutlined, BulbFilled, UserOutlined, LogoutOutlined, TeamOutlined } from '@ant-design/icons';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -15,6 +16,8 @@ interface AppLayoutProps {
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2', isDarkMode, toggleTheme }) => {
+  const { user, logout, isAdmin } = useAuth();
+
   const menuItems = [
     {
       key: '2',
@@ -31,26 +34,63 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2', isDa
       icon: <UnorderedListOutlined />,
       label: <Link to="/mutual-funds">Mutual Fund List</Link>,
     },
-    {
+    ...(isAdmin ? [{
       key: '7',
       icon: <DatabaseOutlined />,
       label: <Link to="/concrete-funds">Concrete Mutual Funds</Link>,
-    },
-    // Portfolio Holdings menu item removed
+    }] : []),
     {
       key: '10',
       icon: <SettingOutlined />,
       label: <Link to="/snapshot-management">Snapshot Management</Link>,
     },
-    {
+    ...(isAdmin ? [{
       key: '6',
       icon: <RobotOutlined />,
       label: <Link to="/upload-v2">Smart Upload V2</Link>,
-    },
-    {
+    }] : []),
+    ...(isAdmin ? [{
       key: '9',
       icon: <PlayCircleOutlined />,
       label: <Link to="/background-processing">Background Processing</Link>,
+    }] : []),
+    ...(isAdmin ? [{
+      key: '11',
+      icon: <TeamOutlined />,
+      label: <Link to="/user-management">User Management</Link>,
+    }] : []),
+  ];
+
+  const userMenuItems = [
+    {
+      key: 'user-info',
+      label: (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{user?.username}</div>
+          <div style={{ fontSize: '12px', color: '#888' }}>{user?.email}</div>
+          <div style={{ fontSize: '11px', marginTop: '4px' }}>
+            <span style={{ 
+              padding: '2px 8px', 
+              borderRadius: '4px', 
+              background: user?.role === 'Admin' ? '#1890ff' : '#52c41a',
+              color: 'white'
+            }}>
+              {user?.role}
+            </span>
+          </div>
+        </div>
+      ),
+      disabled: true,
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: 'logout',
+      label: 'Logout',
+      icon: <LogoutOutlined />,
+      onClick: logout,
+      danger: true,
     },
   ];
 
@@ -86,6 +126,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2', isDa
             >
               <Link to="https://localhost:7052/swagger/index.html" target="_blank">API Documentation</Link>
             </Button>
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
+              <Button type="text" style={{ height: 'auto', padding: '4px 8px' }}>
+                <Space>
+                  <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+                  <span style={{ color: isDarkMode ? '#fff' : '#000' }}>{user?.username}</span>
+                </Space>
+              </Button>
+            </Dropdown>
           </Space>
         </Space>
       </Header>

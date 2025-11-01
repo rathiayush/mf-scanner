@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MutualFundScanner.Application.DTOs;
 using MutualFundScanner.Application.Interfaces;
 
@@ -6,6 +7,7 @@ namespace MutualFundScanner.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
 public class ConcreteMutualFundController : ControllerBase
 {
     private readonly IConcreteMutualFundService _service;

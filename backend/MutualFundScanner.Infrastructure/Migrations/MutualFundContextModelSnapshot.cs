@@ -487,6 +487,60 @@ namespace MutualFundScanner.Infrastructure.Migrations
                     b.ToTable("ProcessingLogs");
                 });
 
+            modelBuilder.Entity("MutualFundScanner.Domain.Entities.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastLoginDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
             modelBuilder.Entity("MutualFundScanner.Domain.Entities.HoldingChange", b =>
                 {
                     b.HasOne("MutualFundScanner.Domain.Entities.MutualFund", "MutualFund")
@@ -556,6 +610,16 @@ namespace MutualFundScanner.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("PortfolioFile");
+                });
+
+            modelBuilder.Entity("MutualFundScanner.Domain.Entities.User", b =>
+                {
+                    b.HasOne("MutualFundScanner.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("MutualFundScanner.Domain.Entities.MutualFund", b =>

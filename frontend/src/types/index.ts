@@ -266,6 +266,7 @@ export interface HoldingChangeDto {
   currentValue: number;
   valueChange: number;
   totalMarketValue: number;
+  valueImpactRatio: number;
   changeType: string; // Added, Removed, Increased, Decreased, Mixed
   mutualFundNames: string[];
   fundChangeDetails: FundChangeDetailDto[];
@@ -427,6 +428,8 @@ export interface SecurityMonthlyChangeDto {
   totalAbsoluteWeightChange: number;
   totalQuantityChange: number;
   totalValueChange: number;
+  totalCurrentValue: number;
+  valueImpactRatio: number;
   allFundChanges: SecurityFundChangeDto[];
 }
 

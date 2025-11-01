@@ -32,6 +32,7 @@ import {
 } from '../types';
 import { mutualFundService } from '../services/api';
 import { snapshotManagementService } from '../services/snapshotManagementService';
+import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -49,6 +50,8 @@ interface TableParams {
 }
 
 const SnapshotManagementPage: React.FC = () => {
+  const { isAdmin } = useAuth();
+
   // State for mutual fund selection
   const [mutualFunds, setMutualFunds] = useState<MutualFundDto[]>([]);
   const [selectedMutualFund, setSelectedMutualFund] = useState<number | null>(null);
@@ -468,22 +471,24 @@ const SnapshotManagementPage: React.FC = () => {
               >
                 Refresh
               </Button>
-              <Popconfirm
-                title="Delete Snapshot"
-                description="Are you sure you want to delete this snapshot? This will permanently remove all portfolio holdings, files, and related holding changes."
-                onConfirm={() => setDeleteModalVisible(true)}
-                okText="Yes"
-                cancelText="No"
-                icon={<ExclamationCircleOutlined style={{ color: 'red' }} />}
-              >
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  loading={deletingSnapshot}
+              {isAdmin && (
+                <Popconfirm
+                  title="Delete Snapshot"
+                  description="Are you sure you want to delete this snapshot? This will permanently remove all portfolio holdings, files, and related holding changes."
+                  onConfirm={() => setDeleteModalVisible(true)}
+                  okText="Yes"
+                  cancelText="No"
+                  icon={<ExclamationCircleOutlined style={{ color: 'red' }} />}
                 >
-                  Delete Snapshot
-                </Button>
-              </Popconfirm>
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    loading={deletingSnapshot}
+                  >
+                    Delete Snapshot
+                  </Button>
+                </Popconfirm>
+              )}
             </Space>
           }
         >
@@ -593,7 +598,7 @@ const SnapshotManagementPage: React.FC = () => {
         </div>
       ),
     },
-    {
+    ...(isAdmin ? [{
       key: '2',
       label: 'Bulk Delete',
       children: (
@@ -709,7 +714,7 @@ const SnapshotManagementPage: React.FC = () => {
           </Modal>
         </div>
       ),
-    },
+    }] : []),
   ];
 
   return (

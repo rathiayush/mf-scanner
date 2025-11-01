@@ -1,7 +1,6 @@
-import { Space, Tag, Button, Typography, theme } from 'antd';
+import { Space, Tag, Button, Typography } from 'antd';
 
 const { Text } = Typography;
-const { useToken } = theme;
 import { EyeOutlined } from '@ant-design/icons';
 import { HoldingChangeDto } from '../../../types';
 import { calculateConvictionTrend, getChangeTypeColor } from '../utils/trendCalculator';
@@ -17,7 +16,6 @@ export const getHoldingChangesColumns = ({
   getSortOrder,
   onViewFundDetails
 }: HoldingChangesColumnsProps) => {
-  const { token } = useToken();
   
   return [
   {
@@ -166,6 +164,22 @@ export const getHoldingChangesColumns = ({
       return (
         <Text>
           ₹{valueInCr.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+        </Text>
+      );
+    },
+  },
+  {
+    title: 'Value Impact Ratio',
+    dataIndex: 'valueImpactRatio',
+    key: 'valueImpactRatio',
+    width: 150,
+    render: (ratio: number) => {
+      if (ratio === undefined || ratio === null) return '-';
+      const pct = ratio * 100;
+      const type = pct > 0 ? 'success' : pct < 0 ? 'danger' : undefined;
+      return (
+        <Text type={type as any}>
+          {pct > 0 ? '+' : ''}{pct.toFixed(2)}%
         </Text>
       );
     },

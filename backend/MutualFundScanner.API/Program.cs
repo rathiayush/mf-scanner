@@ -1,12 +1,18 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MutualFundScanner.Infrastructure.Data;
 using MutualFundScanner.Application.Interfaces;
 using MutualFundScanner.Application.Services;
+using MutualFundScanner.Application.DTOs;
 using MutualFundScanner.Infrastructure.UnitOfWork;
 using UnitOfWork = MutualFundScanner.Infrastructure.UnitOfWork.UnitOfWork;
 using MutualFundScanner.Infrastructure.Repositories;
 using Serilog;
 using Serilog.Events;
+using MutualFundScanner.Application.DTOs;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +52,31 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "API for scanning and processing mutual fund portfolio files"
     });
+    
+    // Add JWT authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token.",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 // Add Entity Framework
@@ -62,6 +93,7 @@ builder.Services.AddScoped<ISecurityAnalyticsService, SecurityAnalyticsService>(
 builder.Services.AddScoped<IBackgroundProcessingService, BackgroundProcessingService>();
 builder.Services.AddScoped<IExcelReportService, ExcelReportService>();
 builder.Services.AddScoped<ISnapshotManagementService, SnapshotManagementService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Register Repository Services
 builder.Services.AddScoped<IConcreteMutualFundRepository, ConcreteMutualFundRepository>();
@@ -73,6 +105,31 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<MutualFundScanner.Application.Helpers.AnalyticsCalculationHelper>();
 builder.Services.AddScoped<MutualFundScanner.Application.Helpers.DataValidationHelper>();
 builder.Services.AddScoped<MutualFundScanner.Application.Interfaces.ISnapshotFetchingHelper, MutualFundScanner.Application.Helpers.SnapshotFetchingHelper>();
+
+// Add JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"] ?? "MutualFundScanner",
+        ValidAudience = jwtSettings["Audience"] ?? "MutualFundScannerUsers",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -117,6 +174,7 @@ app.UseCors("AllowNetwork");
 
 // app.UseHttpsRedirection(); // Disabled for network access
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -126,6 +184,36 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<MutualFundContext>();
     await MutualFundScanner.Infrastructure.Data.Seeders.DatabaseSeeder.SeedAsync(context);
+
+    // Seed initial admin/user login if not exists
+    try
+    {
+        var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
+        var db = scope.ServiceProvider.GetRequiredService<MutualFundContext>();
+
+        var seedEmail = "ayushrathi@gmail.com";
+        var seedUsername = "ayushrathi";
+        var seedPassword = "User@1785";
+        var userExists = await db.Users.AnyAsync(u => u.Email == seedEmail);
+        if (!userExists)
+        {
+            var createDto = new CreateUserRequestDto
+            {
+                Username = seedUsername,
+                Email = seedEmail,
+                Password = seedPassword,
+                Role = "Admin",
+                Notes = "Seeded user"
+            };
+            // createdByUserId: 0 indicates system seeding
+            await authService.CreateUserAsync(createDto, 0);
+            Log.Information("Seeded initial user {Email}", seedEmail);
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Failed to seed initial user");
+    }
 }
 
 // For IIS Express, we'll use the default configuration

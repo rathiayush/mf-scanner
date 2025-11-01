@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MutualFundScanner.Application.DTOs;
 using MutualFundScanner.Application.Interfaces;
 using MutualFundScanner.Application.Services;
@@ -7,6 +8,7 @@ namespace MutualFundScanner.API.Controllers;
 
 [ApiController]
 [Route("api/uploadv2")]
+[Authorize(Roles = "Admin")]
 public class UploadV2Controller : ControllerBase
 {
     private readonly IStreamlinedUploadService _uploadService;

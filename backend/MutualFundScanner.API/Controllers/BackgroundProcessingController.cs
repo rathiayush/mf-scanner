@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MutualFundScanner.Application.DTOs;
 using MutualFundScanner.Application.Interfaces;
 using MutualFundScanner.Domain.Enums;
@@ -7,6 +8,7 @@ namespace MutualFundScanner.API.Controllers;
 
 [ApiController]
 [Route("api/background-processing")]
+[Authorize(Roles = "Admin")]
 public class BackgroundProcessingController : ControllerBase
 {
     private readonly IBackgroundProcessingService _backgroundProcessingService;

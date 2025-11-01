@@ -341,6 +341,10 @@ public class SecurityAnalyticsService : ISecurityAnalyticsService
                     })
                     .ToList();
 
+                var totalCurrentValue = fundChanges.Sum(fc => fc.CurrentValue);
+                var totalValueChange = fundChanges.Sum(fc => fc.ValueChange);
+                var valueImpactRatio = totalCurrentValue != 0 ? (totalValueChange / totalCurrentValue) * 100 : 0;
+
                 monthlyChanges.Add(new SecurityMonthlyChangeDto
                 {
                     MonthYear = currentMonth,
@@ -348,7 +352,9 @@ public class SecurityAnalyticsService : ISecurityAnalyticsService
                     TotalMutualFundsCount = fundChanges.Count,
                     TotalAbsoluteWeightChange = fundChanges.Sum(fc => Math.Abs(fc.WeightChange)),
                     TotalQuantityChange = fundChanges.Sum(fc => fc.QuantityChange),
-                    TotalValueChange = fundChanges.Sum(fc => fc.ValueChange),
+                    TotalValueChange = totalValueChange,
+                    TotalCurrentValue = totalCurrentValue,
+                    ValueImpactRatio = valueImpactRatio,
                     AllFundChanges = fundChanges.OrderBy(fc => fc.MutualFundName).ToList()
                 });
             }

@@ -292,7 +292,7 @@ public class AnalyticsService : IAnalyticsService
         }
 
         // Determine if we can use database sorting or need in-memory sorting
-        var calculatedFields = new[] { "weightchange", "quantitychange", "valuechange", "mutualfundscount", "previousweight", "currentweight", "changetype" };
+        var calculatedFields = new[] { "weightchange", "quantitychange", "valuechange", "mutualfundscount", "previousweight", "currentweight", "changetype", "valueimpactratio" };
         var useInMemorySorting = string.IsNullOrEmpty(sortBy) || calculatedFields.Contains(sortBy.ToLower());
 
         if (useInMemorySorting)
@@ -377,6 +377,10 @@ public class AnalyticsService : IAnalyticsService
             "mutualfundscount" => isAscending 
                 ? changes.OrderBy(c => c.MutualFundNames.Count).ToList()
                 : changes.OrderByDescending(c => c.MutualFundNames.Count).ToList(),
+            
+            "valueimpactratio" => isAscending 
+                ? changes.OrderBy(c => c.ValueImpactRatio).ToList()
+                : changes.OrderByDescending(c => c.ValueImpactRatio).ToList(),
             
             _ => changes.OrderByDescending(c => Math.Abs(c.QuantityChange)).ToList() // Default fallback
         };

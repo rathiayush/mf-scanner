@@ -29,6 +29,7 @@ import {
   WarningOutlined
 } from '@ant-design/icons';
 import { mutualFundService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   MutualFundDto,
   CreateMutualFundDto,
@@ -58,6 +59,7 @@ interface MutualFundFormData {
 }
 
 const MutualFundManagement: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [funds, setFunds] = useState<PagedResult<MutualFundDto>>({
     data: [],
     totalCount: 0,
@@ -340,18 +342,20 @@ const MutualFundManagement: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => showModal(record)}
           />
-          <Popconfirm
-            title="Are you sure you want to delete this mutual fund?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-            />
-          </Popconfirm>
+          {isAdmin && (
+            <Popconfirm
+              title="Are you sure you want to delete this mutual fund?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -403,14 +407,16 @@ const MutualFundManagement: React.FC = () => {
             title="Search & Filter"
             extra={
               <Space>
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={showHardDeleteModal}
-                  disabled={selectedRowKeys.length === 0}
-                >
-                  Hard Delete ({selectedRowKeys.length})
-                </Button>
+                {isAdmin && (
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={showHardDeleteModal}
+                    disabled={selectedRowKeys.length === 0}
+                  >
+                    Hard Delete ({selectedRowKeys.length})
+                  </Button>
+                )}
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
@@ -476,7 +482,7 @@ const MutualFundManagement: React.FC = () => {
               columns={columns}
               dataSource={funds.data}
               rowKey="id"
-              rowSelection={rowSelection}
+              rowSelection={isAdmin ? rowSelection : undefined}
               loading={loading}
               pagination={{
                 current: funds.page,
@@ -601,63 +607,65 @@ const MutualFundManagement: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* Hard Delete Confirmation Modal */}
-      <Modal
-        title="Hard Delete Mutual Funds"
-        open={hardDeleteModalVisible}
-        onOk={handleHardDelete}
-        onCancel={handleHardDeleteModalCancel}
-        width={600}
-        confirmLoading={hardDeleteLoading}
-        okButtonProps={{
-          danger: true,
-          disabled: !confirmDeletion,
-        }}
-        okText="Delete Permanently"
-      >
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Alert
-            message="Warning: Permanent Deletion"
-            description="This action will permanently delete the selected mutual funds and all associated data including portfolio files, snapshots, holdings, and holding changes. This action cannot be undone."
-            type="warning"
-            showIcon
-            icon={<WarningOutlined />}
-          />
-          
-          <div>
-            <Text strong>You are about to delete {selectedRowKeys.length} mutual fund(s):</Text>
-            <div style={{ marginTop: 8, maxHeight: 120, overflowY: 'auto', border: '1px solid #d9d9d9', borderRadius: 4, padding: 8 }}>
-              {funds.data
-                .filter(fund => selectedRowKeys.includes(fund.id))
-                .map(fund => (
-                  <div key={fund.id} style={{ marginBottom: 4 }}>
-                    <Text>{fund.fundName} ({fund.fundCode})</Text>
-                  </div>
-                ))}
-            </div>
-          </div>
-          
-          <Form layout="vertical">
-            <Form.Item label="Reason for deletion (optional):">
-              <Input.TextArea
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                placeholder="Please provide a reason for this deletion..."
-                rows={3}
-              />
-            </Form.Item>
+      {/* Hard Delete Confirmation Modal (Admin only) */}
+      {isAdmin && (
+        <Modal
+          title="Hard Delete Mutual Funds"
+          open={hardDeleteModalVisible}
+          onOk={handleHardDelete}
+          onCancel={handleHardDeleteModalCancel}
+          width={600}
+          confirmLoading={hardDeleteLoading}
+          okButtonProps={{
+            danger: true,
+            disabled: !confirmDeletion,
+          }}
+          okText="Delete Permanently"
+        >
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Alert
+              message="Warning: Permanent Deletion"
+              description="This action will permanently delete the selected mutual funds and all associated data including portfolio files, snapshots, holdings, and holding changes. This action cannot be undone."
+              type="warning"
+              showIcon
+              icon={<WarningOutlined />}
+            />
             
-            <Form.Item>
-              <Checkbox
-                checked={confirmDeletion}
-                onChange={(e) => setConfirmDeletion(e.target.checked)}
-              >
-                <Text strong>I understand that this action is permanent and cannot be undone.</Text>
-              </Checkbox>
-            </Form.Item>
-          </Form>
-        </Space>
-      </Modal>
+            <div>
+              <Text strong>You are about to delete {selectedRowKeys.length} mutual fund(s):</Text>
+              <div style={{ marginTop: 8, maxHeight: 120, overflowY: 'auto', border: '1px solid #d9d9d9', borderRadius: 4, padding: 8 }}>
+                {funds.data
+                  .filter(fund => selectedRowKeys.includes(fund.id))
+                  .map(fund => (
+                    <div key={fund.id} style={{ marginBottom: 4 }}>
+                      <Text>{fund.fundName} ({fund.fundCode})</Text>
+                    </div>
+                  ))}
+              </div>
+            </div>
+            
+            <Form layout="vertical">
+              <Form.Item label="Reason for deletion (optional):">
+                <Input.TextArea
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  placeholder="Please provide a reason for this deletion..."
+                  rows={3}
+                />
+              </Form.Item>
+              
+              <Form.Item>
+                <Checkbox
+                  checked={confirmDeletion}
+                  onChange={(e) => setConfirmDeletion(e.target.checked)}
+                >
+                  <Text strong>I understand that this action is permanent and cannot be undone.</Text>
+                </Checkbox>
+              </Form.Item>
+            </Form>
+          </Space>
+        </Modal>
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MutualFundScanner.Application.Interfaces;
 using MutualFundScanner.Application.DTOs;
 
@@ -110,6 +111,7 @@ public class MutualFundController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteMutualFund(int id)
     {
         try
@@ -181,6 +183,7 @@ public class MutualFundController : ControllerBase
     }
 
     [HttpDelete("hard-delete")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> HardDeleteMutualFunds([FromBody] DeleteMutualFundsRequestDto request)
     {
         try
