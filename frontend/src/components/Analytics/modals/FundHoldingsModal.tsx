@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, Button, Space, Alert, Row, Col, Tag, Progress, Divider, Statistic, Typography, Pagination, Table, theme } from 'antd';
+import { Modal, Button, Space, Alert, Row, Col, Tag, Progress, Divider, Statistic, Typography, Pagination, Table, theme, Collapse } from 'antd';
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -40,43 +40,47 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
     >
       {data && (
         <div id="fund-holdings-modal-content">
-          <Alert
-            id="fund-holdings-modal-alert"
-            message="Fund Weight Distribution"
-            description={`Showing holdings across ${data.length} mutual funds`}
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-          <Row id="fund-holdings-modal-pagination-row" justify="space-between" align="middle" style={{ marginBottom: 8 }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Showing {Math.min((page - 1) * pageSize + 1, sortedData.length)}-{Math.min(page * pageSize, sortedData.length)} of {sortedData.length} holdings
-            </Text>
-            <Pagination
-              current={page}
-              total={sortedData.length}
-              pageSize={pageSize}
-              showSizeChanger={!isMobile}
-              showQuickJumper={!isMobile}
-              pageSizeOptions={['10', '20', '50', '100']}
-              onChange={(p, size) => {
-                setPage(p);
-                if (size) setPageSize(size);
-              }}
-              size="small"
-              showTotal={(total, range) => 
-                isMobile ? undefined : `${range[0]}-${range[1]} of ${total} items`
-              }
-            />
-          </Row>
+          <Collapse defaultActiveKey={isMobile ? [] : ['top']}>
+            <Collapse.Panel header="Summary & Controls" key="top">
+              <Alert
+                id="fund-holdings-modal-alert"
+                message="Fund Weight Distribution"
+                description={`Showing holdings across ${data.length} mutual funds`}
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+              <Row id="fund-holdings-modal-pagination-row" justify="space-between" align="middle" style={{ marginBottom: 8 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Showing {Math.min((page - 1) * pageSize + 1, sortedData.length)}-{Math.min(page * pageSize, sortedData.length)} of {sortedData.length} holdings
+                </Text>
+                <Pagination
+                  current={page}
+                  total={sortedData.length}
+                  pageSize={pageSize}
+                  showSizeChanger={!isMobile}
+                  showQuickJumper={!isMobile}
+                  pageSizeOptions={['10', '20', '50', '100']}
+                  onChange={(p, size) => {
+                    setPage(p);
+                    if (size) setPageSize(size);
+                  }}
+                  size="small"
+                  showTotal={(total, range) => 
+                    isMobile ? undefined : `${range[0]}-${range[1]} of ${total} items` 
+                  }
+                />
+              </Row>
+            </Collapse.Panel>
+          </Collapse>
           
           <Table
             id="fund-holdings-modal-table"
             dataSource={pageData}
             rowKey={(row: any) => `${row.mutualFundId}`}
             pagination={false}
-            className="sticky-table"
-            scroll={{ x: 800 }}
+            className={isMobile ? undefined : 'sticky-table'}
+            scroll={{ x: 800, y: isMobile ? '55vh' : undefined }}
             columns={[
               {
                 title: '#',

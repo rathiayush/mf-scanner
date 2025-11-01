@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, Button, Space, Alert, Row, Col, Tag, Select, Divider, Statistic, Typography, Table, Pagination, theme } from 'antd';
+import { Modal, Button, Space, Alert, Row, Col, Tag, Select, Divider, Statistic, Typography, Table, Pagination, theme, Collapse } from 'antd';
 const { Text } = Typography;
 const { useToken } = theme;
 import { SwapOutlined, FundOutlined } from '@ant-design/icons';
@@ -108,6 +108,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
   const { token } = useToken();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   const filteredData = useMemo(() => {
     const list = data?.fundChangeDetails || [];
@@ -189,59 +190,63 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
           </Row>
 
           {/* Top Summary KPIs */}
-          <Row id="holding-change-funds-kpis-row" gutter={[16, 16]} style={{ marginBottom: 12 }}>
-            <Col xs={12} sm={8} md={4}>
-              <Statistic
-                id="hc-kpi-total-funds"
-                title="Total Funds"
-                value={filteredData.length}
-                prefix={<FundOutlined />}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={5}>
-              <Statistic
-                id="hc-kpi-weight-change"
-                title="Weight Change"
-                value={data.weightChange?.toFixed(2) || '0.00'}
-                suffix="%"
-                valueStyle={{ 
-                  color: (data.weightChange || 0) > 0 ? token.colorSuccess : 
-                         (data.weightChange || 0) < 0 ? token.colorError : token.colorTextSecondary
-                }}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={5}>
-              <Statistic
-                id="hc-kpi-quantity-change"
-                title="Quantity Change"
-                value={data.quantityChange?.toLocaleString('en-IN') || '0'}
-                valueStyle={{ 
-                  color: (data.quantityChange || 0) > 0 ? token.colorSuccess : 
-                         (data.quantityChange || 0) < 0 ? token.colorError : token.colorTextSecondary
-                }}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={5}>
-              <Statistic
-                id="hc-kpi-value-change"
-                title="Value Change"
-                value={`₹${Math.abs(data.valueChange || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
-                valueStyle={{ 
-                  color: (data.valueChange || 0) > 0 ? token.colorSuccess : 
-                         (data.valueChange || 0) < 0 ? token.colorError : token.colorTextSecondary
-                }}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={5}>
-              <Statistic
-                id="hc-kpi-current-weight"
-                title="Current Weight"
-                value={data.currentWeight?.toFixed(2) || '0.00'}
-                suffix="%"
-                valueStyle={{ color: token.colorPrimary }}
-              />
-            </Col>
-          </Row>
+          <Collapse defaultActiveKey={['kpis']}>
+            <Collapse.Panel header="Summary KPIs" key="kpis">
+              <Row id="holding-change-funds-kpis-row" gutter={[16, 16]} style={{ marginBottom: 12 }}>
+                <Col xs={12} sm={8} md={4}>
+                  <Statistic
+                    id="hc-kpi-total-funds"
+                    title="Total Funds"
+                    value={filteredData.length}
+                    prefix={<FundOutlined />}
+                  />
+                </Col>
+                <Col xs={12} sm={8} md={5}>
+                  <Statistic
+                    id="hc-kpi-weight-change"
+                    title="Weight Change"
+                    value={data.weightChange?.toFixed(2) || '0.00'}
+                    suffix="%"
+                    valueStyle={{ 
+                      color: (data.weightChange || 0) > 0 ? token.colorSuccess : 
+                             (data.weightChange || 0) < 0 ? token.colorError : token.colorTextSecondary
+                    }}
+                  />
+                </Col>
+                <Col xs={12} sm={8} md={5}>
+                  <Statistic
+                    id="hc-kpi-quantity-change"
+                    title="Quantity Change"
+                    value={data.quantityChange?.toLocaleString('en-IN') || '0'}
+                    valueStyle={{ 
+                      color: (data.quantityChange || 0) > 0 ? token.colorSuccess : 
+                             (data.quantityChange || 0) < 0 ? token.colorError : token.colorTextSecondary
+                    }}
+                  />
+                </Col>
+                <Col xs={12} sm={8} md={5}>
+                  <Statistic
+                    id="hc-kpi-value-change"
+                    title="Value Change"
+                    value={`₹${Math.abs(data.valueChange || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    valueStyle={{ 
+                      color: (data.valueChange || 0) > 0 ? token.colorSuccess : 
+                             (data.valueChange || 0) < 0 ? token.colorError : token.colorTextSecondary
+                    }}
+                  />
+                </Col>
+                <Col xs={12} sm={8} md={5}>
+                  <Statistic
+                    id="hc-kpi-current-weight"
+                    title="Current Weight"
+                    value={data.currentWeight?.toFixed(2) || '0.00'}
+                    suffix="%"
+                    valueStyle={{ color: token.colorPrimary }}
+                  />
+                </Col>
+              </Row>
+            </Collapse.Panel>
+          </Collapse>
           
           <div id="holding-change-funds-table-container" style={{ flex: 1, paddingBottom: 80 }}>
           <div
@@ -286,7 +291,7 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
             dataSource={pagedData}
             pagination={false}
             sticky
-            scroll={{ x: 'max-content' as any, y: 'calc(78vh - 320px)' as any }}
+            scroll={{ x: 'max-content' as any, y: (isMobile ? '55vh' : 'calc(78vh - 320px)') as any }}
             className="sticky-table"
             columns={[
               {
