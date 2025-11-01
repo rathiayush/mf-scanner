@@ -12,7 +12,8 @@ import {
   Statistic,
   Alert,
   message,
-  Tabs
+  Tabs,
+  Collapse
 } from 'antd';
 import {
   BarChartOutlined,
@@ -454,7 +455,7 @@ const EnhancedAnalytics: React.FC = () => {
   const handleTableChange = (page: number, size?: number) => {
     sortingPagination.setCurrentPage(page);
     if (size) sortingPagination.setPageSize(size);
-    loadHoldingChanges(page, size || sortingPagination.pageSize);
+    loadHoldingChanges(page, size || sortingPagination.pageSize, sortingPagination.selectedStatusFilters, sortingPagination.holdingChangesSortBy, sortingPagination.holdingChangesSortDirection);
   };
 
   const handleStatusFilterChange = (values: string[]) => {
@@ -564,8 +565,10 @@ const EnhancedAnalytics: React.FC = () => {
 
       <Row id="analytics-main-row" gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col id="analysis-parameters-col" span={24}>
-          <Card id="analysis-parameters-card" title="Analysis Parameters">
-            <Row id="parameters-row" gutter={[16, 16]}>
+          <Card id="analysis-parameters-card">
+            <Collapse defaultActiveKey={['params']}>
+              <Collapse.Panel header="Analysis Parameters" key="params">
+                <Row id="parameters-row" gutter={[16, 16]}>
               <Col id="fund-selection-col" xs={24} sm={24} md={12} lg={12} xl={12}>
                 <Space id="fund-selection-space" direction="vertical" style={{ width: '100%' }}>
                   <Text id="fund-selection-label" strong>Select Mutual Funds</Text>
@@ -640,27 +643,31 @@ const EnhancedAnalytics: React.FC = () => {
                   )}
                 </Space>
               </Col>
-            </Row>
+                </Row>
 
-            <div id="analyze-button-container" style={{ marginTop: 16, textAlign: 'right' }}>
-              <Button
-                id="analyze-portfolio-button"
-                type="primary"
-                icon={<BarChartOutlined />}
-                loading={analyticsState.loading}
-                onClick={handleAnalyze}
-                disabled={(analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected) || !analyticsState.dateRange}
-              >
-                Analyze Portfolio
-              </Button>
-            </div>
+                <div id="analyze-button-container" style={{ marginTop: 16, textAlign: 'right' }}>
+                  <Button
+                    id="analyze-portfolio-button"
+                    type="primary"
+                    icon={<BarChartOutlined />}
+                    loading={analyticsState.loading}
+                    onClick={handleAnalyze}
+                    disabled={(analyticsState.selectedFunds.length === 0 && !analyticsState.isAllFundsSelected) || !analyticsState.dateRange}
+                  >
+                    Analyze Portfolio
+                  </Button>
+                </div>
+              </Collapse.Panel>
+            </Collapse>
           </Card>
         </Col>
 
         {analyticsState.analyticsData && (
           <Col id="analytics-summary-col" span={24}>
-            <Card id="analytics-summary-card" title="Analytics Summary">
-              <Row id="analytics-summary-row" gutter={[16, 16]}>
+            <Card id="analytics-summary-card">
+              <Collapse defaultActiveKey={['summary']}>
+                <Collapse.Panel header="Analytics Summary" key="summary">
+                  <Row id="analytics-summary-row" gutter={[16, 16]}>
                 <Col id="total-holdings-stat-col" xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     id="total-holdings-statistic"
@@ -695,7 +702,9 @@ const EnhancedAnalytics: React.FC = () => {
                     prefix={<SwapOutlined />}
                   />
                 </Col>
-              </Row>
+                  </Row>
+                </Collapse.Panel>
+              </Collapse>
             </Card>
           </Col>
         )}
@@ -717,6 +726,8 @@ const EnhancedAnalytics: React.FC = () => {
                   {analyticsState.holdingChanges && (
                     <div id="holding-changes-content">
                       <div id="holding-changes-controls-container" style={{ marginBottom: 16 }}>
+                        <Collapse defaultActiveKey={window.innerWidth < 768 ? [] : ['filters']}>
+                          <Collapse.Panel header="Filters & Sorting" key="filters">
                         <HoldingChangesControls
                           selectedStatusFilters={sortingPagination.selectedStatusFilters}
                           onStatusFilterChange={handleStatusFilterChange}
@@ -765,6 +776,8 @@ const EnhancedAnalytics: React.FC = () => {
                           minFundsCount={sortingPagination.minFundsCount}
                           onMinFundsCount={(v) => sortingPagination.setMinFundsCount(v === null ? undefined : v)}
                         />
+                          </Collapse.Panel>
+                        </Collapse>
                       </div>
                       <div
                         id="holding-changes-table-wrapper"
@@ -814,13 +827,15 @@ const EnhancedAnalytics: React.FC = () => {
                             pageSize: analyticsState.holdingChanges?.pageSize || 20,
                             total: analyticsState.holdingChanges?.totalCount || 0,
                             showSizeChanger: true,
-                            showQuickJumper: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            showQuickJumper: !isMobile,
                             showTotal: (total, range) =>
-                              `${range[0]}-${range[1]} of ${total} holdings`,
+                              isMobile ? `${range[0]}-${range[1]}/${total}` : `${range[0]}-${range[1]} of ${total} holdings`,
                             onChange: handleTableChange,
+                            simple: isMobile,
                             onShowSizeChange: handleTableChange,
-                            simple: window.innerWidth < 768,
-                            size: window.innerWidth < 768 ? 'small' : 'default'
+                            size: isMobile ? 'small' : 'default',
+                            defaultPageSize: 100
                           }}
                           sticky
                           scroll={{ x: window.innerWidth < 768 ? 1200 : 1800, y: window.innerWidth < 768 ? '60vh' : '120vh' as any }}
@@ -905,9 +920,10 @@ const EnhancedAnalytics: React.FC = () => {
                           pageSize: analyticsState.topShares?.pageSize || 20,
                           total: analyticsState.topShares?.totalCount || 0,
                           showSizeChanger: true,
-                          showQuickJumper: true,
+                          pageSizeOptions: ['10', '20', '50', '100'],
+                          showQuickJumper: !isMobile,
                           showTotal: (total, range) =>
-                            `${range[0]}-${range[1]} of ${total} shares`,
+                            isMobile ? `${range[0]}-${range[1]}/${total}` : `${range[0]}-${range[1]} of ${total} shares`,
                           onChange: (page, pageSize) => {
                             sortingPagination.setTopSharesPage(page);
                             if (pageSize !== sortingPagination.topSharesPageSize) {
@@ -920,8 +936,8 @@ const EnhancedAnalytics: React.FC = () => {
                             sortingPagination.setTopSharesPageSize(size);
                             loadTopShares(1, size, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
                           },
-                          simple: window.innerWidth < 768,
-                          size: window.innerWidth < 768 ? 'small' : 'default'
+                          simple: isMobile,
+                          size: isMobile ? 'small' : 'default'
                         }}
                         rowKey="isin"
                         sticky

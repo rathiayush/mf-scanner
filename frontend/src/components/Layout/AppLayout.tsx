@@ -232,7 +232,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, selectedKey = '2', isDa
             <div id="app-layout-content-inner" style={{
               borderRadius: isMobile ? '4px' : '8px',
               boxShadow: '0 1px 2px 0 rgba(0,0,0,0.03)',
-              padding: isMobile ? '12px' : '24px',
               minHeight: '100%',
               boxSizing: 'border-box'
             }}>

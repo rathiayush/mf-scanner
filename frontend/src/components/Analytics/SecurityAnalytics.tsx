@@ -580,9 +580,10 @@ const SecurityAnalytics: React.FC = () => {
                   pageSize: pageSize,
                   total: analyticsData.monthlyChanges.length,
                   showSizeChanger: true,
-                  showQuickJumper: true,
+                  pageSizeOptions: ['5', '10', '20', '50'],
+                  showQuickJumper: !isMobile,
                   showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} months`,
+                    isMobile ? `${range[0]}-${range[1]}/${total}` : `${range[0]}-${range[1]} of ${total} months`,
                   onChange: handleTableChange,
                   onShowSizeChange: handleTableChange,
                   simple: isMobile,

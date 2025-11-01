@@ -14,9 +14,10 @@ interface FundHoldingsModalProps {
 const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, onClose }) => {
   const { token } = useToken();
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
+  const isMobile = window.innerWidth < 768;
   const sortedData = useMemo(() => (data || []).slice().sort((a: any, b: any) => b.weight - a.weight), [data]);
-  const pageData = useMemo(() => sortedData.slice((page - 1) * pageSize, page * pageSize), [sortedData, page]);
+  const pageData = useMemo(() => sortedData.slice((page - 1) * pageSize, page * pageSize), [sortedData, page, pageSize]);
   return (
     <Modal
       id="fund-holdings-modal-container"
@@ -47,15 +48,25 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
             showIcon
             style={{ marginBottom: 16 }}
           />
-          <Row id="fund-holdings-modal-pagination-row" justify="end" style={{ marginBottom: 8 }}>
+          <Row id="fund-holdings-modal-pagination-row" justify="space-between" align="middle" style={{ marginBottom: 8 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Showing {Math.min((page - 1) * pageSize + 1, sortedData.length)}-{Math.min(page * pageSize, sortedData.length)} of {sortedData.length} holdings
+            </Text>
             <Pagination
-              id="fund-holdings-modal-pagination"
               current={page}
               total={sortedData.length}
               pageSize={pageSize}
-              showSizeChanger={false}
-              onChange={(p) => setPage(p)}
+              showSizeChanger={!isMobile}
+              showQuickJumper={!isMobile}
+              pageSizeOptions={['10', '20', '50', '100']}
+              onChange={(p, size) => {
+                setPage(p);
+                if (size) setPageSize(size);
+              }}
               size="small"
+              showTotal={(total, range) => 
+                isMobile ? undefined : `${range[0]}-${range[1]} of ${total} items`
+              }
             />
           </Row>
           
@@ -78,12 +89,28 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
               {
                 title: 'Mutual Fund',
                 dataIndex: 'mutualFundName',
-                width: 400,
+                width: isMobile ? 250 : 400,
                 sorter: (a: any, b: any) => a.mutualFundName.localeCompare(b.mutualFundName),
                 render: (text: string, row: any) => (
                   <Space direction="vertical" size={0}>
-                    <Text strong>{text}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>Fund ID: {row.mutualFundId}</Text>
+                    <Text 
+                      strong 
+                      style={{ 
+                        fontSize: isMobile ? 12 : 14,
+                        lineHeight: isMobile ? '1.2' : '1.4'
+                      }}
+                    >
+                      {text}
+                    </Text>
+                    <Text 
+                      type="secondary" 
+                      style={{ 
+                        fontSize: isMobile ? 10 : 12,
+                        lineHeight: '1.2'
+                      }}
+                    >
+                      Fund ID: {row.mutualFundId}
+                    </Text>
                   </Space>
                 )
               },
@@ -108,15 +135,23 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
           />
           
           <Divider id="fund-holdings-modal-divider" />
-          <Row id="fund-holdings-modal-bottom-pagination-row" justify="end">
+          <Row id="fund-holdings-modal-bottom-pagination-row" justify="space-between" align="middle">
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Page {page} of {Math.ceil(sortedData.length / pageSize)} • {pageSize} per page
+            </Text>
             <Pagination
-              id="fund-holdings-modal-bottom-pagination"
               current={page}
               total={sortedData.length}
               pageSize={pageSize}
-              showSizeChanger={false}
-              onChange={(p) => setPage(p)}
+              showSizeChanger={!isMobile}
+              showQuickJumper={!isMobile}
+              pageSizeOptions={['10', '20', '50', '100']}
+              onChange={(p, size) => {
+                setPage(p);
+                if (size) setPageSize(size);
+              }}
               size="small"
+              showTotal={() => null}
             />
           </Row>
           
