@@ -33,9 +33,9 @@ const FundHoldingsModal: React.FC<FundHoldingsModalProps> = ({ visible, data, on
           Close
         </Button>
       ]}
-      width={1000}
-      style={{ top: 20 }}
-      bodyStyle={{ maxHeight: '75vh', overflow: 'auto' }}
+      width={window.innerWidth < 768 ? '95%' : 1000}
+      style={{ top: window.innerWidth < 768 ? 10 : 20 }}
+      bodyStyle={{ maxHeight: window.innerWidth < 768 ? '85vh' : '75vh', overflow: 'auto' }}
     >
       {data && (
         <div id="fund-holdings-modal-content">

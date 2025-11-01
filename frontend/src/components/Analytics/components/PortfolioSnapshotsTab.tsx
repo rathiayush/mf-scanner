@@ -1,15 +1,13 @@
-import { useMemo } from 'react';
-import { Row, Col, Card, Statistic, Alert, Typography, theme } from 'antd';
+import React from 'react';
+import { Row, Col, Card, Statistic, Alert, Typography } from 'antd';
 
 const { Text } = Typography;
-const { useToken } = theme;
 
 interface PortfolioSnapshotsTabProps {
   snapshots: any[];
 }
 
 const PortfolioSnapshotsTab: React.FC<PortfolioSnapshotsTabProps> = ({ snapshots }) => {
-  const { token } = useToken();
   if (snapshots.length === 0) {
     return (
       <Alert
@@ -24,13 +22,13 @@ const PortfolioSnapshotsTab: React.FC<PortfolioSnapshotsTabProps> = ({ snapshots
   return (
     <Row gutter={[16, 16]}>
       {snapshots.map((snapshot, index) => (
-        <Col span={12} key={index}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12} key={index}>
           <Card 
             title={`${snapshot.fundName} - ${snapshot.date}`}
             size="small"
           >
             <Row gutter={[8, 8]}>
-              <Col span={12}>
+              <Col xs={12} sm={12} md={12}>
                 <Statistic
                   title="Total Value"
                   value={snapshot.totalValue}
@@ -38,7 +36,7 @@ const PortfolioSnapshotsTab: React.FC<PortfolioSnapshotsTabProps> = ({ snapshots
                   precision={2}
                 />
               </Col>
-              <Col span={12}>
+              <Col xs={12} sm={12} md={12}>
                 <Statistic
                   title="Holdings Count"
                   value={snapshot.holdingsCount}

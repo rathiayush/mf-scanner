@@ -43,7 +43,7 @@ import { getHoldingChangesColumns } from './columns/holdingChangesColumns';
 import { getTopSharesColumns } from './columns/topSharesColumns';
 
 // Utils
-import { disabledDateLogic } from './utils/dateValidation';
+import { disabledDateLogic, clearDateValidationCache } from './utils/dateValidation';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -64,6 +64,9 @@ const styles = `
     padding-bottom: 8px;
   }
 
+  /* Prevent page-level horizontal scroll */
+  #enhanced-analytics-container { overflow-x: hidden; }
+
   /* Focusable wrappers for keyboard scrolling */
   .table-scroll-wrapper {
     outline: none;
@@ -73,6 +76,104 @@ const styles = `
   #holding-changes-table .ant-table-body,
   #top-shares-table .ant-table-body {
     overflow-x: auto !important;
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 768px) {
+    #enhanced-analytics-container {
+      padding: 8px;
+    }
+
+    #analytics-main-title {
+      font-size: 20px !important;
+    }
+
+    #analytics-description {
+      font-size: 12px;
+    }
+
+    .ant-card {
+      margin-bottom: 12px;
+    }
+
+    .ant-card-head-title {
+      font-size: 14px;
+    }
+
+    .ant-statistic-title {
+      font-size: 12px;
+    }
+
+    .ant-statistic-content {
+      font-size: 18px !important;
+    }
+
+    .ant-table {
+      font-size: 12px;
+    }
+
+    .ant-table-thead > tr > th {
+      padding: 8px 4px;
+      font-size: 11px;
+    }
+
+    .ant-table-tbody > tr > td {
+      padding: 8px 4px;
+      font-size: 11px;
+    }
+
+    .ant-tabs-tab {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .ant-select {
+      font-size: 12px;
+    }
+
+    .ant-input {
+      font-size: 12px;
+    }
+
+    .ant-btn {
+      font-size: 12px;
+      padding: 4px 12px;
+    }
+
+    /* Make date picker more touch-friendly on mobile */
+    .ant-picker {
+      height: 40px !important;
+      font-size: 14px !important;
+    }
+
+    .ant-picker-input > input {
+      font-size: 14px !important;
+    }
+
+    .ant-picker-range {
+      padding: 8px 11px !important;
+    }
+
+    .ant-picker-range-separator {
+      padding: 0 4px !important;
+    }
+  }
+
+  /* Tablet responsive styles */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    #enhanced-analytics-container {
+      padding: 12px;
+    }
+
+    .ant-table-thead > tr > th {
+      padding: 10px 6px;
+      font-size: 12px;
+    }
+
+    .ant-table-tbody > tr > td {
+      padding: 10px 6px;
+      font-size: 12px;
+    }
   }
 `;
 
@@ -88,6 +189,90 @@ const EnhancedAnalytics: React.FC = () => {
   const analyticsState = useAnalyticsState();
   const sortingPagination = useSortingAndPagination();
   const modalState = useModalState();
+  const isMobile = window.innerWidth < 768;
+
+  // Responsive styles for date picker dropdown across all screen sizes
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-enhanced-analytics-range-picker', 'true');
+    style.innerHTML = `
+      /* Mobile styles (360px - 767px) */
+      @media (max-width: 767px) {
+        .enhanced-analytics-range-picker.ant-picker-dropdown {
+          position: fixed !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
+          width: calc(100vw - 32px) !important;
+          max-width: 350px !important;
+          max-height: 80vh !important;
+          z-index: 2000 !important;
+          box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05) !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-panel-container {
+          width: 100% !important;
+          overflow-y: auto !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-panels {
+          flex-direction: column !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-panel {
+          width: 100% !important;
+          margin-bottom: 8px !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-date-panel {
+          width: 100% !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-body {
+          padding: 12px !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-cell {
+          padding: 4px !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-cell-inner {
+          min-width: 36px !important;
+          height: 36px !important;
+          line-height: 36px !important;
+          font-size: 14px !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-header {
+          padding: 0 12px !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-header-view {
+          font-size: 14px !important;
+        }
+      }
+      
+      /* Tablet styles (768px - 1180px) */
+      @media (min-width: 768px) and (max-width: 1180px) {
+        .enhanced-analytics-range-picker.ant-picker-dropdown {
+          z-index: 1500 !important;
+          max-width: 600px !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-panels {
+          display: flex !important;
+          flex-direction: row !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-panel {
+          width: 280px !important;
+        }
+        .enhanced-analytics-range-picker .ant-picker-cell-inner {
+          min-width: 32px !important;
+          height: 32px !important;
+          line-height: 32px !important;
+        }
+      }
+      
+      /* Desktop styles (1181px+) */
+      @media (min-width: 1181px) {
+        .enhanced-analytics-range-picker.ant-picker-dropdown {
+          z-index: 1000 !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.querySelector('[data-enhanced-analytics-range-picker]')?.remove(); };
+  }, []);
 
   useEffect(() => {
     loadMutualFunds();
@@ -96,6 +281,8 @@ const EnhancedAnalytics: React.FC = () => {
 
   useEffect(() => {
     if (analyticsState.selectedFunds.length > 0 || analyticsState.isAllFundsSelected) {
+      // Clear date validation cache when funds change
+      clearDateValidationCache();
       loadAvailableDates(analyticsState.isAllFundsSelected ? undefined : analyticsState.selectedFunds);
     }
   }, [analyticsState.selectedFunds, analyticsState.isAllFundsSelected]);
@@ -126,6 +313,8 @@ const EnhancedAnalytics: React.FC = () => {
   const loadAvailableDates = async (fundIds?: number[]) => {
     try {
       const dates = await analyticsService.getAvailableDates(fundIds);
+      // Clear cache when new dates are loaded
+      clearDateValidationCache();
       analyticsState.setAvailableDates(dates);
     } catch (error) {
       message.error('Failed to load available dates');
@@ -377,7 +566,7 @@ const EnhancedAnalytics: React.FC = () => {
         <Col id="analysis-parameters-col" span={24}>
           <Card id="analysis-parameters-card" title="Analysis Parameters">
             <Row id="parameters-row" gutter={[16, 16]}>
-              <Col id="fund-selection-col" span={12}>
+              <Col id="fund-selection-col" xs={24} sm={24} md={12} lg={12} xl={12}>
                 <Space id="fund-selection-space" direction="vertical" style={{ width: '100%' }}>
                   <Text id="fund-selection-label" strong>Select Mutual Funds</Text>
                   <Select
@@ -418,12 +607,16 @@ const EnhancedAnalytics: React.FC = () => {
                 </Space>
               </Col>
               
-              <Col id="date-range-col" span={12}>
+              <Col id="date-range-col" xs={24} sm={24} md={12} lg={12} xl={12}>
                 <Space id="date-range-space" direction="vertical" style={{ width: '100%' }}>
                   <Text id="date-range-label" strong>Date Range</Text>
                   <RangePicker
                     id="date-range-picker"
-                    style={{ width: '100%' }}
+                    style={{ 
+                      width: '100%',
+                      height: isMobile ? '44px' : 'auto'
+                    }}
+                    size={isMobile ? 'large' : 'middle'}
                     value={analyticsState.dateRange}
                     onChange={(dates) => {
                       if (dates && dates.length === 2) {
@@ -434,6 +627,11 @@ const EnhancedAnalytics: React.FC = () => {
                     }}
                     disabledDate={disabledDate}
                     placeholder={['From Date', 'To Date']}
+                    format="DD/MM/YYYY"
+                    inputReadOnly={isMobile}
+                    dropdownClassName="enhanced-analytics-range-picker"
+                    getPopupContainer={() => document.body}
+                    placement="bottomLeft"
                   />
                   {analyticsState.availableDates && (
                     <Text id="available-dates-info" type="secondary" style={{ fontSize: '12px' }}>
@@ -463,7 +661,7 @@ const EnhancedAnalytics: React.FC = () => {
           <Col id="analytics-summary-col" span={24}>
             <Card id="analytics-summary-card" title="Analytics Summary">
               <Row id="analytics-summary-row" gutter={[16, 16]}>
-                <Col id="total-holdings-stat-col" span={6}>
+                <Col id="total-holdings-stat-col" xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     id="total-holdings-statistic"
                     title="Total Holdings Analyzed"
@@ -471,7 +669,7 @@ const EnhancedAnalytics: React.FC = () => {
                     prefix={<FundOutlined />}
                   />
                 </Col>
-                <Col id="added-holdings-stat-col" span={6}>
+                <Col id="added-holdings-stat-col" xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     id="added-holdings-statistic"
                     title="Added Holdings"
@@ -479,7 +677,7 @@ const EnhancedAnalytics: React.FC = () => {
                     valueStyle={{ color: '#3f8600' }}
                   />
                 </Col>
-                <Col id="removed-holdings-stat-col" span={6}>
+                <Col id="removed-holdings-stat-col" xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     id="removed-holdings-statistic"
                     title="Removed Holdings"
@@ -487,7 +685,7 @@ const EnhancedAnalytics: React.FC = () => {
                     valueStyle={{ color: '#cf1322' }}
                   />
                 </Col>
-                <Col id="weight-change-stat-col" span={6}>
+                <Col id="weight-change-stat-col" xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     id="weight-change-statistic"
                     title="Total Weight Change"
@@ -621,9 +819,12 @@ const EnhancedAnalytics: React.FC = () => {
                               `${range[0]}-${range[1]} of ${total} holdings`,
                             onChange: handleTableChange,
                             onShowSizeChange: handleTableChange,
+                            simple: window.innerWidth < 768,
+                            size: window.innerWidth < 768 ? 'small' : 'default'
                           }}
                           sticky
-                          scroll={{ x: 1800, y: '120vh' as any }}
+                          scroll={{ x: window.innerWidth < 768 ? 1200 : 1800, y: window.innerWidth < 768 ? '60vh' : '120vh' as any }}
+                          size={window.innerWidth < 768 ? 'small' : 'middle'}
                         />
                       </div>
                     </div>
@@ -719,10 +920,13 @@ const EnhancedAnalytics: React.FC = () => {
                             sortingPagination.setTopSharesPageSize(size);
                             loadTopShares(1, size, sortingPagination.topSharesSortBy, sortingPagination.topSharesSortDirection);
                           },
+                          simple: window.innerWidth < 768,
+                          size: window.innerWidth < 768 ? 'small' : 'default'
                         }}
                         rowKey="isin"
                         sticky
-                        scroll={{ x: 1600, y: '120vh' as any }}
+                        scroll={{ x: window.innerWidth < 768 ? 1000 : 1600, y: window.innerWidth < 768 ? '60vh' : '120vh' as any }}
+                        size={window.innerWidth < 768 ? 'small' : 'middle'}
                       />
                     </div>
                   </div>

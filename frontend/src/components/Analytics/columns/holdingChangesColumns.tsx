@@ -16,18 +16,38 @@ export const getHoldingChangesColumns = ({
   getSortOrder,
   onViewFundDetails
 }: HoldingChangesColumnsProps) => {
+  const isMobile = window.innerWidth < 768;
   
   return [
   {
     title: 'Security Name',
     dataIndex: 'securityName',
     key: 'securityName',
-    width: 200,
-    fixed: 'left' as const,
+    width: isMobile ? 150 : 200,
+    fixed: isMobile ? undefined : ('left' as const),
     render: (text: string, record: HoldingChangeDto) => (
       <Space direction="vertical" size="small">
-        <Text strong>{text}</Text>
-        <Text type="secondary" style={{ fontSize: '12px' }}>{record.isin}</Text>
+        <Text
+          strong
+          style={{
+            fontSize: isMobile ? '11px' : '14px',
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}
+          title={text}
+        >
+          {text}
+        </Text>
+        <Text
+          type="secondary"
+          style={{ fontSize: isMobile ? '10px' : '12px', display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          title={record.isin}
+        >
+          {record.isin}
+        </Text>
       </Space>
     ),
   },
@@ -35,7 +55,8 @@ export const getHoldingChangesColumns = ({
     title: 'Sector',
     dataIndex: 'sector',
     key: 'sector',
-    width: 120,
+    width: isMobile ? 100 : 120,
+    ellipsis: true as any,
   },
   {
     title: 'Change Type',

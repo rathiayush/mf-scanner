@@ -1,7 +1,6 @@
-import { Space, Tag, Button, Typography, theme } from 'antd';
+import { Space, Tag, Button, Typography } from 'antd';
 
 const { Text } = Typography;
-const { useToken } = theme;
 import { EyeOutlined } from '@ant-design/icons';
 import { TopShareDto } from '../../../types';
 
@@ -11,18 +10,19 @@ interface TopSharesColumnsProps {
 
 export const getTopSharesColumns = ({ onViewFundHoldings }: TopSharesColumnsProps) => {
   // const { token } = useToken(); // Reserved for future dark mode enhancements
+  const isMobile = window.innerWidth < 768;
   
   return [
   {
     title: 'Security Name',
     dataIndex: 'securityName',
     key: 'securityName',
-    width: 200,
-    fixed: 'left' as const,
+    width: isMobile ? 150 : 200,
+    fixed: isMobile ? undefined : ('left' as const),
     render: (text: string, record: TopShareDto) => (
       <Space direction="vertical" size="small">
-        <Text strong>{text}</Text>
-        <Text type="secondary" style={{ fontSize: '12px' }}>{record.isin}</Text>
+        <Text strong style={{ fontSize: isMobile ? '11px' : '14px' }}>{text}</Text>
+        <Text type="secondary" style={{ fontSize: isMobile ? '10px' : '12px' }}>{record.isin}</Text>
       </Space>
     ),
   },

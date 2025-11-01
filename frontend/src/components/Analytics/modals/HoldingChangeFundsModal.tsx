@@ -133,9 +133,9 @@ const HoldingChangeFundsModal: React.FC<HoldingChangeFundsModalProps> = ({
           Close
         </Button>
       ]}
-      width={1400}
-      style={{ top: 20 }}
-      bodyStyle={{ maxHeight: '80vh', overflow: 'hidden' }}
+      width={window.innerWidth < 768 ? '95%' : 1400}
+      style={{ top: window.innerWidth < 768 ? 10 : 20 }}
+      bodyStyle={{ maxHeight: window.innerWidth < 768 ? '85vh' : '80vh', overflow: 'hidden' }}
     >
       {data && (
         <div id="holding-change-funds-modal-content" style={{ height: '80vh', display: 'flex', flexDirection: 'column' }}>

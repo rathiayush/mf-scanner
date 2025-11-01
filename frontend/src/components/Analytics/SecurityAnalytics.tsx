@@ -268,18 +268,103 @@ const SecurityAnalytics: React.FC = () => {
     },
   ];
 
+  const isMobile = window.innerWidth < 768;
+
+  // Responsive styles for date picker dropdown across all screen sizes
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-security-analytics-range-picker', 'true');
+    style.innerHTML = `
+      /* Mobile styles (360px - 767px) */
+      @media (max-width: 767px) {
+        .security-analytics-range-picker.ant-picker-dropdown {
+          position: fixed !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
+          width: calc(100vw - 32px) !important;
+          max-width: 350px !important;
+          max-height: 80vh !important;
+          z-index: 2000 !important;
+          box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05) !important;
+        }
+        .security-analytics-range-picker .ant-picker-panel-container {
+          width: 100% !important;
+          overflow-y: auto !important;
+        }
+        .security-analytics-range-picker .ant-picker-panels {
+          flex-direction: column !important;
+        }
+        .security-analytics-range-picker .ant-picker-panel {
+          width: 100% !important;
+          margin-bottom: 8px !important;
+        }
+        .security-analytics-range-picker .ant-picker-date-panel {
+          width: 100% !important;
+        }
+        .security-analytics-range-picker .ant-picker-body {
+          padding: 12px !important;
+        }
+        .security-analytics-range-picker .ant-picker-cell {
+          padding: 4px !important;
+        }
+        .security-analytics-range-picker .ant-picker-cell-inner {
+          min-width: 36px !important;
+          height: 36px !important;
+          line-height: 36px !important;
+          font-size: 14px !important;
+        }
+        .security-analytics-range-picker .ant-picker-header {
+          padding: 0 12px !important;
+        }
+        .security-analytics-range-picker .ant-picker-header-view {
+          font-size: 14px !important;
+        }
+      }
+      
+      /* Tablet styles (768px - 1180px) */
+      @media (min-width: 768px) and (max-width: 1180px) {
+        .security-analytics-range-picker.ant-picker-dropdown {
+          z-index: 1500 !important;
+          max-width: 600px !important;
+        }
+        .security-analytics-range-picker .ant-picker-panels {
+          display: flex !important;
+          flex-direction: row !important;
+        }
+        .security-analytics-range-picker .ant-picker-panel {
+          width: 280px !important;
+        }
+        .security-analytics-range-picker .ant-picker-cell-inner {
+          min-width: 32px !important;
+          height: 32px !important;
+          line-height: 32px !important;
+        }
+      }
+      
+      /* Desktop styles (1181px+) */
+      @media (min-width: 1181px) {
+        .security-analytics-range-picker.ant-picker-dropdown {
+          z-index: 1000 !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.querySelector('[data-security-analytics-range-picker]')?.remove(); };
+  }, []);
+
   return (
-    <div>
-      <Title level={2}>Security Analytics</Title>
-      <Text type="secondary">
+    <div id="security-analytics-container" style={{ padding: isMobile ? '8px' : '0', overflowX: 'hidden' }}>
+      <Title level={isMobile ? 3 : 2}>Security Analytics</Title>
+      <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>
         Analyze how a specific security has been traded by mutual fund portfolios over time.
       </Text>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: isMobile ? 16 : 24 }}>
         <Col span={24}>
           <Card title="Analysis Parameters">
             <Row gutter={[16, 16]}>
-              <Col span={12}>
+              <Col xs={24} sm={24} md={12} lg={12} xl={12}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>Search Security</Text>
                   <Select
@@ -344,11 +429,15 @@ const SecurityAnalytics: React.FC = () => {
                 </Space>
               </Col>
 
-              <Col span={12}>
+              <Col xs={24} sm={24} md={12} lg={12} xl={12}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>Date Range</Text>
                   <RangePicker
-                    style={{ width: '100%' }}
+                    size={isMobile ? 'large' : 'middle'}
+                    style={{ 
+                      width: '100%',
+                      height: isMobile ? '44px' : 'auto'
+                    }}
                     value={dateRange}
                     onChange={(dates) => {
                       if (dates && dates.length === 2) {
@@ -358,6 +447,11 @@ const SecurityAnalytics: React.FC = () => {
                       }
                     }}
                     placeholder={['From Date', 'To Date']}
+                    format="DD/MM/YYYY"
+                    inputReadOnly={isMobile}
+                    dropdownClassName="security-analytics-range-picker"
+                    getPopupContainer={() => document.body}
+                    placement="bottomLeft"
                   />
                 </Space>
               </Col>
@@ -381,26 +475,26 @@ const SecurityAnalytics: React.FC = () => {
           <Col span={24}>
             <Card title="Security Summary">
               <Row gutter={[16, 16]}>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="Security"
                     value={analyticsData.securityName}
                     prefix={<StockOutlined />}
                   />
                 </Col>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="ISIN"
                     value={analyticsData.isin}
                   />
                 </Col>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="Analysis Period"
                     value={`${dayjs(analyticsData.fromDate).format('MMM YYYY')} - ${dayjs(analyticsData.toDate).format('MMM YYYY')}`}
                   />
                 </Col>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="Total Mutual Funds"
                     value={analyticsData.totalMutualFunds}
@@ -412,25 +506,25 @@ const SecurityAnalytics: React.FC = () => {
               <Divider />
 
               <Row gutter={[16, 16]}>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="Months Analyzed"
                     value={analyticsData.summary.totalMonthsAnalyzed}
                   />
                 </Col>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="Months with Changes"
                     value={analyticsData.summary.monthsWithChanges}
                   />
                 </Col>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="Funds Involved"
                     value={analyticsData.summary.totalMutualFundsInvolved}
                   />
                 </Col>
-                <Col span={6}>
+                <Col xs={12} sm={12} md={6} lg={6} xl={6}>
                   <Statistic
                     title="Total Weight Change"
                     value={analyticsData.summary.totalAbsoluteWeightChange}
@@ -491,8 +585,11 @@ const SecurityAnalytics: React.FC = () => {
                     `${range[0]}-${range[1]} of ${total} months`,
                   onChange: handleTableChange,
                   onShowSizeChange: handleTableChange,
+                  simple: isMobile,
+                  size: isMobile ? 'small' : 'default'
                 }}
-                scroll={{ x: 800 }}
+                scroll={{ x: isMobile ? 600 : 800 }}
+                size={isMobile ? 'small' : 'middle'}
               />
             </Card>
           </Col>
